@@ -1,0 +1,51 @@
+# Feature 02 — Login & Authentication Screens
+
+## Type
+
+NEW FEATURE
+
+## What This Delivers
+
+The bootcamp deliverable **"Complete login & authentication screens"**: signup/login/logout screens against the backend REST auth endpoints, with the secure token flow (memory access token + `flutter_secure_storage` refresh + silent refresh).
+
+## Dependencies
+
+- Mobile feature 01.
+- Backend feature 08 (auth).
+
+## Context To Read First
+
+- `mobile/project-kit/context/{state-and-data,api-integration}.md`
+
+## Agent Skills To Use
+
+- `mobile/.agents/skills/dio-rest/SKILL.md`
+- `mobile/.agents/skills/riverpod-state/SKILL.md`
+
+## Files Owned
+
+- `mobile/lib/features/auth/**`
+- `mobile/lib/core/storage/secure_storage.dart`
+
+## Implementation Notes
+
+- Login/signup forms (email + password), validation, inline errors.
+- Access token → memory (Riverpod authProvider); refresh token → secure storage; silent refresh on boot.
+- Logout clears memory + storage.
+
+## Separation of Concerns
+
+- Screens = presentation; authProvider = session state; dio interceptor = refresh transport.
+
+## Docker & Deploy
+
+- Local device run against compose backend.
+
+## Out of Scope
+
+Registration UX beyond a basic form (v2).
+
+## Acceptance Criteria
+
+- [ ] Login/signup work against the backend; logout clears all tokens
+- [ ] Silent refresh on boot; 401 → refresh → retry once works

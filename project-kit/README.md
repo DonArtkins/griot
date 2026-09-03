@@ -1,47 +1,35 @@
-# Project Kit — Griot (modeled on the Foundrie AI kit)
+# Project Kit — Griot (Orchestrator Kit)
 
-The live implementation kit: what to build, in what order, against which contract. The bootcamp research corpus (`research/`) decides the stack; this kit decides the code.
+The root kit coordinates the **seven systems**. Each system owns a full kit of its own in `<system>/project-kit/` (its AGENTS entry point, context files, feature specs, diagrams, examples). This root kit holds only what spans systems.
 
 ## Contents
 
 ```
 project-kit/
-├── README.md            ← this index
-├── context/             ← 12 context files (read in the AGENTS.md order)
-│   ├── project-overview.md
-│   ├── architecture-context.md
-│   ├── build-plan.md
-│   ├── code-standards.md
-│   ├── library-docs.md
-│   ├── ui-context.md
-│   ├── ui-tokens.md
-│   ├── ui-rules.md
-│   ├── ui-registry.md
-│   ├── ai-workflow-rules.md
-│   ├── test-validation-plan.md
-│   └── progress-tracker.md
-├── feature-specs/       ← 10 ordered implementation specs (01–10)
-├── examples/            ← reference examples / inspiration assets
-└── diagrams/            ← approved Figma/FigJam artifacts (ERD, architecture, UI)
+├── README.md
+├── context/
+│   ├── system-map.md            ← the 7 systems + how they communicate
+│   ├── stack-contract.md        ← the PDF stack table + [own-stack] markers
+│   ├── integration-contracts.md ← ports, env vars, API/GraphQL cross-system contracts
+│   └── progress-tracker.md      ← root-level tracker
+├── diagrams/                    ← approved cross-system Figma Make/Figma artifacts (ERD, system map)
+└── examples/                    ← reference assets
 ```
+
+## Where the real kits live
+
+| System | Kit root |
+|---|---|
+| Backend / API | `backend/project-kit/` |
+| Web | `web/project-kit/` |
+| Mobile | `mobile/project-kit/` |
+| DevOps / Infra | `infra/project-kit/` |
+| Quality Engineering | `qa/project-kit/` |
+| AI agents | `ai/project-kit/` |
+| MCP server | `mcp/project-kit/` |
 
 ## Reading order
 
-Root `AGENTS.md` → research week files → context files (per `AGENTS.md` §Mandatory Reading Order) → the current feature spec → the governing diagram in `diagrams/`.
-
-## Feature-spec conventions (Griot-specific)
-
-Unlike generic kits, every Griot feature spec carries three mandatory sections:
-1. **Setup / Initialization** — the exact scaffold/init commands for the app it creates.
-2. **Separation of Concerns** — the folder/architecture boundaries that app must respect.
-3. **Docker & Deploy** — the container story and the deploy target for *that* app.
-
-Specs are implemented strictly in numeric order; a spec is done only when its tests/build/CI gates are green and its contracts are synchronized.
-
-## Status
-
-Weeks 1–2 in progress — see `context/progress-tracker.md`.
-
----
+Root `AGENTS.md` → `research/` → root context (system-map, stack-contract, integration-contracts) → the system's `AGENTS.md` → its context → its feature specs → the governing diagram.
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**

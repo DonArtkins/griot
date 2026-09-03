@@ -1,0 +1,36 @@
+# Feature 12 - Full Manual Cycles + Defect Tracking + Internal QE (Week 7)
+
+## Type
+
+NEW FEATURE
+
+## What This Delivers
+
+The Week-7 deliverable block: execute full manual testing cycles against the deployed system, log & track every defect in Jira with evidence, and apply the same rigor to Sababisha's internal products as scheduled by the cohort.
+
+## Dependencies
+
+- Features 01-03 (cases + Jira). Features 06-11 (automated suites green).
+
+## Context To Read First
+
+- `research/week-07-real-world-qe-practice.md` sec 3
+
+## Files Owned
+
+- `docs/MANUAL-CYCLE-REPORT.md`, Jira project state
+
+## Files
+
+CREATE: `docs/MANUAL-CYCLE-REPORT.md` - per-cycle summary, defect list with severity/evidence, screenshots/videos.
+
+## Implementation Notes
+
+- Run against deployed Railway/Vercel, not localhost - env mismatch, CORS, cold-start are the targets.
+- Traceability: every defect links to a test case + requirement.
+- Internal-product QE is cohort-scheduled; the approach transfers.
+
+## Acceptance Criteria
+
+- [ ] Manual cycles executed and reported; all defects in Jira with evidence
+- [ ] Traceability matrix maintained

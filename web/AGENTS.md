@@ -1,0 +1,54 @@
+# AGENTS.md — Griot Web Frontend (React 18 + Vite 5 + MUI v6)
+
+## Read This First
+
+You are the agent for the **Web** system of Griot (bootcamp Week 3). You build presentation only — the web app never reaches a database; all data flows through the backend's REST + GraphQL API (`backend/`).
+
+Stack (exact): React 18.3, Vite 5, Material UI v6, Apollo Client, Axios, TanStack Query 5. [own-stack]: Zustand (client state), React Router, GSAP + Lenis (Public shell only).
+
+## Two shells (Week-1 Figma design system)
+
+- **Public shell** — landing, pricing, login/signup. Spectacle + conversion; GSAP/Lenis via dynamic import; Lighthouse budget; axe-clean.
+- **App shell** — dashboard, board, task detail, team settings, notifications. Speed + clarity; MUI transitions only; status colors = the ERD enums.
+
+## Folder shape
+
+```
+web/
+├── index.html
+├── vite.config.ts            # /api + /graphql dev proxy
+└── src/
+    ├── main.tsx              # StrictMode + Providers (Apollo, QueryClient, Theme, Router)
+    ├── theme.ts              # MUI theme <- ui-tokens
+    ├── lib/{apolloClient,apiClient,queryClient}.ts
+    ├── stores/authStore.ts   # Zustand: accessToken + client-only state
+    ├── routes/{public,protected}.tsx
+    └── features/{dashboard,board,taskDetail,settings,notifications,copilot}/…
+```
+
+## Reading Order
+
+1. Root `AGENTS.md` + root context (`integration-contracts.md` for the API surface).
+2. `research/week-03-frontend-development.md`.
+3. `web/project-kit/context/{design-system,state-and-data,api-integration,code-standards}.md`.
+4. The current spec (one at a time, numeric order).
+
+## Required Skills
+
+Root shared skills (`contract-sync`, `git-branch-flow`, `throttling-prevention`) + `web/.agents/skills/` (`vite-react-setup`, `material-ui-theme`, `apollo-graphql`, `tanstack-rest`, `auth-and-zustand`). Follow the relevant `SKILL.md` exactly.
+
+## Verification Gates
+
+- `npm run lint && npm run typecheck && npm test && npm run build` all green.
+- No server data in Zustand; no `localStorage` tokens.
+- Empty/loading/error states on every async surface; interaction tests for TaskCard/BoardView/modals.
+- Contracts (route names, theme tokens, GraphQL fragments) synchronized.
+
+## Hard Rules
+
+1. App shell never imports GSAP; Public shell is the only motion-heavy surface.
+2. Board drag-drop is web-only; mobile uses a picker.
+3. Copilot mutations: propose → user approval → app performs the write (agent never writes directly).
+4. Theme colors come only from tokens; status chip colors match the enums.
+
+**Engineering Excellence. Production Mindset. Professional Impact. 🚀**

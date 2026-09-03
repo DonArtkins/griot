@@ -1,6 +1,6 @@
 # PROMPTS — Week-Grouped Generation Prompts
 
-Everything you paste into an AI tool so it does a week's deliverable for you: Figma Make (UI/design), FigJam (diagrams, ERD), Figma AI, and agent prompts (Cline/Claude) that turn a design into code.
+Everything you paste into an AI tool so it does a week's deliverable for you: Figma Make (UI/design), Figma Make (diagrams, ERD), Figma AI, and agent prompts (Cline/Claude) that turn a design into code.
 
 ## How to use
 
@@ -15,7 +15,7 @@ Everything you paste into an AI tool so it does a week's deliverable for you: Fi
 |---|---|---|---|
 | 1 | `week-01/01-figma-make-app-shell.md` | Figma Make (Plan mode) | 5 core App-shell screens → Figma design system |
 | 1 | `week-01/02-figma-make-public-shell.md` | Figma Make (single-shot) | Landing / pricing / login → Public shell |
-| 2 | `week-02/01-database-schema-erd-figma.md` | **FigJam (today)** | **ERD → `project-kit/diagrams/erd/` → EF Core schema** |
+| 2 | `week-02/01-database-schema-erd-figma-make.md` | **Figma Make (today)** | **ERD → `project-kit/diagrams/erd/` → EF Core schema** |
 | 2 | `week-02/02-rest-api-surface.md` | Agent (Cline/Claude) | REST + GraphQL endpoint map from the approved ERD |
 | 3 | `week-03/01-web-app-implementation.md` | Agent | Vite + React + MUI app from the UI registry |
 | 4 | `week-04/01-mobile-app-implementation.md` | Agent | Flutter app from the mobile mirror |

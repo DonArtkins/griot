@@ -1,0 +1,39 @@
+# Feature 06 - Unit & Integration Testing: xUnit (.NET)
+
+## Type
+
+NEW FEATURE
+
+## What This Delivers
+
+The Week-6 step 5 deliverable for the backend: xUnit unit tests (services with mocked repos) + integration tests (WebApplicationFactory against the real SQL Server container), incl. the refresh-rotation replay race and bulk-update atomicity.
+
+## Dependencies
+
+- Backend features 04-08 (code under test).
+
+## Context To Read First
+
+- `qa/project-kit/context/{test-pyramid,coverage-gate}.md`
+
+## Agent Skills To Use
+
+- `qa/.agents/skills/xunit-dotnet/SKILL.md`
+
+## Files Owned
+
+- `backend/tests/Griot.Tests/**`
+
+## Files
+
+CREATE: `TaskServiceTests`, `AuthApiTests` (refresh replay + rate limit), `WorkspaceServiceTests`, `BoardQueryIntegrationTests`, dashboard proc tests.
+
+## Implementation Notes
+
+- Integration tests boot the API via `WebApplicationFactory<Program>` against the compose-provided SQL Server.
+- Coverage collected via XPlat.
+
+## Acceptance Criteria
+
+- [ ] `dotnet test` green; refresh replay + bulk atomicity covered
+- [ ] Coverage artifact produced

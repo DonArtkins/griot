@@ -1,102 +1,32 @@
-# UI Tokens
+# UI Tokens (shared design language)
 
-## Contracts Synchronization Gate
+Origin: the Week-1 Figma Make design system, formalized in the **Griot** Figma project. These token names feed the web MUI theme (`web/src/theme.ts`) and the mobile Flutter `ThemeData` (`mobile/lib/core/theme/theme.dart`), and are annotated in Figma so the EF Core enums match the visual model.
 
-Any implementation change that corrects or changes a contract must be reflected in the same branch across the affected feature spec, dependent future specs, relevant context files, root `AGENTS.md`, and `progress-tracker.md`. Contracts include design tokens, the MUI/Flutter theme files, and the enum values annotated in Figma (`TaskStatus`, `Priority`, `Role`, `NotificationType`).
+The table below is a **placeholder contract** until the Week-1 design file is finalized - the names are canonical, concrete hex/px values get locked at the first post-design sync. Until then, reference the Figma project directly.
 
-## Origin
-
-Tokens are extracted from the **formalized Week-1 Figma design system** (`research/week-01-fundamentals-and-system-design.md` §4.3): the Figma Make output is refined 2–3 rounds, turned into components, then tokenized in Figma proper. These token names are the single source for:
-- `web/src/theme.ts` — `createTheme({ palette, typography, shape })`
-- `mobile/lib/core/theme.dart` — `ThemeData`
-- Figma annotation of status colors (so EF Core enums match the visual model)
-
-## The token table is a *placeholder contract* until the Week-1 Figma file is finalized.
-
-The names below are canonical; the concrete hex/px values get locked in the first project-kit sync session *after* the Week-1 design file is finished. Until then, reference the Figma file directly.
-
-## Color Palette
-
-| Token | Figma role | MUI mapping | Notes |
+| Token | Figma role | MUI / Flutter mapping | Notes |
 |---|---|---|---|
-| `color.surface.base` | App background | `palette.background.default` | Dark, high-contrast workspace |
-| `color.surface.raised` | Cards / columns | `palette.background.paper` | Slightly lighter than base |
-| `color.ink.primary` | Primary text | `palette.text.primary` | Near-white on dark |
-| `color.ink.secondary` | Secondary text | `palette.text.secondary` | Muted |
-| `color.accent.primary` | Brand / primary actions | `palette.primary` | Saturated; the only "brand" accent |
-| `color.accent.secondary` | Secondary actions | `palette.secondary` | Rarely used; mostly text links |
-| `color.state.success` | Done / healthy | `palette.success` | Also final `TaskStatus` color |
-| `color.state.warning` | In review / warnings | `palette.warning` | Also `TaskStatus.InReview` |
-| `color.state.danger` | Urgent / overdue | `palette.error` | Also `Priority.Urgent` + overdue due dates |
-| `color.state.info` | Info / in-progress | `palette.info` | Also `TaskStatus.InProgress` |
+| `color.surface.base` | App background | background.default / scaffoldBackgroundColor | dark, high-contrast |
+| `color.surface.raised` | Cards / columns | background.paper / Card | slightly lighter |
+| `color.ink.primary` | Primary text | text.primary | near-white on dark |
+| `color.ink.secondary` | Secondary text | text.secondary | muted |
+| `color.accent.primary` | Brand / primary actions | primary | the only brand accent |
+| `color.accent.secondary` | Secondary actions | secondary | text links |
+| `color.state.success` | Done / healthy | success | == TaskStatus.Done |
+| `color.state.warning` | In review / warnings | warning | == TaskStatus.InReview |
+| `color.state.danger` | Urgent / overdue | error | == Priority.Urgent + overdue dates |
+| `color.state.info` | Info / in-progress | info | == TaskStatus.InProgress |
 
-### Status & priority severity map (visual = enum)
+## Status & priority severity (visual == enum)
 
-| Enum | Value | Color family |
-|---|---|---|
-| TaskStatus | Backlog | neutral |
-| TaskStatus | Todo | neutral/blue |
-| TaskStatus | InProgress | info (blue) |
-| TaskStatus | InReview | warning (amber) |
-| TaskStatus | Done | success (green) |
-| Priority | Low | info |
-| Priority | Medium | warning |
-| Priority | High | danger-orange |
-| Priority | Urgent | danger (red) |
+TaskStatus: Backlog=neutral, Todo=neutral/blue, InProgress=info, InReview=warning, Done=success. Priority: Low=info, Medium=warning, High=danger-orange, Urgent=danger.
 
-## Typography
+## Typography / spacing / radius / motion
 
-| Token | Figma role | MUI mapping | Notes |
-|---|---|---|---|
-| `type.display` | Landing hero / display | `typography.h1` | Web font, 700, tight leading; Public shell only |
-| `type.headline` | Page titles | `typography.h4` | 600 weight |
-| `type.subhead` | Section titles | `typography.h6` | 600 weight |
-| `type.body` | Default text | `typography.body1` | 15–16 px |
-| `type.caption` | Meta / chips | `typography.caption` | 12 px, uppercase for status chips |
-| `type.mono` | Keys / IDs / timestamps | `typography.fontFamily` mono sparingly | Numbers align better |
+- Type roles: display / headline / subhead / body / caption / mono. Base font Inter (web) / Roboto (Flutter default).
+- 8-pt spacing rhythm: xs=4, sm=8, md=16, lg=24, xl=32-40. Kanban column min/max 272/320px.
+- Radius: sm=4-6 (chips/buttons), md=8-10 (cards/modals), lg=16 (hero/empty states).
+- Motion: fast=120-200ms (app shell), slow=300-500ms + GSAP (public shell); ease cubic-bezier(0.2, 0, 0, 1).
+- Elevation: app shell 2 levels; public shell 3 levels, softer.
 
-- Base font: Inter (web) / default Flutter Roboto → theme `fontFamily`.
-- Sizing is 8-pt rhythm-friendly (16 base, 20 title, 28–36 display).
-
-## Spacing & Layout
-
-| Token | Value | Rules |
-|---|---|---|
-| `space.xs` | 4 px | tight icon gaps |
-| `space.sm` | 8 px | inner padding, chip gaps |
-| `space.md` | 16 px | default card padding, gap between stacked content |
-| `space.lg` | 24 px | section gaps, modal padding |
-| `space.xl` | 32–40 px | page gutters, shell gaps |
-| Column min/max width | 272 / 320 px | Kanban columns; horizontal scroll within the board |
-
-## Radius
-
-| Token | Value | Use |
-|---|---|---|
-| `radius.sm` | 4–6 px | Chips, avatars (full for circles), buttons |
-| `radius.md` | 8–10 px | Cards, inputs, modals |
-| `radius.lg` | 16 px | Empty/loading state illustrations, hero cards |
-
-Denser app surfaces use the smaller end; the Public shell may use `radius.lg` freely.
-
-## Motion
-
-| Token | Value | Use |
-|---|---|---|
-| `motion.fast` | 120–200 ms | App shell: column reorder, modal, chip state |
-| `motion.slow` | 300–500 ms | Public shell GSAP reveals |
-| `motion.ease` | cubic-bezier(0.2, 0, 0, 1) | Consistent MUI easing |
-
-App shell never uses springy/elastic easings; MUI theme `transitions` comes from these two tokens.
-
-## Shadows / Elevation
-
-- App shell: 1–2 levels only (`shadow.1` card, `shadow.2` modal/overlay), subtle.
-- Public shell: 3 levels, softer ambient glow; never outline-based.
-
-## Rules of Application
-
-1. No component references a raw hex/rgb value. All colors flow through tokens → MUI palette / Flutter `ThemeData`.
-2. Status chip colors must match the EF Core enum annotation exactly (contract for `Griot.Domain.TaskStatus`).
-3. When the Week-1 Figma token file updates, update this file, `theme.ts`, `theme.dart`, and any Figma annotations in the same change.
-4. Before a UI feature ships, grep for hardcoded colors — zero tolerated outside `ui-tokens.md`.
+Rules: no raw colors in components; status chips == enum map; token changes propagate Figma -> theme files -> this doc in one change.
