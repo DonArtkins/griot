@@ -2,7 +2,9 @@
 
 ## Entities (from the approved Figma Make ERD — names are contracts)
 
-`Users` · `Workspaces` · `WorkspaceMembers` (M:N join with `Role`) · `Invites` · `Projects` · `Boards` · `Columns` · `TaskItems` · `Comments` · `Attachments` · `ActivityLogs` (feed + AI audit) · `Notifications` · `RefreshTokens`.
+**Core (13):** `Users` · `Workspaces` · `WorkspaceMembers` (M:N join with `Role`) · `Invites` · `Projects` · `Boards` · `Columns` · `TaskItems` · `Comments` · `Attachments` · `ActivityLogs` (feed + AI audit) · `Notifications` · `RefreshTokens`
+
+**Observability & audit (3) — added in planning so the schema never changes later:** `ApiLogs` · `ErrorLogs` · `AuditLogs`
 
 ## Enums
 
@@ -10,12 +12,20 @@
 - `Priority`: Low · Medium · High · Urgent
 - `WorkspaceRole`: Owner · Admin · Member
 - `NotificationType`: Mention · Assignment · DueDate · System
+- `ErrorFixStatus`: Open · Investigating · Fixed · Verified · WonTFix (for `ErrorLogs`)
+
+## Observability/audit semantics (Lyncxs conventions)
+
+- **ApiLogs**: one row per API/GraphQL request; `RequestId` correlates to `ErrorLogs` and web/mobile client traces; `DurationMs` feeds the k6/performance baseline; IP masked per privacy.
+- **ErrorLogs**: every handled+unhandled exception row; lifecycle `Open → Investigating → Fixed → Verified` (`WonTFix` valid); `FixedAt` supports pruning/retention.
+- **AuditLogs**: before/after JSON snapshots on every state-changing write (task move, role change, delete); the Week-6/7 OWASP + compliance trail. Linked (optionally) to `ActivityLogs` for the human-readable feed.
 
 ## EF Core 8 mapping (`Griot.Infrastructure`)
 
 - `GriotDbContext` maps everything in `OnModelCreating`; enums via `HasConversion<string>()`.
 - `Guid` PKs; timestamps from `SYSUTCDATETIME()` in `SaveChangesAsync`.
 - Cascade rules: deleting a Task removes its Comments/Attachments; deleting a Workspace removes its members.
+- `ApiLogs`/`ErrorLogs`/`AuditLogs` are written via the same pipeline (middleware + services) and are NOT user-cascadable.
 
 ## Dapper 2.x (stored-proc hot paths only)
 

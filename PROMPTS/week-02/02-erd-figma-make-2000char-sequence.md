@@ -73,7 +73,33 @@ Add legend top-left: PK=key icon,FK=arrow,UQ=badge,?=nullable. Enums panel botto
 ### PROMPT F — Verify (run last; fix with snippets below)
 
 ```
-Check the Griot ERD: exactly 13 tables (Users Workspaces WorkspaceMembers Invites Projects Boards Columns TaskItems Comments Attachments ActivityLogs Notifications RefreshTokens); 4 enums (TaskStatus Priority WorkspaceRole NotificationType); 15 edges; every entity traces to a Week-1 screen; names match the spec exactly. Report missing items so I restate them.
+Check the Griot ERD: exactly 16 tables (Users Workspaces WorkspaceMembers Invites Projects Boards Columns TaskItems Comments Attachments ActivityLogs Notifications RefreshTokens ApiLogs ErrorLogs AuditLogs); 5 enums (TaskStatus Priority WorkspaceRole NotificationType ErrorFixStatus); 19 edges; every entity traces to a Week-1 screen or observability requirement; names match the spec exactly. Report missing items so I restate them.
+```
+
+> Note: prompts G + H create the observability/audit tables (ApiLogs, ErrorLogs, AuditLogs) that let us track errors + full change history — so we never come back to redesign the schema later. Run them after A–F, before approval.
+
+### PROMPT G — Observability + audit tables (amber)
+
+```
+Add 3 tables to the Griot ERD, same style, amber=Observability:
+ApiLogs:Id GUID PK|RequestId GUID UQ|UserId FK→Users?|Method nvarchar(8)|Path nvarchar(300)|QueryString nvarchar(500)?|StatusCode int|DurationMs int|UserAgent nvarchar(300)?|IpAddress nvarchar(45)?|CreatedAt
+ErrorLogs:Id GUID PK|RequestId GUID?|UserId FK→Users?|ExceptionType nvarchar(200)|Message nvarchar(max)|StackTrace nvarchar(max)?|Source nvarchar(100)?|FixStatus ErrorFixStatus|SolvedByUserId FK→Users?|FixedAt datetime2?|CreatedAt
+AuditLogs:Id GUID PK|ActivityId FK→ActivityLogs?|ActorId FK→Users|Action nvarchar(50)|EntityType nvarchar(50)|EntityId GUID|Before nvarchar(max) JSON?|After nvarchar(max) JSON?|CreatedAt
+Edges:Users 1:N ApiLogs;Users 1:N ErrorLogs;ActivityLogs 1:N AuditLogs (optional). Purpose: request tracing, error fix tracking, change history.
+```
+
+### PROMPT H — observability indexes
+
+```
+Add to the Indexes column on the Griot ERD:
+ApiLogs(RequestId) UQ
+ApiLogs(UserId,CreatedAt)
+ApiLogs(Path)
+ErrorLogs(FixStatus) partial
+ErrorLogs(FixedAt) for pruning
+AuditLogs(ActorId)
+AuditLogs(ActivityId)
+Add enum ErrorFixStatus:Open Investigating Fixed Verified WonTFix to the enums panel.
 ```
 
 ### Fix snippets (paste after any drift)

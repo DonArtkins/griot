@@ -2,24 +2,28 @@
 
 ## Current State
 
-Bootcamp Week 2 — Database Schema Design. The seven-system kit is established; the ERD is the immediate deliverable.
+Bootcamp Week 2 — **Planning / system-design phase** (no code yet). Diagrams + docs being finalized in Figma Make before implementation starts.
 
 | System | Kit | Status |
 |---|---|---|
-| backend | backend/project-kit | 9 feature specs written; awaiting approved ERD |
-| web | web/project-kit | 10 feature specs written; awaiting backend |
-| mobile | mobile/project-kit | 7 feature specs written; waiting |
-| infra | infra/project-kit | 6 feature specs written; waiting |
-| qa | qa/project-kit | 13 feature specs written; waiting |
-| ai | ai/project-kit | 5 feature specs written; waiting |
-| mcp | mcp/project-kit | 5 feature specs written; waiting |
+| backend | backend/project-kit | 10 feature specs; awaiting approved ERD |
+| web | web/project-kit | 10 feature specs; awaiting backend |
+| mobile | mobile/project-kit | 7 feature specs; waiting |
+| infra | infra/project-kit | 6 feature specs; waiting |
+| qa | qa/project-kit | 13 feature specs; waiting |
+| ai | ai/project-kit | 5 feature specs; waiting |
+| mcp | mcp/project-kit | 5 feature specs; waiting |
+
+Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/planning/*` (NFR, capacity, risk, runbook, change-management), `docs/seo/`, `docs/deployment/`, `docs/observability/`, `docs/api/` + ADRs + LICENSE/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG + `inspo/`. 12 diagram specs written in `PROMPTS/week-02/`.
 
 ## Next Steps
 
-1. Generate + approve the Figma Make ERD (PROMPTS/week-02/01) → `project-kit/diagrams/erd/griot-erd-v1.0.0.png`.
-2. Implement backend spec 01 → 09 in order.
-3. Unfreeze dependent systems as their upstreams land.
+1. Generate + approve the **12 diagrams** in Figma Make from `PROMPTS/week-02/04…14` + the ERD (prompts A–H in `02-…-sequence`).
+2. Export PNGs → `project-kit/diagrams/{erd,architecture}/` → update the ledger.
+3. Fill `inspo/` with desired UI screenshots (web + mobile visual contract).
+4. Then implementation (backend spec 01 → 10) — planning must be complete + approved first.
 
 ## Session Notes
 
-- **2026-09-03** — Rebuilt repo as seven-system monorepo per the PDF + Foundrie pattern: per-app AGENTS.md, `.agents/skills/`, per-app project kits with one feature spec per bootcamp deliverable. Root kit consolidated to system-map / stack-contract / integration-contracts.
+- **2026-09-03** — Rebuilt repo as seven-system monorepo per the PDF + Foundrie pattern: per-app AGENTS.md, `.agents/skills/`, per-app project kits, one feature spec per bootcamp deliverable. Root kit consolidated to system-map / stack-contract / integration-contracts.
+- **2026-09-03 (2)** — Planning deep-dive: schema expanded to **16 tables / 5 enums** (added ApiLogs, ErrorLogs, AuditLogs so no schema rework later). Wrote 12 system-design diagram specs (C4×2, API component, sequence×3, state, deployment, auth matrix, API surface, AI context) with ≤2000-char Figma Make prompts. Added `docs/` production suite (architecture, database, NFR, capacity/scaling, risk register, runbook, change-management, SEO, deployment, monitoring, API docs) + ADRs + LICENSE (MIT) + CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG + `inspo/`. Added Context7 + DOCX/PDF MCP skills. Bumped root AGENTS hard rules (10 rules incl. group-aware branches, error-fix documentation, inspo/docs mandate).

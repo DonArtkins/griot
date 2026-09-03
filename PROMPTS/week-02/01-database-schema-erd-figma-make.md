@@ -14,9 +14,9 @@ Griot is a project-management web app (workspaces → projects → boards → co
 
 **Guarding rule:** every entity below traces to a Week-1 screen. If it's not on a screen, it's not in this ERD.
 
-## 2. The entity roster (13 tables + 4 enums)
+## 2. The entity roster (16 tables + 4 enums)
 
-Derived from the Week-1 entity/screen mapping. Use **exactly** these names, types, and relationships. These names ARE the contract for `Griot.Domain` entities, GraphQL types, TS/Dart models, and MCP tool schemas — a rename in Make after code exists triggers the contract-sync gate.
+Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-tracking conventions. Use **exactly** these names, types, and relationships. These names ARE the contract for `Griot.Domain` entities, GraphQL types, TS/Dart models, and MCP tool schemas. Adding `ApiLogs`/`ErrorLogs`/`AuditLogs` now (before code) means we never come back to redesign the schema later.
 
 ### Enums (draw as a legend panel, v1 values fixed)
 | Enum | Values |
@@ -25,6 +25,7 @@ Derived from the Week-1 entity/screen mapping. Use **exactly** these names, type
 | `Priority` | Low · Medium · High · Urgent |
 | `WorkspaceRole` | Owner · Admin · Member |
 | `NotificationType` | Mention · Assignment · DueDate · System |
+| `ErrorFixStatus` | Open · Investigating · Fixed · Verified · WonTFix (for ErrorLogs) |
 
 ### Tables
 **Users** — `Id` (GUID, PK) · `Email` (nvarchar(320), UQ) · `DisplayName` (nvarchar(100)) · `AvatarUrl` (nullable) · `PasswordHash` (nvarchar(512), Argon2) · `CreatedAt` (datetime2, SYSUTCDATETIME) · `UpdatedAt`
@@ -53,6 +54,14 @@ Derived from the Week-1 entity/screen mapping. Use **exactly** these names, type
 
 **RefreshTokens** — `Id` (GUID, PK) · `UserId` (FK → Users) · `TokenHash` (nvarchar(128), UQ — SHA-256 of the opaque token) · `ExpiresAt` · `RevokedAt` (nullable) · `ReplacedByTokenId` (GUID, nullable — rotation chain) · `CreatedAt`
 
+### Observability & audit (added in planning so the schema never changes later)
+
+**ApiLogs** — `Id` (GUID, PK) · `RequestId` (GUID, UQ — correlation/tracing) · `UserId` (FK → Users, nullable) · `Method` (nvarchar(8)) · `Path` (nvarchar(300)) · `QueryString` (nvarchar(500), nullable) · `StatusCode` (int) · `DurationMs` (int) · `UserAgent` (nvarchar(300), nullable) · `IpAddress` (nvarchar(45), nullable — masked per privacy) · `CreatedAt`
+
+**ErrorLogs** — `Id` (GUID, PK) · `RequestId` (GUID, nullable) · `UserId` (FK → Users, nullable) · `ExceptionType` (nvarchar(200)) · `Message` (nvarchar(max)) · `StackTrace` (nvarchar(max), nullable) · `Source` (nvarchar(100), nullable — Api/GraphQL/Agent/Worker) · `FixStatus` (enum ErrorFixStatus, default Open) · `SolvedByUserId` (FK → Users, nullable) · `FixedAt` (datetime2, nullable) · `CreatedAt`
+
+**AuditLogs** — `Id` (GUID, PK) · `ActivityId` (FK → ActivityLogs, nullable) · `ActorId` (FK → Users) · `Action` (nvarchar(50)) · `EntityType` (nvarchar(50)) · `EntityId` (GUID) · `Before` (nvarchar(max) JSON, nullable — snapshot pre-change) · `After` (nvarchar(max) JSON, nullable — snapshot post-change) · `CreatedAt`
+
 ## 3. Relationships & cardinality (draw these edges)
 
 | From | To | Cardinality | Notes |
@@ -72,6 +81,9 @@ Derived from the Week-1 entity/screen mapping. Use **exactly** these names, type
 | TaskItems | Comments | 1:N | cascade |
 | TaskItems | Attachments | 1:N | cascade |
 | Users | Notifications | 1:N | `ReadAt` nullable = unread |
+| Users | ApiLogs | 1:N | `UserId` nullable, request tracing |
+| Users | ErrorLogs | 1:N | `UserId` nullable, error attribution |
+| ActivityLogs | AuditLogs | 1:N | `ActivityId` optional link |
 
 ## 4. Indexes to annotate (sticky notes beside the tables)
 
@@ -82,6 +94,11 @@ Derived from the Week-1 entity/screen mapping. Use **exactly** these names, type
 - `Notifications(UserId, ReadAt)` — unread count.
 - `RefreshTokens(UserId)`, `RefreshTokens(TokenHash)` unique — rotation lookup.
 - `Invites(Token)` unique; `Invites(WorkspaceId, Email)` — no duplicate pending invites.
+- `ApiLogs(RequestId)` unique — request tracing; `ApiLogs(UserId, CreatedAt)`; `ApiLogs(Path)`.
+- `ErrorLogs(FixStatus)` partial (Open/Investigating); `ErrorLogs(FixedAt)` — pruning.
+- `AuditLogs(ActorId)`; `AuditLogs(ActivityId)`.
+
+> Use the **sequenced prompt file** (`02-erd-figma-make-2000char-sequence.md`) for building in Figma Make — prompts A–F are the core 13 tables; **run prompts G + H there** (add ApiLogs/ErrorLogs/AuditLogs + their indexes) to reach the full 16-table ERD.
 
 ---
 
@@ -142,9 +159,9 @@ When prompting the backend agent (Cline/Claude), say: *"Build backend features 0
 
 ## 7. Definition of Done — today's ERD deliverable
 
-- [ ] Figma Make project **Griot** contains the ERD: all 13 tables, 4 enums, 15 labelled crow's-foot relationships, legend, index notes
-- [ ] Module color-coding applied (Identity/Auth, Core Board, Social, Observability)
-- [ ] No entity without a Week-1 screen; names/values match §2 exactly
+- [ ] Figma Make project **Griot** contains the ERD: all **16 tables** (13 core + ApiLogs/ErrorLogs/AuditLogs), **5 enums**, **19 labelled crow's-foot relationships**, legend, index notes
+- [ ] Module color-coding applied (Identity/Auth, Core Board, Social, Observability, Audit)
+- [ ] No entity without a Week-1 screen or observability requirement; names/values match §2 + `data-layer.md` exactly
 - [ ] Refined ≥1 round; approved; PNG exported to `project-kit/diagrams/erd/griot-erd-v1.0.0.png`
 - [ ] Diagrams ledger updated (source = Figma Make project URL)
 - [ ] Backend feature 02 treats the ERD as its contract; no schema code before approval
