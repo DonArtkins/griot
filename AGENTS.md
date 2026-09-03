@@ -42,14 +42,17 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Cross-System Rules (Hard Rules)
 
-0. **Contract synchronization is a hard gate.** A change to any cross-system contract (API route, GraphQL type, env var, port, entity/enum, auth token shape, `GRIOT_SERVICE_TOKEN`, Docker service name) must be reflected in the owning system's feature spec, all dependent systems' specs, the relevant context files, and the root `AGENTS.md` at once. Never leave a system describing a stale contract.
+0. **Contract synchronization is a hard gate.** A change to any cross-system contract (API route, GraphQL type, env var, port, entity/enum, auth token shape, `GRIOT_SERVICE_TOKEN`, Docker service name, MCP tool id) must be reflected in the owning system's feature spec, all dependent systems' specs, the relevant context files, the root `AGENTS.md`, and `docs/` in the same branch. Never leave a system describing a stale contract.
 1. **Separation of concerns is physical.** `backend/` owns data + API; `web/` + `mobile/` own presentation; `ai/` + `mcp/` own intelligence; `infra/` owns containers + deployment; `qa/` owns test lifecycles. No system writes code into another system's folder.
 2. **AI never writes to SQL Server directly.** Every AI read/write goes through the .NET API via `GRIOT_SERVICE_TOKEN` (resolved to a restricted `ai-agent` principal).
 3. **The PDF stack is never substituted silently.** Every deviation must carry `[own-stack]` and a written rationale in `project-kit/context/stack-contract.md`.
 4. **ERD before schema, wireframes before UI.** The approved Figma Make ERD (`project-kit/diagrams/erd/`) is the only source for entity/enum names; no schema code may exist before it is approved.
-5. **Plan before implementation.** Present a concrete plan and wait for explicit approval before schema migrations, API surface changes, Docker/Compose changes, or deployment changes.
-6. **One feature spec at a time, in numeric order.** Never batch specs. A spec is done only when its tests/build/CI gates pass and contracts are synchronized.
+5. **Planning before implementation.** Present a concrete plan and wait for explicit approval before schema migrations, API surface changes, Docker/Compose changes, deployment changes, or writing any production code. **The system-design docs + diagrams must be complete and approved before implementation starts.**
+6. **One feature spec at a time, one feature branch = one PR (group-aware).** Branches are `feature/<system>/<NN>-<slug>` (e.g. `feature/backend/02-sql-server-efcore`, `feature/web/05-secure-auth`). Never batch specs, never commit progress-tracker updates directly to `main`, never commit code to `main` directly.
 7. **Throttling prevention.** See `.agents/skills/throttling-prevention/SKILL.md`. Batch reads/writes, prefer shell for bulk ops, pause on throttling.
+8. **Every error/fix is tested + documented.** If the AI agent hits an error and fixes it, the fix must be tested to work, then documented (spec + context + progress-tracker + docs) — it's no longer what the spec said. See `docs/planning/CHANGE-MANAGEMENT.md`.
+9. **Skills + inspo + docs are mandatory.** Read `.agents/skills/` + `inspo/` + `docs/` before building UI/features. Agents MUST use the `inspo/` + `examples/` folders for UI quality (Foundrie pattern).
+10. **Each feature spec is implementation-ready.** A spec must contain Setup/Initialization, Separation of Concerns, Docker & Deploy, and explicit acceptance criteria — so implementation is straight-line. No vague specs.
 
 ## Verification Gates (per system)
 

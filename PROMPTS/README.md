@@ -16,7 +16,7 @@ Everything you paste into an AI tool so it does a week's deliverable for you: Fi
 | 1 | `week-01/01-figma-make-app-shell.md` | Figma Make (Plan mode) | 5 core App-shell screens → Figma design system |
 | 1 | `week-01/02-figma-make-public-shell.md` | Figma Make (single-shot) | Landing / pricing / login → Public shell |
 | 2 | `week-02/01-database-schema-erd-figma-make.md` | Figma Make | ERD master spec + full walkthrough |
-| 2 | `week-02/02-erd-figma-make-2000char-sequence.md` | **Figma Make (today)** | **6 seeded prompts, each ≤2000 chars → run A→F** |
+| 2 | `week-02/02-erd-figma-make-master-prompt.md` | **Figma Make (today)** | **Single extensive master prompt → full 16-table ERD** |
 | 2 | `week-02/03-rest-api-surface.md` | Agent (Cline/Claude) | REST + GraphQL endpoint map from the approved ERD |
 | 3 | `week-03/01-web-app-implementation.md` | Agent | Vite + React + MUI app from the UI registry |
 | 4 | `week-04/01-mobile-app-implementation.md` | Agent | Flutter app from the mobile mirror |
