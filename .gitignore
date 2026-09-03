@@ -1,0 +1,22 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Local tooling
+node_modules/
+.trigger/
+dist/
+build/
+coverage/
+.mcp.json
+
+# EFS (extracted PDF text temp)
+research/_bootcamp_*.txt
