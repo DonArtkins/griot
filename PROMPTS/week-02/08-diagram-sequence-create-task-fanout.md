@@ -35,26 +35,38 @@ Assignee client (if not subscribed): next board load / notification poll fetches
 - **Mobile**: notification list refreshes on focus + pull-to-refresh; no always-on websocket in v1 (battery).
 - **Fallback**: next board load pulls unread counts regardless. No email push in v1 (that's the AI scheduled digest).
 
-## 4. Figma Make prompts (≤2000 chars)
+## 4. The prompt (single, extensive — no length limit)
 
-### PROMPT A
+Paste the full prompt below into Figma Make. It draws the full flow + fan-out decision in one pass.
 
+```text
+UML sequence diagram: Griot create-task fan-out. Lifelines left→right: Client (web/mobile), TaskController/GriotMutation, TaskService (Griot.Application), SQL Server (TaskItems + ActivityLogs + Notifications + AuditLogs), NotificationHub (web realtime).
+
+FLOW:
+Client → TaskController/GriotMutation: createTask { title, columnId, assigneeId?, priority?, dueDate? }
+TaskController/GriotMutation → TaskService: CreateTaskAsync(dto)
+TaskService → SQL Server: BEGIN TRANSACTION
+TaskService → SQL Server: INSERT TaskItems (Position = max+1 in column)
+TaskService → SQL Server: INSERT ActivityLogs (actor, action=Created, entity=Task, payload JSON)
+TaskService → SQL Server: INSERT Notifications (type=Assignment, targetRef=taskId) if assignee set
+TaskService → SQL Server: INSERT AuditLogs (before=null, after=JSON snapshot)
+TaskService → SQL Server: COMMIT TRANSACTION
+Draw a labeled BRACKET around the 5 DB ops: "transaction (atomic, all-or-nothing)"
+TaskService → NotificationHub: PushNotification(userId=assignee, payload)
+TaskService → TaskController/GriotMutation: 201 { task }
+NotificationHub → assignee client (if subscribed): realtime event (instant badge)
+Note: mobile + unsubscribed clients see it on NEXT board load / notification poll.
+
+ANNOTATION (fan-out decision box, connected dashed to NotificationHub):
+"Fan-out decision: web app shell = realtime push over NotificationHub; mobile = refresh on focus + pull-to-refresh (no always-on socket, battery); fallback = next board load pulls unread counts; NO email in v1 (the AI digest does that)."
+
+Add an alt/else around delivery: subscribed → realtime event; not subscribed → next load/poll.
 ```
-UML sequence diagram: Griot create-task fan-out. Lifelines L→R: Client (web/mobile), TaskController/GriotMutation, TaskService (Griot.Application), SQL Server (TaskItems+ActivityLogs+Notifications+AuditLogs), NotificationHub (web realtime).
-Flow: Client→Controller createTask {title,columnId,assigneeId?,priority?,dueDate?}; Controller→TaskService CreateTaskAsync; TaskService→SQL Server BEGIN TX; INSERT TaskItems (Position=max+1); INSERT ActivityLogs (Created, payload); INSERT Notifications (Assignment, targetRef taskId) if assignee; INSERT AuditLogs (before null, after snapshot); COMMIT; TaskService→NotificationHub PushNotification(assignee); Controller→Client 201 {task}; NotificationHub→assignee client realtime event (if subscribed); note: mobile + unsubscribed clients see it on next load/poll.
-Show the TX boundary spanning the 4 INSERTs with a labeled bracket 'transaction (atomic)'.
-```
 
-### PROMPT B — fan-out decision note
-
-```
-Add an annotation box to the Griot create-task sequence: "Fan-out decision: web app shell = realtime push over NotificationHub; mobile = refresh on focus + pull-to-refresh (no always-on socket, battery); fallback = next board load pulls unread counts; no email in v1 (AI digest does that)." Connect it to the NotificationHub lifeline with a dashed note line.
-```
-
-### Fix snippets
+### Refine
 
 - "Move the transaction bracket to cover exactly the 5 DB inserts + commit."
-- "Add a parallel alt: subscribed vs not-subscribed delivery."
+- "Add a parallel alt 'subscribed vs not-subscribed' delivery."
 
 ---
 

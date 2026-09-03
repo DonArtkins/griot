@@ -25,25 +25,45 @@
 
 > Note: Done → Todo (reopen) is allowed (product decided). InProgress → Done is allowed only via InReview (no direct Done skip) — decided for v1 keep strict.
 
-## 2. Figma Make prompts
+## 2. The prompt (single, extensive — no length limit)
 
-### PROMPT A
+Paste the full prompt below into Figma Make. It draws the entire state machine + the validation note in one pass.
 
+```text
+UML state machine diagram: Griot TaskItem status. States as rounded rects: Backlog (entry, initial state with a filled-dot arrow), Todo, InProgress, InReview, Done, Deleted (gray, dashed border).
+
+COLORS (must match the enum severity map): InProgress = blue, InReview = amber, Done = green, Backlog/Todo = neutral, Deleted = gray.
+
+LEGAL TRANSITIONS (draw each with a label on the edge):
+- Backlog → Todo
+- Backlog → Deleted
+- Todo → Backlog
+- Todo → InProgress
+- Todo → Done
+- Todo → Deleted
+- InProgress → Todo (label "reopen")
+- InProgress → InReview
+- InProgress → Deleted
+- InReview → InProgress (label "request changes")
+- InReview → Done
+- InReview → Deleted
+- Done → Todo (label "reopen — product decision: YES")
+- Any state → Deleted (soft delete / AuditLog tombstone)
+
+DO NOT draw an InProgress → Done direct edge (strict v1: must pass through InReview).
+
+ANNOTATION (validation note, near the matrix):
+"API validation + board UI + mobile picker all enforce EXACTLY this transition set — a move not in this matrix is rejected with 409 by TaskService. 'InProgress→Done' is NOT allowed (must go via InReview). 'Done→Todo' reopen IS allowed. Backend enum TaskStatus, web StatusChip, and mobile picker use the SAME names."
+
+Also draw a small TRANSITION MATRIX table (rows FROM, columns TO):
+Backlog→Todo ✅; Todo→Backlog/InProgress/Done ✅; InProgress→Todo/InReview ✅; InReview→InProgress/Done ✅; Done→Todo ✅; all → Deleted ✅.
 ```
-UML state machine diagram: Griot TaskItem status. States as rounded rects: Backlog, Todo, InProgress, InReview, Done, Deleted (gray, dashed border). Transitions (label each): Backlog→Todo; Backlog? none to InProgress (must go through Todo); Todo→Backlog; Todo→InProgress; InProgress→Todo (reopen); InProgress→InReview; InReview→InProgress (request changes); InReview→Done; Done→Todo (reopen, label 'product decision: yes'); any state → Deleted (soft delete). Add entry pseudo-node arrow into Backlog (initial state). Color: InProgress blue, InReview amber, Done green (matches enum severity map).
-```
 
-### PROMPT B — validation note
-
-```
-Add a note to the Griot state machine: "API validation + board UI both enforce EXACTLY this transition set — a move not in the matrix is rejected 409 by TaskService. 'InProgress→Done' is NOT allowed (must pass InReview) for v1; 'Done→Todo' reopen IS allowed. Sync: backend enum TaskStatus + web StatusChip + mobile picker use the same names."
-```
-
-### Fix snippets
+### Refine
 
 - "Remove the direct InProgress→Done edge (strict)."
-- "Add / enforce back-edge InReview→InProgress labeled 'request changes'."
 - "Gray the Deleted state, dashed border."
+- "Make Done→Todo edge green-ish and labeled 'reopen allowed'."
 
 ---
 

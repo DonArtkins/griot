@@ -52,28 +52,48 @@ AuthController → User: 401
 Note: the legitimate client's NEXT refresh also fails → must re-login. This is DESIRED: rotation is one-time-use.
 ```
 
-## 5. Figma Make prompts (≤2000 chars)
+## 5. The prompt (single, extensive — no length limit)
 
-### PROMPT A
+Paste the full prompt below into Figma Make. It draws all three sequence frames in one pass.
 
+```text
+UML sequence diagram: Griot login + refresh rotation. Lifelines left→right: User/Client, AuthController (/api/auth/*), AuthService (Griot.Application), SQL Server (Users/RefreshTokens), Redis. Use three labeled frames.
+
+FRAME 1 — LOGIN (happy path):
+User → AuthController: POST /api/auth/login {email, password}
+AuthController → AuthService: LoginAsync(dto)
+AuthService → SQL Server: find user by email
+AuthService: Argon2 verify hash
+AuthService: generate access JWT (15-min, claims sub/wid) + opaque refresh (256-bit)
+AuthService → SQL Server: store SHA-256 hash (rotation chain empty)
+AuthService → Redis: record session + rate-limit window
+AuthController → User: 200 { accessToken, refreshToken, user }
+
+FRAME 2 — REFRESH (happy path):
+User → AuthController: POST /api/auth/refresh { refreshToken }
+AuthController → AuthService: RefreshAsync(token)
+AuthService → SQL Server: load by TokenHash
+alt token valid + not revoked + not expired
+    AuthService: revoke old row; insert new hash (ReplacedByTokenId = old.Id)
+    AuthService: issue new access JWT
+    AuthService → Redis: update session
+    AuthController → User: 200 { new accessToken, new refreshToken }
+else invalid/revoked/expired
+    AuthController → User: 401 (clear session)
+
+FRAME 3 — REPLAY RACE (failure branch, red border):
+Attacker (separate lifeline) → AuthController: POST /api/auth/refresh { stolenRefresh }
+AuthService → SQL Server: hash not found (already rotated) OR found but ReplacedByTokenId set
+AuthService: REVOKE ALL ROWS for the family (same UserId chain)
+AuthController → User: 401
+Annotation: "Any reuse of an already-rotated refresh token revokes the WHOLE family (OWASP case). Legit client must re-login — desired: rotation is one-time-use."
 ```
-UML sequence diagram: Griot login + refresh rotation. Lifelines L→R: User/Client, AuthController (/api/auth/*), AuthService (Griot.Application), SQL Server (Users/RefreshTokens), Redis.
-Frame 1 LOGIN (happy): User→AuthController POST /api/auth/login {email,password}; AuthController→AuthService LoginAsync; AuthService→SQL Server find user by email; AuthService Argon2 verify; AuthService generate access JWT 15min(sub,wid)+opaque refresh; AuthService→SQL Server store SHA-256 hash; AuthService→Redis session+rate-limit; AuthController→User 200{accessToken,refreshToken}.
-Frame 2 REFRESH (happy): User→AuthController POST /api/auth/refresh {refreshToken}; AuthController→AuthService RefreshAsync; AuthService→SQL Server load by hash; alt valid: revoke old + insert new (ReplacedByTokenId), issue new JWT, Redis update, 200; else invalid/revoked: 401.
-Frame 3 REPLAY RACE (failure): attacker sends already-rotated token; AuthService revokes ENTIRE family; 401. Label the frame "replay → family revoke (OWASP case)".
-```
 
-### PROMPT B — failure branch emphasis
-
-```
-On the Griot login/refresh sequence diagram, make the replay-race frame visually distinct (red border): draw 'Attacker' lifeline separate from 'User'; show the second use of an already-rotated refresh token hitting RefreshTokens(DB), matching no active row, then AuthService revokes all rows for the family (same UserId), returns 401, and marks Redis session dead. Add an alt/else annotation: 'any rotated token reuse → whole family revoked'. Keep the diagram one page.
-```
-
-### Fix snippets
+### Refine
 
 - "Add a self-arrow on AuthService: Argon2 verify (no timing leak)."
 - "Rename the DB lifeline to 'SQL Server: Users + RefreshTokens'."
-- "Move Redis calls below DB calls; keep ordering."
+- "Make the replay-race frame red-bordered."
 
 ---
 

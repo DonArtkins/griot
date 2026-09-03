@@ -25,31 +25,38 @@
 
 Legend: ❌ = hard denied (404 not 403 for ownership — never disclose existence). Admin ≠ Owner for destructive ops. ai-agent is restricted via `GRIOT_SERVICE_TOKEN`.
 
-## 2. Figma Make prompt
+## 2. The prompt (single, extensive — no length limit)
 
+Paste the full prompt below into Figma Make. It draws the full permission matrix in one pass.
+
+```text
+Build a permission matrix TABLE for Griot (not a diagram). 4 columns: Owner | Admin | Member | ai-agent (service). Rows (Y = green cell, N = red cell):
+
+View workspace/board/tasks — Y | Y | Y | Y (ReadWorkspace)
+Create project/board — Y | Y | Y | N
+Edit task (title/desc/status/assignee) — Y | Y | Y (assigned OR workspace) | Y (CreateTask/UpdateStatus)
+Move task across columns — Y | Y | Y | N (propose-only via Copilot)
+Delete task — Y | Y | N | N
+Add comment — Y | Y | Y | Y (AddComment)
+Invite members — Y | Y | N | N
+Remove member — Y | N | N | N
+Change roles — Y | N | N | N
+Delete workspace — Y | N | N | N
+Manage notifications — Y | Y | Y | Y (CreateNotification)
+View audit/error logs — Y | Y (own errors) | N | N
+Use Copilot — Y | Y | Y | —
+MCP external tool access — Y (workspace scope) | Y | Y | N
+
+FOOTER (must be present):
+"Denied = 404 not 403 (never disclose existence). Admin ≠ Owner for destructive ops (remove member, role changes, delete workspace, delete task). ai-agent is the restricted service principal via GRIOT_SERVICE_TOKEN — no deletes, no invites, workspace-scoped."
+
+Style: green Y cells, red N cells, clear column headers, one page.
 ```
-Build a permission matrix TABLE for Griot (not a diagram). 4 columns: Owner, Admin, Member, ai-agent. Rows:
-View workspace/board/tasks: Y Y Y Y(ReadWorkspace)
-Create project/board: Y Y Y N
-Edit task: Y Y Y(assigned or workspace) Y(CreateTask/UpdateStatus)
-Move task across columns: Y Y Y N(propose-only via Copilot)
-Delete task: Y Y N N
-Add comment: Y Y Y Y(AddComment)
-Invite members: Y Y N N
-Remove member: Y N N N
-Change roles: Y N N N
-Delete workspace: Y N N N
-Manage notifications: Y Y Y Y(CreateNotification)
-View audit/error logs: Y Y(own) N N
-Use Copilot: Y Y Y —
-MCP external access: Y Y Y N
-Style: green Y cells, red N cells; add footer "denied = 404 not 403 (never disclose existence); Admin != Owner for destructive ops". Keep one page.
-```
 
-### Fix snippets
+### Refine
 
-- "Change 'Edit task' row: Member = workspace-wide edit allowed, mark with a footnote."
-- "Add a third column unicode for ai-agent service scope."
+- "Change 'Edit task' row: Member = workspace-wide edit, add a footnote."
+- "Make the ai-agent column visually distinct (dashed border)."
 
 ---
 

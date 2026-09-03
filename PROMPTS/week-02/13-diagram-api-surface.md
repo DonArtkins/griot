@@ -38,21 +38,36 @@
 - **DataLoader**: batch `assignee` + `comments`
 - **Filters/sorts**: on `tasks` (status, priority, assignee, dueDate) + `notifications` (readAt)
 
-## 3. Figma Make prompts
+## 3. The prompt (single, extensive — no length limit)
 
-### PROMPT A
+Paste the full prompt below into Figma Make. It draws the complete API surface (REST + GraphQL + shared service layer) in one pass.
 
+```text
+API map diagram for Griot. Build it in two halves:
+
+LEFT HALF — REST module groups (rounded dashed containers), inside each a pill shape per route, METHOD-COLORED (GET green, POST blue, PUT amber, PATCH purple, DELETE red):
+
+- AUTH: POST /api/auth/register; POST /api/auth/login; POST /api/auth/refresh; POST /api/auth/logout
+- WORKSPACES: GET/POST /api/workspaces; GET/PUT/DELETE /api/workspaces/{id}; GET/POST /api/workspaces/{id}/members; POST /api/workspaces/{id}/invites; POST /api/invites/{token}/accept
+- PROJECTS: GET/POST /api/workspaces/{id}/projects; GET/PUT/DELETE /api/projects/{id}
+- BOARDS/COLUMNS: GET/POST /api/projects/{id}/boards; GET /api/boards/{id}; POST /api/boards/{id}/columns; PATCH/DELETE /api/columns/{id}
+- TASKS: GET/POST /api/boards/{id}/tasks; GET/PUT/DELETE /api/tasks/{id}; PATCH /api/tasks/{id}/move; PATCH /api/tasks/bulk-status; GET/POST /api/tasks/{id}/comments; POST /api/tasks/{id}/attachments
+- NOTIFICATIONS: GET /api/notifications; POST /api/notifications/read-all; GET /api/notifications/unread-count
+- OBSERVABILITY: GET /api/dashboard/summary; GET /api/workspaces/{id}/activity; GET /api/logs/errors (Owner/Admin); GET /api/logs/audit (Owner)
+- WEBHOOKS: POST /api/webhooks/trigger (HMAC verified)
+
+RIGHT HALF — GraphQL column:
+Box "/graphql (HotChocolate)". Queries: me, workspace(id), projects, board(id), tasks(filter,sort,pagination), task(id), comments(taskId), notifications, unreadNotificationCount, activityFeed(workspaceId), dashboardSummary(workspaceId). Mutations: register, login, refresh, logout, createWorkspace, createProject, createBoard, createColumn, createTask, updateTask, moveTask, bulkUpdateTaskStatus, addComment, addAttachment, markNotificationsRead, acceptInvite. DataLoader badge: "batch assignee + comments (N+1 prevention)". Filters/sorts on tasks (status, priority, assignee, dueDate) + notifications (readAt).
+
+BELOW BOTH HALVES:
+- A wide box "Griot.Application — shared service layer (REST + GraphQL both delegate here — drift-proof)".
+- Arrows: every REST group → shared layer; GraphQL box → shared layer.
+- Below that: repositories (EF Core 95% + Dapper procs usp_BulkUpdateTaskStatus / usp_GetDashboardSummary) → SQL Server.
+
+ANNOTATION: "Postman collection mirrors this map 1:1 (backend feature 07); a route change updates api-surface.md + the collection + this diagram together."
 ```
-API map diagram for Griot. Draw as 5 module groups (rounded dashed containers): AUTH (register/login/refresh/logout), WORKSPACES (+members+invites/accept), PROJECTS, BOARDS/COLUMNS (incl move + bulk-status), TASKS (+comments+attachments), NOTIFICATIONS (+unread), OBSERVABILITY (dashboard summary, activity, error logs, audit logs), WEBHOOKS (trigger HMAC). Inside each group list its REST routes as small pill shapes (method color: GET green, POST blue, PUT amber, PATCH purple, DELETE red). Keep method colors consistent.
-```
 
-### PROMPT B
-
-```
-To the right of the Griot API map, add a GraphQL column: box labeled "/graphql (HotChocolate)": list queries (me, workspace, projects, board, tasks, task, comments, notifications, unreadCount, activityFeed, dashboardSummary), mutations (register/login/refresh/logout, createWorkspace/Project/Board/Column/Task, updateTask, moveTask, bulkUpdateTaskStatus, addComment, addAttachment, markNotificationsRead, acceptInvite). Add a DataLoader badge 'batch assignee+comments (N+1)'. Arrow from both REST groups and GraphQL column down into a wide box 'Griot.Application services (shared, drift-proof)'. Below that: repositories (EF + Dapper procs) -> SQL Server.
-```
-
-### Fix snippets
+### Refine
 
 - "Change that PATCH pill to purple (PATCH)."
 - "Add GET /api/logs/errors under Observability with Owner/Admin badge."

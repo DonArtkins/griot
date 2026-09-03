@@ -32,34 +32,39 @@
 - DataLoader sits between resolvers and repositories (N+1 prevention).
 - Redis + SQL Server are dashed-edge externals at the bottom.
 
-## 3. Figma Make prompts (≤2000 chars each)
+## 3. The prompt (single, extensive — no length limit)
 
-### PROMPT A — the layers + blocks
+Paste the full prompt below into Figma Make. It draws the layers AND the arrows in one extensive pass.
 
+```text
+C4 Component diagram (Level 3) showing the INSIDE of the Griot 'api' container only. Build the layers top-to-bottom:
+
+TOP LAYER — thin controllers (equal-width paper-thin boxes):
+REST: AuthController, WorkspaceController, ProjectController, BoardController, TaskController, CommentController, NotificationController, WebhookController
+MIDDLE-LEFT — GraphQL (a vertical column):
+GriotQuery, GriotMutation, DataLoader (batch assignees + comments)
+CENTER — THE SERVICE LAYER (a wide, dominant block):
+"Griot.Application — the service layer" containing exactly: AuthService, WorkspaceService, ProjectService, BoardService, TaskService, CommentService, NotificationService
+BOTTOM LAYER — repositories + infrastructure:
+EF Core repositories (95% CRUD) | Dapper repositories (usp_BulkUpdateTaskStatus, usp_GetDashboardSummary) | GriotDbContext | Redis client | Auth middleware (JWT validation → principal; GRIOT_SERVICE_TOKEN → ai-agent principal)
+
+ARROWS (this is the important part — draw exactly these):
+- REST controllers → the service layer (one arrow each; label "thin shell, no logic")
+- GriotQuery/GriotMutation → the service layer (same color as REST arrows = same layer)
+- DataLoader → repositories (label "batch assignees/comments — N+1 prevention")
+- service layer → repository interface block (label "dependency inversion")
+- repositories → GriotDbContext (label "EF"), repositories → Sql/procs (label "Dapper")
+- Auth middleware → controllers + GraphQL (label "JWT principal / service token→ai-agent")
+- Redis client ↔ service layer (label "rate limit, refresh, budgets"); Redis client → external Redis (dashed)
+- GriotDbContext → external SQL Server (dashed); Dapper repos → external SQL Server (dashed)
+
+ANNOTATION (a callout box): "ONE service layer, TWO API surfaces (REST + GraphQL), ZERO business logic in controllers/resolvers — drift-proof by construction."
 ```
-C4 Component diagram (L3) showing the INSIDE of the Griot 'api' container only. Top layer three columns of thin boxes: REST controllers (AuthController, WorkspaceController, ProjectController, BoardController, TaskController, CommentController, NotificationController, WebhookController) — one paper-thin shell each. Middle-left: GraphQL column (GriotQuery, GriotMutation, DataLoader). Center-wide block labeled "Griot.Application — the service layer" containing 7 services (Auth, Workspace, Project, Board, Task, Comment, Notification). Bottom layer: repositories (EF Core repos 95% + Dapper repos: usp_BulkUpdateTaskStatus, usp_GetDashboardSummary), GriotDbContext, Redis client, Auth middleware. No business logic anywhere except the service layer block.
-```
 
-### PROMPT B — the arrows (this is the important part)
-
-```
-Arrow rules for the Griot api L3 diagram:
-controllers -> services (all 7, one arrow per controller)
-GraphQL resolvers (GriotQuery/GriotMutation) -> services
-DataLoader -> repositories (assignees, comments)
-services -> repository interface block
-repositories -> GriotDbContext (EF) and -> Sql/procs (Dapper)
-Auth middleware -> controllers (JWT principal, service token->ai-agent)
-Redis client <-> services (rate limit, refresh, budgets) and -> Redis external
-DbContext -> SQL Server external (dashed); repos Sql/ -> SQL Server external (dashed)
-Label each arrow short (thin shell, no logic; shared layer; batch N+1; proc).
-The message this diagram must show: ONE service layer, TWO API surfaces, zero logic in controllers.
-```
-
-### Fix snippets
+### Refine
 
 - "Draw all controllers as equal-width thin boxes above the service layer."
-- "Make the GraphQL->services arrows the same color as REST->services (same layer)."
+- "Make the GraphQL→services arrows the same color as REST→services."
 - "Label the DataLoader edges 'batch assignees/comments (N+1 prevent)'."
 
 ---

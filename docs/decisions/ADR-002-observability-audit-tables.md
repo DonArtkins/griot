@@ -26,5 +26,5 @@ Add **ApiLogs**, **ErrorLogs**, **AuditLogs** to the core schema (ERD → prompt
 - Backend feature spec 02 must map these; MONITORING.md consumes them.
 
 ## References
-- `PROMPTS/week-02/02-erd-figma-make-2000char-sequence.md` (prompts G+H)
+- `PROMPTS/week-02/02-erd-figma-make-master-prompt.md` (single extensive master prompt with the observability tables included)
 - `docs/database/DATABASE-DESIGN.md`, Lyncxs WCPSE observability sections.

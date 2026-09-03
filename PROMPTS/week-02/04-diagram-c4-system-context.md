@@ -22,37 +22,45 @@
 
 **Rules for this level:** no internal boxes (that's Level 2), no database names, no protocols on every line (that's Level 2). One box labeled "Griot — Project Management & AI Copilot". Keep the human actors as stick figures, external systems as plain boxes on the outside ring.
 
-## 2. Figma Make prompts (each ≤2000 chars, run in order on ONE canvas)
+## 2. The prompt (single, extensive — no length limit)
 
-### PROMPT A — Seed the canvas
+Paste the full prompt below into Figma Make (Plan mode first). It intentionally includes every actor, every arrow, and every label — no abbreviation.
 
+```text
+C4 System Context diagram Level 1 for Griot, a project-management web app + AI copilot. Center box labeled "Griot — Project Management & AI Copilot" (dark fill, white text). Around it place exactly these, no internals, one page:
+
+HUMANS (stick figures, left side):
+- Workspace Owner (creates workspace, invites team, full admin)
+- Team Member (boards, tasks, comments, notifications)
+
+EXTERNAL SYSTEMS (plain boxes, right/bottom):
+- Vercel (hosts web app, public internet)
+- Railway (hosts API + MCP + SQL Server + Postgres + Redis)
+- Trigger.dev (scheduled AI agents + Copilot background runs)
+- GitHub Actions (CI/CD, builds + deploys on git push)
+- Postman/Newman (API contract testing)
+- Email provider (SMTP: invites, reminders, digests)
+- External AI clients (Claude Desktop / Cursor / Cline via MCP tools)
+
+ARROWS (label each):
+- Workspace Owner → Griot (HTTPS, via Web + Mobile)
+- Team Member → Griot (HTTPS, via Web + Mobile)
+- External AI clients → Griot (MCP: get_board, create_task, update_task_status, add_comment, summarize_project)
+- Postman/Newman → Griot (REST + GraphQL, contract tests)
+- Griot → Email provider (SMTP: invites, reminders, weekly digest)
+- Vercel → Griot (hosts web, serves Public + App shells)
+- Railway → Griot (hosts API + MCP + databases)
+- Trigger.dev → Griot (scheduled agents, Copilot streaming)
+- GitHub Actions → Vercel / Railway / Trigger.dev (deploy trigger, dashed arrows)
+
+STYLE: humans as stick figures on the left, external systems around the right/bottom, one big Griot box center-top. Protocol labels on every arrow. Everything readable at 100% zoom. One page, no internals.
 ```
-C4 System Context diagram Level1 for Griot, a PM web app + AI copilot. Center box labeled "Griot — Project Management & AI Copilot" (dark fill, white text). Around it place exactly these, no internals, one page:
-Humans (stick figures): Workspace Owner (creates workspace, invites team, full admin); Team Member (boards, tasks, comments, notifications).
-External systems (plain boxes): Vercel (hosts web app, public internet); Railway (hosts API + MCP + SQL Server + Postgres + Redis); Trigger.dev (scheduled AI agents + Copilot runs); GitHub Actions (CI/CD, deploys on merge); Postman/Newman (API contract testing); Email provider (invites, reminders, digests); External AI client (Claude/Cursor/Cline via MCP tools).
-```
 
-### PROMPT B — Add the arrows
-
-```
-Add labeled arrows to the Griot C4 L1 diagram:
-Owner + Member -> Griot (HTTPS, via Web+Mobile)
-Griot -> Email provider (SMTP: invites, reminders, digest)
-External AI client -> Griot (MCP: get_board, create_task, update_task_status, add_comment, summarize_project)
-Postman/Newman -> Griot (REST+GraphQL, contract tests)
-Vercel -> Griot (hosts web, serves Public+App shells)
-Railway -> Griot (hosts API+MCP+databases)
-Trigger.dev -> Griot (scheduled agents, Copilot)
-GitHub Actions -> Vercel/Railway/Trigger.dev (deploy trigger, dashed)
-Style: humans as stick figures left, external systems right/bottom, one big Griot box center-top. No internals. Readable at 100% zoom.
-```
-
-### Fix snippets
+### Refine
 
 - "Move the Griot box to center; widen it."
 - "Rename the center box to 'Griot — Project Management & AI Copilot'."
-- "Add thin arrow Griot -> Email provider labeled SMTP invites+digests."
-- "Make GitHub Actions arrow dashed (indirect deploy trigger)."
+- "Make the GitHub Actions arrows dashed (indirect deploy trigger)."
 
 ---
 

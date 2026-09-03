@@ -32,44 +32,42 @@
 | API | Redis | TCP 6379 (rate limit, refresh, budgets) |
 | API | Email provider | SMTP / HTTPS (invites, reminders, digests) |
 
-## 3. Figma Make prompts (≤2000 chars each, ONE canvas, order matters)
+## 3. The prompt (single, extensive — no length limit)
 
-### PROMPT A — Boxes
+Paste the full prompt below into Figma Make. It builds all 8 containers AND every arrow in one extensive pass.
 
-```
-C4 Container diagram Level2 for Griot PM app. Draw these 8 containers (rounded rects), fill by owner, port badges in the corner:
-web (Vite+React18+MUI, Public+App shells+Copilot) [Vercel]
-mobile (Flutter3.19/Dart3 Android) [Play/APK]
-api (ASP.NET Core8, REST /api + GraphQL /graphql + /health, port 8080) [Railway container:api]
-mcp (Node20 @modelcontextprotocol/sdk, Streamable HTTP 3001 + stdio) [Railway container:mcp]
-ai (Trigger.dev v3, Copilot agent + scheduled tasks) [Trigger cloud]
-sqlserver (SQL Server 2022, primary DB, host 14333) [Railway container:sqlserver]
-postgres (PostgreSQL 16, secondary/test, host 5433) [Railway container:postgres]
-redis (Redis 7, rate limit + refresh + budgets, host 6380) [Railway container:redis]
-```
+```text
+C4 Container diagram Level 2 for Griot, the box-level deployment view. Draw these 8 containers (rounded rects), each with a tech badge and a host corner-badge:
 
-### PROMPT B — Arrows/protocols
+1. web — Vite + React 18 + MUI; Public shell + App shell + Copilot panel [host: Vercel]
+2. mobile — Flutter 3.19 / Dart 3; Android companion [host: Play/APK]
+3. api — ASP.NET Core 8; REST /api + GraphQL /graphql + /health; port 8080 [host: Railway container:api]
+4. mcp — Node 20 + @modelcontextprotocol/sdk; Streamable HTTP 3001 + stdio [host: Railway container:mcp]
+5. ai — Trigger.dev v3; Copilot agent + scheduled tasks [host: Trigger cloud]
+6. sqlserver — SQL Server 2022; primary DB [host: Railway container:sqlserver, host port 14333]
+7. postgres — PostgreSQL 16; secondary/test [host: Railway container:postgres, host port 5433]
+8. redis — Redis 7; rate limit + refresh + budgets [host: Railway container:redis, host port 6380]
 
-```
-Connect the C4 L2 containers with labeled arrows:
-web -> api HTTPS REST /api + GraphQL /graphql (JWT)
-mobile -> api HTTPS REST+GraphQL (JWT)
-web -> ai Trigger realtime WS (streaming)
-ai -> api HTTPS GraphQL GRIOT_SERVICE_TOKEN; api -> ai HMAC webhook
-mcp -> api HTTPS GraphQL GRIOT_SERVICE_TOKEN
-external AI clients -> mcp MCP stdio/Streamable HTTP
-api -> sqlserver TCP 1433 TDS (EF Core8 + Dapper2)
-api -> postgres TCP 5432 (secondary/test)
-api -> redis TCP 6379
-api -> email provider SMTP/HTTPS (invites, reminders, digest)
-This diagram is the docker-compose.yml + Railway service list contract: 8 containers, no extras.
+CONNECT WITH LABELED ARROWS (protocol on every arrow):
+- web → api: HTTPS REST /api + GraphQL /graphql (JWT Bearer)
+- mobile → api: HTTPS REST + GraphQL (JWT Bearer)
+- web → ai: Trigger realtime WebSocket (Copilot streaming)
+- ai → api: HTTPS GraphQL GRIOT_SERVICE_TOKEN; api → ai: HMAC webhook (dashed return)
+- mcp → api: HTTPS GraphQL GRIOT_SERVICE_TOKEN
+- External AI clients → mcp: MCP stdio/Streamable HTTP
+- api → sqlserver: TCP 1433 TDS (EF Core 8 + Dapper 2)
+- api → postgres: TCP 5432 (secondary/test only)
+- api → redis: TCP 6379
+- api → email provider: SMTP/HTTPS (invites, reminders, digest)
+
+ANNOTATION: "This diagram maps 1:1 to docker-compose.yml + the Railway service list — exactly these 8 containers, no extras." Container names must match the compose service keys (api, sqlserver, postgres, redis, mcp). Color: web=Vercel brand, api/mcp/sqlserver/postgres/redis=Railway, ai=Trigger. Readable at 100% zoom; orthogonal routing.
 ```
 
-### Fix snippets
+### Refine
 
-- "Label the api box port badge 8080; rename container names to compose service keys (api, sqlserver, postgres, redis, mcp)."
-- "Draw the api<->ai arrow with a return HMAC arrow dashed."
-- "Recolor web to Vercel color, api/mcp/sqlserver/postgres/redis to Railway color, ai to Trigger color."
+- "Label the api box port badge 8080; rename container names to compose service keys."
+- "Draw the api↔ai HMAC return arrow dashed."
+- "Recolor mcp to the Railway color group."
 
 ---
 

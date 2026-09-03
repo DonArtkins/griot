@@ -27,20 +27,39 @@ alt partial failure
     proc rolls back WHOLE batch → 409/400 with error detail
 ```
 
-## 3. Figma Make prompts (≤2000 chars)
+## 3. The prompt (single, extensive — no length limit)
 
-### PROMPT A
+Paste the full prompt below into Figma Make. It draws the bulk-update flow + rollback in one pass.
 
-```
-UML sequence diagram: Griot bulk status update. Lifelines L→R: Client (board multi-select), TaskController (PATCH /api/tasks/bulk-status), TaskService (Griot.Application), SQL Server (usp_BulkUpdateTaskStatus + TVP).
-Flow: Client→Controller PATCH {workspaceId, taskIds[], status}; Controller→TaskService BulkUpdateStatusAsync; TaskService validate ids belong to workspace (alt invalid id: 404/400 early); TaskService→SQL Server EXEC usp_BulkUpdateTaskStatus @WorkspaceId,@TaskIds TVP,@Status; SQL Server self: BEGIN TRAN; UPDATE Tasks SET Status=@Status,UpdatedAt=SYSUTCDATETIME() WHERE Id IN(SELECT value FROM @TaskIds); COMMIT; SQL Server→TaskService affected count; TaskService→SQL Server INSERT ActivityLogs bulk; INSERT AuditLogs before/after JSON; TaskService→Client 200 {updatedCount}. Add failure alt: any bad id → whole proc transaction rolls back (atomic), response 409. Label the proc step with bracket 'transaction boundary (all-or-nothing)'.
+```text
+UML sequence diagram: Griot bulk status update. Lifelines left→right: Client (board multi-select), TaskController (PATCH /api/tasks/bulk-status), TaskService (Griot.Application), SQL Server (usp_BulkUpdateTaskStatus + TVP).
+
+FLOW:
+Client → TaskController: PATCH /api/tasks/bulk-status { workspaceId, taskIds[], status }
+TaskController → TaskService: BulkUpdateStatusAsync(workspaceId, ids, status)
+TaskService: validate every id belongs to the workspace (alt invalid id → early 404/400, no DB call)
+TaskService → SQL Server: EXEC usp_BulkUpdateTaskStatus @WorkspaceId, @TaskIds (TVP), @Status
+SQL Server (proc):
+    BEGIN TRAN
+    UPDATE Tasks SET Status = @Status, UpdatedAt = SYSUTCDATETIME()
+    WHERE Id IN (SELECT value FROM @TaskIds) AND WorkspaceId = @WorkspaceId
+    COMMIT
+SQL Server → TaskService: affected row count
+TaskService → SQL Server: INSERT ActivityLogs (bulk update)
+TaskService → SQL Server: INSERT AuditLogs (before/after JSON of moved ids)
+TaskService → TaskController: 200 { updatedCount, failedIds: [] }
+
+FAILURE ALT (red):
+Any invalid id or update error → the ENTIRE proc transaction ROLLS BACK → response 409 { failedIds }
+Draw a labeled BRACKET around the proc's BEGIN TRAN / UPDATE / COMMIT: "transaction boundary (all-or-nothing — no half-applied drag)"
+
+ANNOTATION box:
+"Atomicity contract: usp_BulkUpdateTaskStatus is a single transaction; if ANY id in the TVP is invalid, the ENTIRE batch rolls back. The service returns 409 with {failedIds}. Web drag-drop + mobile picker both rely on this — never a half-applied status."
 ```
 
-### PROMPT B — rollback annotation
+### Refine
 
-```
-On the Griot bulk-status sequence, add a red note: "Atomicity contract: usp_BulkUpdateTaskStatus is a single transaction; if ANY id in the TVP is invalid or the update fails, the ENTIRE batch rolls back. The service returns 409 with {failedIds} — the client never sees a half-applied drag." Connect it to the SQL Server lifeline.
-```
+- "Make the rollback alt red-bordered; label 'any bad id → whole batch rolls back'."
 
 ---
 

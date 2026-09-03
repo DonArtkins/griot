@@ -98,7 +98,7 @@ Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-t
 - `ErrorLogs(FixStatus)` partial (Open/Investigating); `ErrorLogs(FixedAt)` — pruning.
 - `AuditLogs(ActorId)`; `AuditLogs(ActivityId)`.
 
-> Use the **sequenced prompt file** (`02-erd-figma-make-2000char-sequence.md`) for building in Figma Make — prompts A–F are the core 13 tables; **run prompts G + H there** (add ApiLogs/ErrorLogs/AuditLogs + their indexes) to reach the full 16-table ERD.
+> Use the **master prompt file** (`02-erd-figma-make-master-prompt.md`) for building in Figma Make — one extensive prompt covering all 16 tables, 5 enums, 19 relationships, and 13 indexes. If the canvas truncates, add any missing table with a short add-on prompt (name the table + "as in my first prompt").
 
 ---
 

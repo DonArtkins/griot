@@ -2,7 +2,7 @@
 
 > The complete, production-ready schema decided **before implementation** so we never come back to redesign. Names/values = contract across backend, web, mobile, AI, MCP. Built from the Figma Make ERD + the Lyncxs knowledge-base database conventions.
 
-Full diagram source: `PROMPTS/week-02/01-database-schema-erd-figma-make.md` + `02-erd-figma-make-2000char-sequence.md` (prompts A–H).
+Full diagram source: `PROMPTS/week-02/01-database-schema-erd-figma-make.md` + `02-erd-figma-make-master-prompt.md` (single extensive master prompt — no length limit).
 
 ---
 

@@ -37,30 +37,50 @@
 - Browser → Trigger realtime (WebSocket, for Copilot stream)
 - External AI → Railway MCP (Streamable HTTP public) → Railway API (internal)
 
-## 3. Figma Make prompts
+## 3. The prompt (single, extensive — no length limit)
 
-### PROMPT A
+Paste the full prompt below into Figma Make. It draws all four zones + deploy/runtime arrows in one pass.
 
+```text
+UML deployment diagram for Griot production. Draw 4 zones as big rounded-rect containers + external SaaS:
+
+ZONE 1 — PUBLIC INTERNET (top):
+- node: User Browser (web)
+- node: Mobile Device (Flutter)
+- node: External AI clients (Claude Desktop / Cursor / Cline)
+
+ZONE 2 — VERCEL (cloud):
+- node: Web App (Vite static, CDN; no server runtime)
+- arrows: Browser → Web App (HTTPS); Mobile → Web App (HTTPS)
+
+ZONE 3 — RAILWAY (private network):
+- node: API container :8080 (public 443 via Railway proxy)
+- node: MCP container :3001 (Streamable HTTP)
+- node: SQL Server 2022 (internal, NO public port)
+- node: PostgreSQL 16 (internal, NO public port)
+- node: Redis 7 (internal, NO public port)
+- internal arrows (TCP): API→SQL Server 1433 (EF Core8+Dapper2); API→Postgres 5432; API→Redis 6379
+- public arrow: Web App → API (HTTPS REST + GraphQL); External AI clients → MCP (Streamable HTTP)
+
+ZONE 4 — TRIGGER.DEV (cloud):
+- node: AI agents (Copilot + scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder)
+- arrows: Web App → AI agents (Trigger realtime WebSocket, streaming); AI agents → API (GraphQL + GRIOT_SERVICE_TOKEN)
+
+EXTERNAL SaaS:
+- node: Email provider (SMTP)
+- node: GitHub Actions (CI)
+- arrows: GitHub Actions → Vercel (deploy web, dashed); → Railway (deploy api + mcp containers, run EF migrations as release command, dashed); → Trigger.dev (deploy ai, dashed)
+
+ANNOTATION:
+1) "What's public internet vs Railway-internal: no DB port is ever exposed to the internet."
+2) Red/amber note near GitHub Actions→Railway: "EF Core migrations run as the Railway RELEASE command (dotnet ef database update) — never a local-first assumption."
+3) Note near API: "health endpoint /health checked by Railway + uptime ping."
 ```
-UML deployment diagram for Griot production. Draw 4 zones as big rounded-rect containers:
-PUBLIC INTERNET (top): node User Browser (web); node Mobile Device (Flutter); node External AI clients (Claude/Cursor/Cline).
-VERCEL (cloud): node Web App (Vite static, CDN, no server). HTTPS arrows: Browser->Web App; Mobile->Web App.
-RAILWAY (private network): node API container :8080 (public 443 via proxy); node MCP container :3001 (Streamable HTTP); node SQL Server 2022 (internal, no public port); node PostgreSQL 16 (internal); node Redis 7 (internal). Internal arrows labeled TCP 1433 TDS / TCP 5432 / TCP 6379.
-TRIGGER.DEV (cloud): node AI agents (scheduled tasks + Copilot). Arrow AI agents -> API: GraphQL + GRIOT_SERVICE_TOKEN; Web App -> AI agents: Trigger realtime WebSocket (stream).
-EXTERNAL: node Email provider (SMTP); node GitHub Actions. Arrows: GitHub Actions -> Vercel/Railway/Trigger (deploy, dashed, one line each).
-Annotate: "what's public vs Railway-internal" and "no DB port exposed to internet".
-```
 
-### PROMPT B — release command note
+### Refine
 
-```
-Add to the Griot deployment diagram, near GitHub Actions→Railway: red/amber note "EF Core migrations run as Railway RELEASE command (dotnet ef database update) — never a local-first assumption". Near GitHub Actions→Vercel: "Vite framework preset". Near Railway API: "health endpoint /health checked by Railway + uptime ping".
-```
-
-### Fix snippets
-
-- "Move SQL Server/Postgres/Redis inside the Railway private network, no public port."
-- "Add WebSocket arrow Web App→AI agents (Trigger realtime) for Copilot streaming."
+- "Move SQL Server / Postgres / Redis inside the Railway private zone with no public port."
+- "Add WebSocket arrow Web App → AI agents (Trigger realtime)."
 
 ---
 

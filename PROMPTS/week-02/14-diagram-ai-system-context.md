@@ -22,24 +22,39 @@
 4. **MCP read/write**: external AI client → MCP tool → backend GraphQL (service token) → SQL Server → result JSON to client.
 5. **Audit**: every tool call → ActivityLogs/AuditLogs row (workspaceId, tool, payloadHash, runId).
 
-## 3. Figma Make prompts
+## 3. The prompt (single, extensive — no length limit)
 
-### PROMPT A
+Paste the full prompt below into Figma Make. It draws the entire AI flow (components + all 5 flows + annotations) in one pass.
 
+```text
+AI system context diagram for Griot. Build it with these components and flows:
+
+COMPONENTS:
+- Left group "WEB": box "Web Copilot panel (app-shell right rail, chat UI)"; box "External AI clients (Claude Desktop / Cursor / Cline)".
+- Center group "ai/ (Trigger.dev v3)": box "griotCopilot agent" + box "scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder"; small box "token budget (Redis)" attached.
+- Lower-left group "mcp/": box "Griot MCP server" listing the 9 tools: list_projects, list_boards, get_board, get_task, create_task, update_task_status, add_comment, get_activity_feed, summarize_project.
+- Right group "backend": box "API — GraphQL + /api/webhooks/trigger" with badges "GRIOT_SERVICE_TOKEN → ai-agent principal (no deletes/invites)" and "HMAC X-Trigger-Signature".
+- Far right: box "SQL Server 2022 (source of truth)" with a BIG RED X annotation "AI NEVER writes to SQL Server directly — every read/write through the API".
+
+ARROWS (label each):
+- web Copilot → ai/ agents (Trigger realtime WebSocket, streaming)
+- ai/ agents → backend API (GraphQL, GRIOT_SERVICE_TOKEN)
+- backend API → ai/ agents (HMAC webhook return, dashed)
+- external AI clients → mcp/ server (MCP stdio / Streamable HTTP)
+- mcp/ server → backend API (GraphQL, GRIOT_SERVICE_TOKEN)
+- backend API → SQL Server (T-SQL)
+
+ANNOTATION 1 (dashed green frame around web Copilot + ai/ agents):
+"PROPOSE-BEFORE-WRITE: agent returns a proposed action → human approves in the UI → the WEB APP performs the write via REST (never the agent)."
+
+ANNOTATION 2 (dashed blue note near ActivityLogs/AuditLogs):
+"Every tool call logged: workspaceId, tool, payloadHash, runId — traceable across Trigger run ↔ MCP call ↔ backend ActivityLog (audit + summarize_project source)."
+
+ANNOTATION 3 (under scheduled agents):
+"Deterministic paths (digest/reminders) skip approval; generative mutations require human approval."
 ```
-AI system context diagram for Griot. Left: web Copilot panel (chat UI) + external AI clients (Claude/Cursor/Cline). Center: ai/ Trigger.dev agents (griotCopilot + 4 scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder) with a realtime WebSocket arrow to web Copilot. Below: mcp/ server box listing the 9 tools. Right: backend API box with 'GraphQL + GRIOT_SERVICE_TOKEN → ai-agent principal (no deletes/invites)' and 'HMAC /api/webhooks/trigger'. Far right: SQL Server box with a big red X annotation 'AI NEVER writes to SQL Server directly — every read/write through the API'.
-Arrows: web->ai (WS stream); ai->backend (GraphQL, service token); ai->backend (HMAC webhook return); mcp->backend (GraphQL, service token); external clients->mcp (MCP stdio/HTTP); backend->SQL Server (T-SQL).
-```
 
-### PROMPT B — propose-before-write + audit
-
-```
-Add two annotations to the AI context diagram:
-1) A dashed green frame around web Copilot + ai/ agents labeled "PROPOSE-BEFORE-WRITE: agent returns proposed action → human approves in UI → the WEB APP performs the write via REST (never the agent)". Connect to the web Copilot box.
-2) A dashed blue note near ActivityLogs/AuditLogs: "Every tool call logged: workspaceId, tool, payloadHash, runId — traceable across Trigger run ↔ MCP call ↔ backend ActivityLog (audit + summarize_project source)".
-```
-
-### Fix snippets
+### Refine
 
 - "Change the SQL Server arrow color to red X (no direct write)."
 - "Add a small box 'token budget (Redis)' next to the agents."
