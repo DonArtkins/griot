@@ -19,7 +19,8 @@ The bootcamp's Week-2 deliverable **"Database schema design in Figma"**: an appr
 
 - Root `AGENTS.md` + `/.agents/skills/figma-make-erd/SKILL.md`
 - `research/week-02-backend-api-development.md`
-- `PROMPTS/week-02/01-database-schema-erd-figma-make.md` (prompt + walkthrough)
+- `PROMPTS/week-02/01-database-schema-erd-figma-make.md` (master spec + walkthrough)
+- `PROMPTS/week-02/02-erd-figma-make-2000char-sequence.md` (6 seeded prompts, each ≤2000 chars — the working prompt set)
 
 ## Agent Skills To Use
 
