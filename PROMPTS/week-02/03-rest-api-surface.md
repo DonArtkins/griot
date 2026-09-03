@@ -1,35 +1,90 @@
-# Week 02 · Prompt 02 — REST + GraphQL API Surface (from the approved ERD)
+# Week 02 · Prompt 03 — REST + GraphQL API Surface — EXTENSIVE MASTER
 
-**Tool:** Any agent (Cline/Claude). **When:** After the ERD is approved and Feature 03's schema exists.
-**Research:** `research/week-02-backend-api-development.md` §4–5.
+**Tool:** Any agent (Cline/Claude) + Postman. **When:** After the ERD is approved and the backend schema exists.
+**Research:** `research/week-02-backend-api-development.md` §4–5 + `backend/project-kit/context/api-surface.md`.
 
-## Context
+> **No character limit.** This is the single authoritative API-surface prompt. It enumerates every route, contract, error, timing budget, and test expectation so implementation + Postman + docs all agree. It is also the input for the API-surface **diagram** in `13-diagram-api-surface.md`.
 
-The API surface must be derived from the **approved ERD** (`project-kit/diagrams/erd/`), never invented independently. REST and GraphQL share the same service layer; the GraphQL types mirror the entities; REST routes read `resource/action`.
+---
 
-## Prompt (paste into the agent)
+## 1. Master contract (from the approved ERD — never invented independently)
 
-> Build **Feature 04** (`project-kit/feature-specs/04-backend-api-rest-graphql-and-auth.md`) from the approved ERD at `project-kit/diagrams/erd/`. Before writing code, verify every route and GraphQL type below against the ERD's entity/field names and update the spec if the ERD differs from this list.
->
-> **REST endpoints** (all under `/api`, all JWT-protected except `auth`):
-> - `POST /api/auth/register` · `POST /api/auth/login` · `POST /api/auth/refresh` · `POST /api/auth/logout`
-> - `GET|POST /api/workspaces` · `GET|PUT /api/workspaces/{id}`
-> - `GET|POST /api/workspaces/{id}/members` · `POST /api/workspaces/{id}/invites` · `POST /api/invites/{token}/accept`
-> - `GET|POST /api/workspaces/{id}/projects` · `GET|PUT /api/projects/{id}`
-> - `GET|POST /api/projects/{id}/boards` · `GET /api/boards/{id}`
-> - `POST /api/boards/{id}/columns` · `PATCH /api/columns/{id}`
-> - `GET|POST /api/boards/{id}/tasks` · `GET|PUT|DELETE /api/tasks/{id}`
-> - `PATCH /api/tasks/bulk-status` (uses `usp_BulkUpdateTaskStatus` via Dapper + TVP)
-> - `GET|POST /api/tasks/{id}/comments` · `POST /api/tasks/{id}/attachments`
-> - `GET /api/workspaces/{id}/activity` · `GET /api/notifications` · `POST /api/notifications/read-all`
-> - `GET /api/dashboard/summary?workspaceId=` (uses `usp_GetDashboardSummary`)
-> - `POST /api/webhooks/trigger` (HMAC-verified)
->
-> **GraphQL surface** (same entities, code-first): queries `me, workspace(id), projects, board(id)`, `tasks(filter, sort)`, `notifications`, `dashboardSummary`; mutations mirroring the REST mutations; `DataLoader` for `task.assignee` + `task.comments`.
->
-> Follow the spec's Separation of Concerns (thin controllers/resolvers → services → repos), the auth contract (Argon2, 15-min JWT, rotated refresh, Redis rate limits, `GRIOT_SERVICE_TOKEN` → `ai-agent`), and the Docker/Deploy section (compose `api` service + health check).
+- Every route and GraphQL type names entities/fields **exactly** as in `project-kit/diagrams/erd/`.
+- REST + GraphQL share the **same service layer** (`Griot.Application`); controllers/resolvers are thin.
+- Auth: JWT bearer; `GRIOT_SERVICE_TOKEN` → `ai-agent` principal for AI/MCP; HMAC webhooks.
+- Errors: **404 for not-found/not-owned** (never disclose existence), 400 validation, 401 auth, 403 role, 409 conflict/state, 429 rate limit.
+- Hot-path latency budgets (p95): board read < 500 ms, dashboard < 500 ms, login < 300 ms, bulk-status < 800 ms.
 
-## Done
+## 2. REST endpoints (all `/api`, JWT-protected except auth)
 
-- Postman collection (REST + GraphQL folders) saved for the Newman contract suite.
-- Every endpoint traceable to an ERD relationship/field.
+### Auth
+- `POST /api/auth/register` — 201 `{ user, accessToken, refreshToken }` · 400 invalid · 409 email exists
+- `POST /api/auth/login` — 200 tokens · 401 bad creds · 429 login throttled
+- `POST /api/auth/refresh` — 200 rotated tokens · 401 replay/invalid (revokes family)
+- `POST /api/auth/logout` — 204 (revoke refresh)
+
+### Workspaces
+- `GET /api/workspaces` — list (membership) · `POST /api/workspaces` — 201
+- `GET/PUT/DELETE /api/workspaces/{id}` — role-gated (Owner for delete)
+- `GET/POST /api/workspaces/{id}/members` · `PATCH/DELETE /api/workspaces/{id}/members/{userId}`
+- `POST /api/workspaces/{id}/invites` (role + email) · `POST /api/invites/{token}/accept`
+
+### Projects / Boards / Columns
+- `GET/POST /api/workspaces/{id}/projects` · `GET/PUT/DELETE /api/projects/{id}`
+- `GET/POST /api/projects/{id}/boards` · `GET /api/boards/{id}` (columns + task cards)
+- `POST /api/boards/{id}/columns` · `PATCH/DELETE /api/columns/{id}`
+
+### Tasks (core)
+- `GET/POST /api/boards/{id}/tasks` (list w/ filters: status/priority/assignee; pagination)
+- `GET/PUT/DELETE /api/tasks/{id}`
+- `PATCH /api/tasks/{id}/move` — `{ columnId, position }` (re-order; optimistic-safe)
+- `PATCH /api/tasks/bulk-status` — `{ workspaceId, taskIds[], status }` via `usp_BulkUpdateTaskStatus` TVP (atomic; 409 on any invalid id)
+- `GET/POST /api/tasks/{id}/comments` · `GET/POST /api/tasks/{id}/attachments` (metadata; blob in v2)
+
+### Notifications / activity / dashboard / observability
+- `GET /api/notifications` · `POST /api/notifications/read-all` · `GET /api/notifications/unread-count`
+- `GET /api/workspaces/{id}/activity` (feed, paginated)
+- `GET /api/dashboard/summary?workspaceId=` — via `usp_GetDashboardSummary` (one round-trip)
+- `GET /api/logs/errors` (Owner/Admin) · `GET /api/logs/audit?entityType=&entityId=` (Owner)
+
+### AI / webhooks
+- `POST /api/webhooks/trigger` — HMAC-verified (`X-Trigger-Signature`); relay for Trigger.dev background work
+
+## 3. GraphQL surface (`/graphql`)
+
+- **Queries**: `me`, `workspace(id)`, `projects`, `board(id)`, `tasks(filter, sort, pagination)`, `task(id)`, `comments(taskId)`, `notifications`, `unreadNotificationCount`, `activityFeed(workspaceId)`, `dashboardSummary(workspaceId)`
+- **Mutations**: `register`, `login`, `refresh`, `logout`, `createWorkspace`, `createProject`, `createBoard`, `createColumn`, `createTask`, `updateTask`, `moveTask`, `bulkUpdateTaskStatus`, `addComment`, `addAttachment`, `markNotificationsRead`, `acceptInvite`
+- **DataLoader**: batch `assignee` + `comments` (N+1 prevention)
+- **Filters/sorts**: tasks (status, priority, assignee, dueDate), notifications (readAt)
+- **Guard**: query-cost + depth limit + timeouts; same JWT principal
+---
+
+## 4. THE PROMPT — paste into the agent (no length limit)
+
+```text
+Build the backend API exactly per `backend/project-kit/context/api-surface.md` and this list. Verify every route/type against the approved ERD at `project-kit/diagrams/erd/`; update the spec if the ERD differs. Enforce:
+- Separation of concerns: thin controllers/resolvers to `Griot.Application` services to repos (EF 95% + Dapper for `usp_BulkUpdateTaskStatus` + `usp_GetDashboardSummary` only). Zero business logic in controllers.
+- Auth: Argon2, 15-min JWT (claims sub/wid), rotated opaque refresh (SHA-256 at rest, family revoke on reuse), Redis sliding-window rate limit on login + query-cost guard on /graphql, CORS allow-list.
+- Service-token principal: GRIOT_SERVICE_TOKEN to restricted ai-agent (no deletes/invites). HMAC on /api/webhooks/trigger.
+- Errors: 404 on ownership miss (never disclose existence), 400 validation, 401 unauthenticated, 403 forbidden, 409 conflict/illegal state (incl. illegal task transition + bulk atomic rollback), 429 rate limit.
+- Pagination: fixed page size, stable order (e.g. tasks by (ColumnId, Position)); cursor or skip/take.
+- Latency budgets (p95): board < 500ms, dashboard < 500ms, login < 300ms, bulk-status < 800ms — meet with indexes + DataLoader + the two procs.
+- Postman: save Postman/Griot.postman_collection.json (REST + GraphQL folders, env-chained baseUrl/accessToken/refreshToken) covering every route + negative cases (401/403/404/409/429) + JSON-schema assertions on auth/task/board/dashboard.
+- For every API change: update api-surface.md, the collection, docs/api, and the API-surface diagram in the SAME branch (contract-sync gate).
+```
+
+---
+
+## 5. Refine / verify
+
+- Re-verify the task transition endpoint rejects an illegal move with 409.
+- Confirm the bulk-status proc is atomic; test a batch with one bad id.
+- Confirm the Postman collection runs end-to-end and is Newman-able (qa).
+
+## 6. Done
+
+- [ ] Every route/type listed above is implemented and testable via Postman
+- [ ] REST + GraphQL share the same service layer (no drift)
+- [ ] Error codes + pagination + latency budgets met
+- [ ] Postman collection = the Newman contract suite source
+- [ ] api-surface.md + collection + docs/api + diagram all synchronized

@@ -14,7 +14,7 @@ Griot is a project-management web app (workspaces → projects → boards → co
 
 **Guarding rule:** every entity below traces to a Week-1 screen. If it's not on a screen, it's not in this ERD.
 
-## 2. The entity roster (16 tables + 4 enums)
+## 2. The entity roster (16 tables + 5 enums)
 
 Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-tracking conventions. Use **exactly** these names, types, and relationships. These names ARE the contract for `Griot.Domain` entities, GraphQL types, TS/Dart models, and MCP tool schemas. Adding `ApiLogs`/`ErrorLogs`/`AuditLogs` now (before code) means we never come back to redesign the schema later.
 
@@ -102,19 +102,21 @@ Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-t
 
 ---
 
-## 5. The prompt (paste into Figma Make)
+## 5. The prompt (paste into Figma Make — no length limit)
 
-Open your Figma Make project **Griot** (`https://www.figma.com/make/bTB7eE6s39O6yvtYfq0DeR/Griot`), then paste this into Make's AI prompt/describe step (use **Plan mode** to steer before generating):
+Open your Figma Make project **Griot** (`https://www.figma.com/make/bTB7eE6s39O6yvtYfq0DeR/Griot`), then paste the full **master prompt** from `02-erd-figma-make-master-prompt.md` — one extensive prompt covering all 16 tables, 5 enums, 19 labelled crow's-foot relationships, 13 index stickies, and the SQL Server conventions note. Use **Plan mode** to steer before generating. If the canvas truncates, add any missing table via a short add-on prompt (name the table + "as in my first prompt") — never omit columns.
 
-> Build an **entity-relationship diagram** for **Griot**, a project-management web app. Target database: **SQL Server 2022**. The diagram is the implementation contract for an Entity Framework Core data layer, so entity names, field names, types, and relationships must match exactly. Enums are labeled panels, not tables.
+**Same authoritative content lives in `02-erd-figma-make-master-prompt.md`; that is the file agents/you paste from.** The shortened version below is the **quick sanity check** of the contract:
+
+> **Entities (16):** `Users`, `Workspaces`, `WorkspaceMembers` (M:N join with `Role`), `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`, `ApiLogs`, `ErrorLogs`, `AuditLogs` — exact field lists in §2 (GUID PKs, `nvarchar` types, FK labels, nullable `?`, unique `UQ`).
 >
-> **Entities (13):** `Users`, `Workspaces`, `WorkspaceMembers` (M:N join with `Role`), `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`. Use the exact field lists from the spec doc (GUID PKs, `nvarchar` types, FK labels, nullable `?` badges, unique `UQ` badges).
+> **Enums (5):** `TaskStatus` Backlog·Todo·InProgress·InReview·Done · `Priority` Low·Medium·High·Urgent · `WorkspaceRole` Owner·Admin·Member · `NotificationType` Mention·Assignment·DueDate·System · `ErrorFixStatus` Open·Investigating·Fixed·Verified·WonTFix. Legend panel.
 >
-> **Enums (4):** `TaskStatus` Backlog·Todo·InProgress·InReview·Done; `Priority` Low·Medium·High·Urgent; `WorkspaceRole` Owner·Admin·Member; `NotificationType` Mention·Assignment·DueDate·System. Put these in a legend panel.
+> **Relationships (19):** WorkspaceMembers joins Users↔Workspaces (Role on association); Workspaces→Projects→Boards→Columns→TaskItems; TaskItems TWO FKs to Users (`AssigneeId?`, `CreatorId`); Comments/Attachments→TaskItems; Workspaces→ActivityLogs+Invites; Users→RefreshTokens (rotation chain)+Notifications+ApiLogs+ErrorLogs; ActivityLogs→(optional)AuditLogs.
 >
-> **Relationships (15):** draw crow's-foot edges with FK labels — WorkspaceMembers joins Users↔Workspaces with Role on the association; Projects→Boards→Columns→TaskItems chain; TaskItems has TWO FKs to Users (`AssigneeId` nullable, `CreatorId` required); Comments/Attachments belong to TaskItems; Workspaces own Projects, ActivityLogs, Invites; Users own RefreshTokens (rotation chain via `ReplacedByTokenId`) and Notifications.
+> **Indexes (13):** every FK; `TaskItems(ColumnId, Position)`; `TaskItems(AssigneeId)`; `TaskItems(DueDate)`; `ActivityLogs(WorkspaceId, CreatedAt DESC)`; `Notifications(UserId, ReadAt)`; `RefreshTokens(UserId)`, `RefreshTokens(TokenHash)` UQ; `Invites(Token)` UQ, `Invites(WorkspaceId, Email)`; `ApiLogs(RequestId)` UQ, `ApiLogs(UserId, CreatedAt)`, `ApiLogs(Path)`; `ErrorLogs(FixStatus)` partial, `ErrorLogs(FixedAt)`; `AuditLogs(ActorId)`, `AuditLogs(ActivityId)`; `Users.Email` UQ, `Workspaces.Slug` UQ.
 >
-> **Style:** group and color-code by module — Identity/Auth (Users, RefreshTokens, WorkspaceMembers, Invites), Core Board (Workspaces, Projects, Boards, Columns, TaskItems), Social (Comments, Attachments), Observability (ActivityLogs, Notifications). Add a legend (PK / FK / UQ / nullable) and a column of sticky-note indexes: every FK indexed; `TaskItems(ColumnId, Position)`; `TaskItems(AssigneeId)`; `TaskItems(DueDate)`; `ActivityLogs(WorkspaceId, CreatedAt DESC)`; `Notifications(UserId, ReadAt)`; unique `TokenHash`, `Invites.Token`, `Users.Email`, `Workspaces.Slug`. Keep it legible at 100% zoom; no overlapping edges.
+> **Style:** color-code by module (Identity/Auth purple · Core Board blue · Social teal · Observability amber · Audit amber); legend (PK/FK/UQ/?); conventions note (GUID PKs, SYSUTCDATETIME, enums-as-varchar, append-only audit). Readable at 100% zoom; orthogonal routing; no overlaps.
 
 ## 6. Step-by-step: building the ERD in Figma Make
 
@@ -128,7 +130,7 @@ Open the live project: **https://www.figma.com/make/bTB7eE6s39O6yvtYfq0DeR/Griot
 
 ### Step 3 — Fix the tables by hand (precision pass)
 Make's first pass is a *rough clay model*. On the Make canvas:
-1. Arrange one **shape/table per entity** (13 total). Snap-guides keep them aligned.
+1. Arrange one **shape/table per entity** (16 total). Snap-guides keep them aligned.
 2. Header = dark fill, white bold **PascalCase** name (`TaskItems`, `ActivityLogs`).
 3. Fields one row each: `Id · GUID · PK`, `?` for nullable, `UQ` for unique, `→` for FKs.
 4. Duplicate a polished table shape (`Ctrl/Cmd+D`) then retitle — keep visual rhythm identical.
@@ -136,16 +138,16 @@ Make's first pass is a *rough clay model*. On the Make canvas:
 ### Step 4 — Color-code modules
 Fill each header per module: Identity/Auth = purple · Core Board = blue · Social = teal · Observability = amber.
 
-### Step 5 — Draw the 15 relationship edges
+### Step 5 — Draw the 19 relationship edges
 Use the **connector line** tool between node handles; set orthogonal/crisp routing; put an arrow on the "many" side; label each edge `TaskItems.AssigneeId → Users.Id` etc.
 
 ### Step 6 — Add legend, enums, index notes
 1. **Legend** (top-left): PK / FK / UQ / nullable symbols.
-2. **Enums panel** (right): the 4 enum chips/tables.
+2. **Enums panel** (right): the 5 enum chips/tables.
 3. **Index notes** (bottom or right column): one sticky per index from §4, dashed-connected to its table.
 
 ### Step 7 — Refine (≤2 rounds)
-Read it like a reviewer: does every Week-1 screen's entity appear? (Dashboard → Workspace/Project/ActivityLog; Board → Board/Column/TaskItem; Task detail → TaskItem + Comment + Attachment; Team settings → User + WorkspaceMember + Invite; Notifications → Notification.) No orphan table. Tidy overlaps; verify the 15 edges against §3.
+Read it like a reviewer: does every Week-1 screen's entity appear? (Dashboard → Workspace/Project/ActivityLog; Board → Board/Column/TaskItem; Task detail → TaskItem + Comment + Attachment; Team settings → User + WorkspaceMember + Invite; Notifications → Notification.) No orphan table. Tidy overlaps; verify the 19 edges against §3.
 
 ### Step 8 — Approve + export
 1. Human approves the ERD in the Make project.
