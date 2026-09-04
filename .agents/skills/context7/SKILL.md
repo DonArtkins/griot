@@ -9,21 +9,33 @@ metadata:
 
 Pulls up-to-date, version-specific documentation and code examples straight from the source and places them into the prompt — fighting outdated training data and hallucinated APIs.
 
-## Install (CLI)
+## Install (CLI) — pin the version
+
+Reviewed versions (re-resolve before each project; record in `mcp-versions.json` at repo root):
+- `ctx7` CLI: **`0.5.9`** (npm package `ctx7`, NOT `@upstash/context7-cli` — that scope does not exist)
+- `@upstash/context7-mcp` MCP server: **`4.0.4`**
 
 ```bash
-# npm global (or use npx for one-off)
-npm install -g @upstash/context7-cli   # provides `ctx7`
-npx ctx7 --version
+# npm global install (pinned) — CLI package is `ctx7`, not @upstash/context7-cli:
+npm install -g ctx7@0.5.9
+# verify:
+ctx7 --version
 ```
 
-## Install (MCP server — Claude Desktop / Cline / Cursor)
+```bash
+# one-off via npx (pinned):
+npx -y ctx7@0.5.9 --version
+```
+
+## Install (MCP server — Claude Desktop / Cline / Cursor) — pin the version
 
 Add to the MCP client config (e.g. `~/.config/Claude/claude_desktop_config.json` or Cline MCP settings):
 
 ```json
-{ "mcpServers": { "context7": { "command": "npx", "args": ["-y", "@upstash/context7-mcp"] } } }
+{ "mcpServers": { "context7": { "command": "npx", "args": ["-y", "@upstash/context7-mcp@4.0.4"] } } }
 ```
+
+> **Security rule (CWE-829):** never run `npx -y @upstash/context7-mcp` unpinned. The reviewed versions above were resolved 2026-09-04 from https://github.com/upstash/context7/releases. Re-resolve before each project and record the result in `mcp-versions.json` (a repo-root manifest tracking all MCP tool versions). Do not rely on `latest`.
 
 MCP exposes two tools:
 - `resolve-library-id` — turn a general library name into a Context7-compatible ID

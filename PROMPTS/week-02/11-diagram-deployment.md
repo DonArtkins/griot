@@ -12,7 +12,7 @@
 - **External AI clients** (Claude Desktop, Cursor, Cline)
 
 **Vercel zone** (edge)
-- **Web App** (Vite static, Vercel CDN, edge functions for nothing in v1 — pure static + env)
+- **Web App** (Vite static, Vercel CDN — asset delivery ONLY; **NOT a server runtime, NOT an API proxy**; edge functions not used in v1)
 
 **Railway zone** (private network)
 - **API container** port 8080 (public:443 via Railway proxy)
@@ -33,9 +33,10 @@
 - GitHub Actions → Vercel (deploy web)
 - GitHub Actions → Railway (deploy api + mcp containers; run EF migrations as release command)
 - GitHub Actions → Trigger.dev (deploy ai tasks)
-- Browser/Mobile → Vercel → Railway API (HTTPS public)
+- Browser → Web App (Vercel, asset delivery only) **then Browser → API directly over HTTPS** (REST + GraphQL). Vercel serves static assets only — it is NOT a runtime intermediary for API calls; the browser calls the Railway API directly.
+- Mobile → API directly over HTTPS (REST + GraphQL). Mobile is NOT routed through Vercel for API calls.
 - Browser → Trigger realtime (WebSocket, for Copilot stream)
-- External AI → Railway MCP (Streamable HTTP public) → Railway API (internal)
+- External AI → Railway MCP (**HTTPS/TLS** Streamable HTTP public — TLS terminates at the Railway proxy; `GRIOT_SERVICE_TOKEN` is only ever sent over the encrypted connection, never plaintext HTTP) → Railway API (internal, service token)
 
 ## 3. The prompt (single, extensive — no length limit)
 
@@ -50,17 +51,17 @@ ZONE 1 — PUBLIC INTERNET (top):
 - node: External AI clients (Claude Desktop / Cursor / Cline)
 
 ZONE 2 — VERCEL (cloud):
-- node: Web App (Vite static, CDN; no server runtime)
-- arrows: Browser → Web App (HTTPS); Mobile → Web App (HTTPS)
+- node: Web App (Vite static CDN — asset delivery ONLY; NO server runtime, NOT an API proxy)
+- arrow: Browser → Web App (HTTPS, static assets)
 
 ZONE 3 — RAILWAY (private network):
-- node: API container :8080 (public 443 via Railway proxy)
-- node: MCP container :3001 (Streamable HTTP)
+- node: API container :8080 (public 443 via Railway proxy — TLS terminates at the Railway proxy)
+- node: MCP container :3001 (public HTTPS/TLS via Railway proxy — label: "TLS terminates at Railway proxy; MCP→API is internal plain TCP; GRIOT_SERVICE_TOKEN only ever sent over TLS")
 - node: SQL Server 2022 (internal, NO public port)
 - node: PostgreSQL 16 (internal, NO public port)
 - node: Redis 7 (internal, NO public port)
 - internal arrows (TCP): API→SQL Server 1433 (EF Core8+Dapper2); API→Postgres 5432; API→Redis 6379
-- public arrow: Web App → API (HTTPS REST + GraphQL); External AI clients → MCP (Streamable HTTP)
+- public arrows: Browser → API DIRECT (HTTPS REST + GraphQL); Mobile → API DIRECT (HTTPS); External AI clients → MCP (HTTPS/TLS — GRIOT_SERVICE_TOKEN only over TLS, never plaintext); MCP → API (internal, service token)
 
 ZONE 4 — TRIGGER.DEV (cloud):
 - node: AI agents (Copilot + scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder)
@@ -75,6 +76,8 @@ ANNOTATION:
 1) "What's public internet vs Railway-internal: no DB port is ever exposed to the internet."
 2) Red/amber note near GitHub Actions→Railway: "EF Core migrations run as the Railway RELEASE command (dotnet ef database update) — never a local-first assumption."
 3) Note near API: "health endpoint /health checked by Railway + uptime ping."
+4) Note near Vercel: "Vercel = static CDN only. Browser and Mobile call the Railway API DIRECTLY over HTTPS — Vercel does NOT proxy API calls. Draw the Browser→API and Mobile→API arrows bypassing the Vercel box entirely."
+5) Note near MCP container: "MCP public endpoint = HTTPS/TLS (Railway proxy terminates TLS). Internal MCP→API traffic is plain TCP on the Railway private network. GRIOT_SERVICE_TOKEN is NEVER sent over plaintext HTTP."
 ```
 
 ### Refine

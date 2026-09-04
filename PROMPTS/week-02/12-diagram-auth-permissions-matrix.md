@@ -10,47 +10,54 @@
 |---|---|---|---|---|
 | View workspace/board/tasks | ✅ | ✅ | ✅ | ✅ (ReadWorkspace) |
 | Create project / board | ✅ | ✅ | ✅ | ❌ |
-| Edit task (title/desc/status/assignee) | ✅ | ✅ | ✅ (assigned OR workspace) | ✅ (CreateTask/UpdateStatus) |
-| Move task across columns | ✅ | ✅ | ✅ | ❌ (propose-only via Copilot) |
+| Edit task — status/assignee (MCP-tool path) | ✅ | ✅ | ✅ (assigned OR workspace) | ✅ (UpdateTaskStatus) via **MCP-tool path only** — external client invokes the tool with `GRIOT_SERVICE_TOKEN` as the authorized executor; route: `PATCH /api/tasks/{id}` or `bulkUpdateTaskStatus` mutation, principal = ai-agent |
+| Edit task — all fields (in-app Copilot path) | ✅ | ✅ | ✅ | ⚠️ **proposal-only** — agent proposes, web app executes as the authenticated user after explicit approval; agent never writes directly |
+| Move task across columns | ✅ | ✅ | ✅ | ❌ (propose-only via in-app Copilot) |
 | Delete task | ✅ | ✅ | ❌ | ❌ |
-| Add comment | ✅ | ✅ | ✅ | ✅ (AddComment) |
+| Add comment | ✅ | ✅ | ✅ | ✅ (AddComment via MCP-tool path); in-app Copilot = propose-only |
 | Invite members | ✅ | ✅ | ❌ | ❌ |
 | Remove member | ✅ | ❌ | ❌ | ❌ |
 | Change roles | ✅ | ❌ | ❌ | ❌ |
 | Delete workspace | ✅ | ❌ | ❌ | ❌ |
-| Manage notifications | ✅ | ✅ | ✅ | ✅ (CreateNotification) |
-| View audit/error logs | ✅ | ✅ (own errors) | ❌ | ❌ |
-| Use Copilot | ✅ | ✅ | ✅ | — |
-| MCP external tool access | ✅ (workspace scope) | ✅ | ✅ | ✅ |
+| Manage notifications | ✅ | ✅ | ✅ | ✅ (CreateNotification via MCP-tool path) |
+| View audit/error logs | ✅ | ✅ (own errors only) | ❌ | ❌ |
+| Use in-app Copilot | ✅ | ✅ | ✅ | — (ai-agent IS the Copilot — not a user of it) |
+| Invoke MCP tools (external client) | ✅ (workspace scope) | ✅ (workspace scope) | ✅ (workspace scope) | ❌ (ai-agent is the MCP executor, not a caller — it does not invoke itself) |
 
-Legend: ❌ = hard denied (404 not 403 for ownership — never disclose existence). Admin ≠ Owner for destructive ops. ai-agent is restricted via `GRIOT_SERVICE_TOKEN`.
+> **Two ai-agent execution paths — resolved:**
+> - **MCP-tool path**: an external AI client (Claude Desktop, VS Code Copilot, etc.) calls the MCP server with a user's workspace token. The MCP server calls the API using `GRIOT_SERVICE_TOKEN` → `ai-agent` principal. The **authorized executor** is the MCP server acting on behalf of the external client. Routes: `PATCH /api/tasks/{id}` (status/assignee only), GraphQL `updateTask`, `addComment`, `bulkUpdateTaskStatus`.
+> - **In-app Copilot path**: Trigger.dev agent (inside the app) generates a proposal. The web app renders the diff; the **user** presses "Apply" and the **web app** calls the API as the authenticated user. The agent never touches the API directly for write operations in this path.
+> - **ai-agent MCP access**: ai-agent is the server-side executor, not a client of the MCP server. Cell = ❌ (not applicable).
+
+Legend: ❌ = hard denied (404 not 403 for ownership — never disclose existence). ⚠️ = propose-only (agent cannot execute directly). Admin ≠ Owner for destructive ops. ai-agent is restricted via `GRIOT_SERVICE_TOKEN`.
 
 ## 2. The prompt (single, extensive — no length limit)
 
 Paste the full prompt below into Figma Make. It draws the full permission matrix in one pass.
 
 ```text
-Build a permission matrix TABLE for Griot (not a diagram). 4 columns: Owner | Admin | Member | ai-agent (service). Rows (Y = green cell, N = red cell):
+Build a permission matrix TABLE for Griot (not a diagram). 4 columns: Owner | Admin | Member | ai-agent (service). Rows (Y = green cell, N = red cell, P = yellow "propose-only" cell):
 
 View workspace/board/tasks — Y | Y | Y | Y (ReadWorkspace)
 Create project/board — Y | Y | Y | N
-Edit task (title/desc/status/assignee) — Y | Y | Y (assigned OR workspace) | Y (CreateTask/UpdateStatus)
-Move task across columns — Y | Y | Y | N (propose-only via Copilot)
+Edit task status/assignee (MCP-tool path) — Y | Y | Y (assigned OR workspace) | Y (UpdateTaskStatus) via MCP-tool path ONLY — external AI client invokes MCP tool; MCP server calls PATCH /api/tasks/{id} or bulkUpdateTaskStatus with GRIOT_SERVICE_TOKEN as authorized executor
+Edit task all fields (in-app Copilot path) — Y | Y | Y | P (propose-only: agent proposes diff, web app executes as the authenticated user after explicit approval — agent never writes directly)
+Move task across columns — Y | Y | Y | P (propose-only via in-app Copilot)
 Delete task — Y | Y | N | N
-Add comment — Y | Y | Y | Y (AddComment)
+Add comment — Y | Y | Y | Y via MCP-tool path (AddComment); in-app Copilot = propose-only
 Invite members — Y | Y | N | N
 Remove member — Y | N | N | N
 Change roles — Y | N | N | N
 Delete workspace — Y | N | N | N
-Manage notifications — Y | Y | Y | Y (CreateNotification)
-View audit/error logs — Y | Y (own errors) | N | N
-Use Copilot — Y | Y | Y | —
-MCP external tool access — Y (workspace scope) | Y | Y | N
+Manage notifications — Y | Y | Y | Y (CreateNotification via MCP-tool path)
+View audit/error logs — Y | Y (own errors only) | N | N
+Use in-app Copilot — Y | Y | Y | — (ai-agent is the Copilot, not a user of it)
+Invoke MCP tools (external client) — Y (workspace scope) | Y (workspace scope) | Y (workspace scope) | N (ai-agent is the MCP executor, not a caller)
 
 FOOTER (must be present):
-"Denied = 404 not 403 (never disclose existence). Admin ≠ Owner for destructive ops (remove member, role changes, delete workspace, delete task). ai-agent is the restricted service principal via GRIOT_SERVICE_TOKEN — no deletes, no invites, workspace-scoped."
+"Denied = 404 not 403 (never disclose existence). Admin ≠ Owner for destructive ops (remove member, role changes, delete workspace, delete task). ai-agent is the restricted service principal via GRIOT_SERVICE_TOKEN — no deletes, no invites, workspace-scoped. MCP-tool path: external client → MCP server → API (GRIOT_SERVICE_TOKEN). In-app Copilot path: proposal-only — web app executes on user approval."
 
-Style: green Y cells, red N cells, clear column headers, one page.
+Style: green Y cells, red N cells, yellow P cells (propose-only), clear column headers, ai-agent column with dashed border, one page.
 ```
 
 ### Refine
@@ -63,6 +70,9 @@ Style: green Y cells, red N cells, clear column headers, one page.
 ## Definition of Done
 
 - [ ] Matrix matches `backend/project-kit/context/api-surface.md` + auth design
-- [ ] Owner/Admin/Member/ai-agent all present
-- [ ] 404-not-403 + propose-only notes included
+- [ ] Owner/Admin/Member/ai-agent all present with split rows for MCP-tool path vs in-app Copilot path
+- [ ] ai-agent column uses dashed border; propose-only cells are yellow (P), not green
+- [ ] MCP external tool access row: ai-agent = ❌ (executor, not caller) — no conflict with other rows
+- [ ] Two-path annotation present: MCP-tool path (executor route + token) vs in-app Copilot path (propose-only, user executes)
+- [ ] 404-not-403 + propose-only + GRIOT_SERVICE_TOKEN scope notes in footer
 - [ ] Approved → PNG → `project-kit/diagrams/architecture/auth-permissions-matrix.png`

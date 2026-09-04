@@ -9,7 +9,7 @@
 - **Web Copilot panel** (app shell right rail) — streams answers + renders approval cards; mutations approved → app calls REST itself.
 - **AI Agents (Trigger.dev v3)** — `griotCopilot` agent + scheduled tasks (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`); streaming to web via realtime WS.
 - **MCP Server** (`mcp/`) — tools `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`; stdio + Streamable HTTP.
-- **Backend API** — GraphQL surface with `GRIOT_SERVICE_TOKEN` → `ai-agent` principal (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes/invites); HMAC `/api/webhooks/trigger`.
+- **Backend API** — GraphQL surface with `GRIOT_SERVICE_TOKEN` → `ai-agent` principal (ReadWorkspace, CreateTask, **UpdateTaskStatus**, AddComment, CreateNotification — no deletes, no invites; the `update_task_status` MCP tool maps to the `UpdateTaskStatus` Write grant; the `add_comment` MCP tool maps to the `AddComment` Write grant; **`update_task_status` is an explicitly supported MCP tool — `GRIOT_SERVICE_TOKEN` MUST carry the `UpdateTaskStatus` scope or the mutation will be rejected 403**; in-app Copilot writes remain propose-only and execute as the user via REST after approval); HMAC `/api/webhooks/trigger`.
 - **SQL Server** — source of truth; **AI never touches directly**.
 - **External AI clients** — Claude Desktop / Cursor / Cline / any MCP client.
 - **ActivityLogs/AuditLogs** — the AI audit trail (every tool call).
@@ -33,7 +33,7 @@ COMPONENTS:
 - Left group "WEB": box "Web Copilot panel (app-shell right rail, chat UI)"; box "External AI clients (Claude Desktop / Cursor / Cline)".
 - Center group "ai/ (Trigger.dev v3)": box "griotCopilot agent" + box "scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder"; small box "token budget (Redis)" attached.
 - Lower-left group "mcp/": box "Griot MCP server" listing the 9 tools: list_projects, list_boards, get_board, get_task, create_task, update_task_status, add_comment, get_activity_feed, summarize_project.
-- Right group "backend": box "API — GraphQL + /api/webhooks/trigger" with badges "GRIOT_SERVICE_TOKEN → ai-agent principal (no deletes/invites)" and "HMAC X-Trigger-Signature".
+- Right group "backend": box "API — GraphQL + /api/webhooks/trigger" with badges "GRIOT_SERVICE_TOKEN → ai-agent principal: ReadWorkspace, CreateTask, UpdateTaskStatus, AddComment, CreateNotification (no deletes, no invites)" and "HMAC X-Trigger-Signature". Note: update_task_status is a fully supported MCP tool — UpdateTaskStatus is an explicit Write grant in the token scope.
 - Far right: box "SQL Server 2022 (source of truth)" with a BIG RED X annotation "AI NEVER writes to SQL Server directly — every read/write through the API".
 
 ARROWS (label each):

@@ -6,9 +6,9 @@
 
 ## 1. States & allowed transitions (the contract)
 
-- **Backlog** → Todo · Delete(archived)
-- **Todo** → Backlog · InProgress · Done(stretch) · Delete
-- **InProgress** → Todo (reopen) · InReview · Done · Blocked→Todo (no Blocked state in v1 — use InReview+pinned note) 
+- **Backlog** → Todo · Delete(archived) — **Backlog→InProgress is NOT allowed** (must move to Todo first)
+- **Todo** → Backlog · InProgress · Done · Delete
+- **InProgress** → Todo (reopen) · InReview · Delete — **NO direct InProgress→Done; must pass through InReview** (v1 strict)
 - **InReview** → InProgress (request changes) · Done · Todo (per product decision: yes)
 - **Done** → **Todo** (reopen allowed — decided YES) · Archive
 - Any state → **Deleted** (soft delete: `IsDeleted` or AuditLog tombstone)
@@ -17,13 +17,13 @@
 
 | From \ To | Backlog | Todo | InProgress | InReview | Done | Deleted |
 |---|---|---|---|---|---|---|
-| Backlog | – | ✅ | ✅ | – | – | ✅ |
+| Backlog | – | ✅ | – | – | – | ✅ |
 | Todo | ✅ | – | ✅ | – | ✅ | ✅ |
-| InProgress | – | ✅ | – | ✅ | ✅ | ✅ |
+| InProgress | – | ✅ | – | ✅ | – | ✅ |
 | InReview | – | ✅ | ✅ | – | ✅ | ✅ |
 | Done | – | ✅ | – | – | – | ✅ |
 
-> Note: Done → Todo (reopen) is allowed (product decided). InProgress → Done is allowed only via InReview (no direct Done skip) — decided for v1 keep strict.
+> Note: Done → Todo (reopen) is allowed (product decided). **InProgress → Done direct is NOT allowed** — tasks must pass through InReview before Done (v1 strict; enforced by TaskService 409). **Backlog → InProgress direct is NOT allowed** — tasks must move to Todo first.
 
 ## 2. The prompt (single, extensive — no length limit)
 
@@ -32,7 +32,7 @@ Paste the full prompt below into Figma Make. It draws the entire state machine +
 ```text
 UML state machine diagram: Griot TaskItem status. States as rounded rects: Backlog (entry, initial state with a filled-dot arrow), Todo, InProgress, InReview, Done, Deleted (gray, dashed border).
 
-COLORS (must match the enum severity map): InProgress = blue, InReview = amber, Done = green, Backlog/Todo = neutral, Deleted = gray.
+COLORS (must match the enum severity map): InProgress = blue, InReview = amber, Done = green, Backlog = neutral, Todo = neutral (both neutral but distinct states), Deleted = gray.
 
 LEGAL TRANSITIONS (draw each with a label on the edge):
 - Backlog → Todo
@@ -50,13 +50,14 @@ LEGAL TRANSITIONS (draw each with a label on the edge):
 - Done → Todo (label "reopen — product decision: YES")
 - Any state → Deleted (soft delete / AuditLog tombstone)
 
+DO NOT draw a Backlog → InProgress direct edge (must go Backlog→Todo→InProgress).
 DO NOT draw an InProgress → Done direct edge (strict v1: must pass through InReview).
 
 ANNOTATION (validation note, near the matrix):
-"API validation + board UI + mobile picker all enforce EXACTLY this transition set — a move not in this matrix is rejected with 409 by TaskService. 'InProgress→Done' is NOT allowed (must go via InReview). 'Done→Todo' reopen IS allowed. Backend enum TaskStatus, web StatusChip, and mobile picker use the SAME names."
+"API validation + board UI + mobile picker all enforce EXACTLY this transition set — a move not in this matrix is rejected with 409 by TaskService. 'Backlog→InProgress' is NOT allowed (must go via Todo). 'InProgress→Done' is NOT allowed (must go via InReview). 'Done→Todo' reopen IS allowed. Backend enum TaskStatus, web StatusChip, and mobile picker use the SAME names."
 
 Also draw a small TRANSITION MATRIX table (rows FROM, columns TO):
-Backlog→Todo ✅; Todo→Backlog/InProgress/Done ✅; InProgress→Todo/InReview ✅; InReview→InProgress/Done ✅; Done→Todo ✅; all → Deleted ✅.
+Backlog→Todo ✅; Backlog→InProgress ❌ (banned); Todo→Backlog/InProgress/Done ✅; InProgress→Todo/InReview ✅; InProgress→Done ❌ (banned, must via InReview); InReview→InProgress/Done ✅; Done→Todo ✅; all → Deleted ✅.
 ```
 
 ### Refine

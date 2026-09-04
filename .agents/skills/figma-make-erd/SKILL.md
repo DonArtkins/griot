@@ -21,7 +21,7 @@ The approved ERD in that project is the implementation contract for the backend'
 
 ## Process
 
-1. Read `PROMPTS/week-02/02-erd-figma-make-master-prompt.md` — the **single master prompt** with all 16 tables, 5 enums, 19 relationships, indexes, and conventions. **No length limit** — paste it whole.
+1. Read `PROMPTS/week-02/02-erd-figma-make-master-prompt.md` — the **single master prompt** with all 16 tables, 5 enums, 19 relationships, indexes, and conventions. Paste it as a complete unit (see the bounded-capacity note below).
 2. Open the Figma Make project URL above. Paste the master prompt into Make's AI prompt → generate (Plan mode first). One full generation; if the canvas truncates any table, use the short add-on snippet in that file (never re-paste everything).
 3. After generation, iterate with the fix snippets in that file (rename field, recolor module, redraw edge) — small targeted prompts, not a re-invite of the whole spec.
 4. Guard: every entity traces to a Week-1 screen or an observability requirement. Names/values must match `backend/project-kit/context/data-layer.md` and the master prompt exactly.
@@ -29,14 +29,13 @@ The approved ERD in that project is the implementation contract for the backend'
 6. Register in `project-kit/diagrams/README.md` ledger (name, version, date, status=approved).
 7. Only now may `backend/project-kit/feature-specs/*` transcribe entities. Entity/enum names must match the diagram EXACTLY.
 
-## Prompt hygiene (no artificial limits)
+## Prompt hygiene (bounded capacity — not infinite)
 
-- Prompts are **extensive and complete** — no character cap, no forced compaction. Preserve full field lists, relationship labels, and index annotations.
-- Paste the **fence contents only** (the prompt text inside the ``` blocks), never the section headers.
-- If the tool still truncates, add missing tables via short add-on prompts (name the table + "as in my first prompt") rather than omitting columns.
+- **Do NOT claim "no length limit".** Figma Make has bounded prompt capacity (50,000-char limit for URL-prefilled prompts; pasted prompts have dynamic limits). Prompts are written extensive and complete, but capacity is finite — preserve full field lists, relationship labels, and index annotations; trim only filler, never schema.
+- **Bounded completeness gate (before approval):** after generation, compare the canvas against a required checklist: **16 tables, 5 enums, 19 labelled relationships, 13 index stickies, legend, conventions note**. ANY omission → add content with a targeted add-on snippet (name the table/enum/edge + "as in my first prompt") or reject the generation. Never approve an incomplete ERD.
 
 ## Rules
 
-- Enums: `TaskStatus` (Backlog/Todo/InProgress/InReview/Done), `Priority` (Low/Medium/High/Urgent), `WorkspaceRole` (Owner/Admin/Member), `NotificationType` (Mention/Assignment/DueDate/System).
+- Enums (5): `TaskStatus` (Backlog/Todo/InProgress/InReview/Done), `Priority` (Low/Medium/High/Urgent), `WorkspaceRole` (Owner/Admin/Member), `NotificationType` (Mention/Assignment/DueDate/System), `ErrorFixStatus` (Open/Investigating/Fixed/Verified/WonTFix).
 - Entity names: `Users`, `Workspaces`, `WorkspaceMembers`, `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`.
 - A schema change means: update the Make ERD → re-approve → update backend spec 02 + dependent specs + context + progress-trackers together (contract sync gate).

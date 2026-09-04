@@ -26,11 +26,13 @@ The `ai/` npm package initialized and connected to a Trigger.dev project: toolbo
 
 ```bash
 mkdir -p ai && cd ai && nvm use
-npx trigger.dev@latest login
-npx trigger.dev@latest init --project-ref <PROJECT_REF>
+npx trigger.dev@3 login
+npx trigger.dev@3 init --project-ref <PROJECT_REF>
 npm i @trigger.dev/sdk @trigger.dev/react-hooks
 npm i zod
 ```
+
+**Version pinning (mandatory):** Record the exact `trigger.dev` CLI version installed in `ai/package.json` under `devDependencies` (e.g. `"trigger.dev": "3.x.y"`). All subsequent `deploy` and `dev` commands (DEPLOYMENT.md, RUNBOOK-ROLLBACK.md) use the pinned version — never `@latest`. Run `npx trigger.dev --version` after init and commit the result.
 
 ## Files Owned
 

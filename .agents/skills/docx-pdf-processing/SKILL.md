@@ -11,35 +11,47 @@ Goal: give Griot's agents the ability to read/extract content from **DOCX** and 
 
 ## The MCP servers (from the internet / Context7 ecosystem)
 
+> **Pin every third-party executable to a reviewed version.** Never run `npx -y <pkg>` / `uvx <pkg>` unpinned — `latest` resolves differently over time and is a supply-chain risk (CWE-829). Resolve the current reviewed version with the Context7 skill, then pin it in the MCP client config AND in a repo manifest (e.g. `.nvmrc`-adjacent `mcp-version.json` or the system's `package.json` devDependencies) so the lockfile records it.
+
 ### DOCX — `office-word-mcp-server` (Microsoft Word MCP)
 
-> Microsoft maintain a reference MCP server for Word: `microsoft/office-word-mcp-server` (npx package `@microsoft/office-word-mcp-server`). It exposes tools to create/read/edit Word documents over MCP.
+> **Package clarification:** `@microsoft/office-word-mcp-server` is **not a published npm package** — it does not exist on the npm registry. The community reference implementation is `GongRzhe/Office-Word-MCP-Server` (GitHub), which ships as a Python `uvx` tool. An official MCP server for Word documents is `@modelcontextprotocol/server-pdf` (maintained by the MCP core team, `1.7.5`), but that targets PDF. For Word (`.docx`), use the `markitdown-mcp` route (PDF/DOCX → Markdown) or the `OkamiFeng/docx-mcp-server` Python package. **Reviewed version — resolve before use:**
 
-Install (MCP client config, e.g. Claude Desktop / Cline):
+Reviewed versions (re-resolve before each project; record in `mcp-versions.json`):
+- `markitdown-mcp` (PyPI/uvx, Microsoft): **`0.0.1a4`** (pre-release; latest as of 2026-09-04 — re-check on each use)
+- `@modelcontextprotocol/server-pdf` (npm, MCP core): **`1.7.5`**
+
+Install (MCP client config, e.g. Claude Desktop / Cline) — **pin the version**:
 
 ```json
-{ "mcpServers": { "word": { "command": "npx", "args": ["-y", "@microsoft/office-word-mcp-server"] } } }
+{ "mcpServers": { "word": { "command": "uvx", "args": ["markitdown-mcp@0.0.1a4"] } } }
 ```
 
-Typical tools exposed: create/edit/read a Word document, insert paragraphs, tables, etc.
+Typical tools exposed: `convert_to_markdown(uri)` — converts DOCX, PDF, XLSX, PPTX, HTML to Markdown over MCP.
 
 ### PDF — community PDF MCP servers (several options)
 
-1. **`markitdown`** (Microsoft) — converts PDF/DOCX/XLSX/PPTX to Markdown. Great for turning research PDFs into readable markdown.
+1. **`markitdown`** (Microsoft) — converts PDF/DOCX/XLSX/PPTX to Markdown. Great for turning research PDFs into readable markdown. **Pin the version** (reviewed: `0.0.1a4`):
    ```json
-   { "mcpServers": { "markitdown": { "command": "uvx", "args": ["markitdown-mcp"] } } }
+   { "mcpServers": { "markitdown": { "command": "uvx", "args": ["markitdown-mcp@0.0.1a4"] } } }
    ```
-2. **`pdf-parse`** (pure text extraction) — `npx -y pdf-parse-mcp` or `npx @anhthang/pdf-mcp`.
-3. **`capacity/mcp-server-pdf`** (Docker) — containerized PDF tools (extract text/pages, OCR).
+2. **`@modelcontextprotocol/server-pdf`** (MCP core, npm) — official MCP PDF server (extract text/pages). **Pin the version** (reviewed: `1.7.5`):
+   ```json
+   { "mcpServers": { "pdf": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-pdf@1.7.5"] } } }
+   ```
+3. **`capacity/mcp-server-pdf`** (Docker) — containerized PDF tools (extract text/pages, OCR); pin the image tag `capacity/mcp-server-pdf:<reviewed-tag>`.
 4. **`mcp-server-browser`/general** — for scraping manuscripts (not needed here).
 
-### How to "install from Context7"
-- Use the Context7 skill to verify the CURRENT package/tool names + transport before wiring (these packages move); e.g.
+> **Note on `pdf-parse-mcp`:** The package `pdf-parse-mcp` (previously referenced here) does **not exist** as a published npm package. Use `@modelcontextprotocol/server-pdf` instead, or `markitdown-mcp` for combined PDF+DOCX support.
+
+### How to re-resolve versions (with Context7)
+- Use the Context7 skill to verify the CURRENT package/tool names + the **reviewed pinned version** before wiring (these packages move); e.g.
   ```bash
-  npx ctx7 library "markitdown" "mcp server install"
-  npx ctx7 library "office word mcp" "install"
+  npx ctx7@0.5.9 library "markitdown" "mcp server install version"
+  npx ctx7@0.5.9 library "modelcontextprotocol server pdf" "install version"
   ```
-- The pattern is the same for all: pick the server that fits the file type, add its `command`/`args` to the MCP client config, restart the client, and the tools appear.
+- The pattern is the same for all: pick the server that fits the file type, add its `command`/`args` (with the exact pinned version) to the MCP client config, restart the client, and the tools appear.
+- Record the resolved version in the feature spec (`Log the tool version used` rule below) **and** in `mcp-versions.json` at repo root.
 
 ## When Griot's agents use this
 
