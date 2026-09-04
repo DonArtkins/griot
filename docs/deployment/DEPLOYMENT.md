@@ -5,9 +5,9 @@
 | App | Artifact | Host | Deploy | Rollback |
 |---|---|---|---|---|
 | web | Vite `dist` | Vercel (Vite preset) | GitHub → Vercel import → env → deploy | Vercel promote previous deployment |
-| backend | Docker image (port 8080) | Railway | Git push + release command `dotnet ef database update` | Railway rollback previous deploy |
+| backend | Docker image (port 8080) | Railway | Git push + release command (see Migrations rule) | Railway rollback previous deploy (see RUNBOOK-ROLLBACK.md) |
 | mcp | Docker image (Streamable HTTP 3001) | Railway | separate service | Railway rollback |
-| ai | Trigger.dev deploy | Trigger cloud | `npx trigger.dev@latest deploy` | Deactivate task / redeploy |
+| ai | Trigger.dev deploy | Trigger cloud | `npx trigger.dev@3 deploy` (version pinned in `ai/package.json` devDependencies — see `ai/project-kit/feature-specs/01-trigger-setup.md`) | Deactivate task / redeploy |
 | mobile | APK/AAB | CI artifact → Play/APK | Docker-pinned Flutter build | install previous APK |
 
 ## Env matrix (per app)
@@ -24,6 +24,13 @@
 ## Migrations rule
 
 EF migrations run as the **Railway release command** (never a local-first assumption). A failing release blocks promote.
+
+**Critical**: All schema migrations must be expand/contract compatible to support application rollback without database rollback:
+- **Expand phase**: Add new columns/tables as nullable; old code ignores them, new code uses them.
+- **Contract phase**: Remove old columns/tables only after all deployments use the new schema.
+- Single-release breaking changes (column drop, type change, NOT NULL on existing column) require coordinated blue-green deployment or maintenance window.
+- Release command: `dotnet ef database update` (applies forward migrations only).
+- See `docs/planning/RUNBOOK-ROLLBACK.md` for tested database recovery procedure (backup restore, RPO checks).
 
 ## Verify after any deploy
 

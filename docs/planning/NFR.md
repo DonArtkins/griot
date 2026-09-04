@@ -6,22 +6,29 @@
 
 ## 1. Expected load
 
-- **Users**: ~100–300 DAU at cohort/demo scale; up to ~1,500 concurrent supported by design.
-- **Throughput**: peak ~10–30 req/s (cohort), sustained design goal ≥ 100 req/s across web+mobile+mcp.
+- **Users**: ~100–300 DAU at cohort/demo scale; **target**: up to ~1,500 concurrent by design (unverified until reproducible k6 load evidence exists — see CAPACITY-PLAN.md).
+- **Throughput**: peak ~10–30 req/s (cohort), **target** sustained design goal ≥ 100 req/s across web+mobile+mcp (to be validated by k6 baseline in QE week).
 
 ## 2. Latency budget (per hot path)
 
-| Endpoint | p95 target | Notes |
-|---|---|---|
-| `GET /api/dashboard/summary` | < 500 ms | proc single-round-trip |
-| `GET /graphql { board(id) }` | < 500 ms | DataLoader; no N+1 |
-| `POST /api/auth/login` | < 300 ms | Argon2 is intentionally slow; budget hash config |
-| `POST /api/auth/refresh` | < 200 ms | rotation + Redis |
-| `POST /api/tasks` | < 400 ms | transaction + audit |
-| `PATCH /api/tasks/bulk-status` | < 800 ms | TVP proc, atomic |
-| Web first paint (LCP) | < 2.5 s | Public shell; Lighthouse gate |
-| Web CLS | < 0.1 | layout stability |
-| Copilot first token (stream) | < 2 s | Trigger realtime; LLM latency not blocking UI |
+| Endpoint | p95 target (baseline) | Phase 1 optimization | Phase 2 optimization | Notes |
+|---|---|---|---|
+| `GET /api/dashboard/summary` | < 500 ms | **< 100 ms** (Redis 60s cache) | — | proc single-round-trip → cached |
+| `GET /graphql { board(id) }` | < 500 ms | **< 200 ms** (DataLoader) | **< 100 ms** (+ Redis cache + indexes) | DataLoader prevents N+1 (101 queries → 3) |
+| `POST /api/auth/login` | < 300 ms | — | — | Argon2 is intentionally slow; budget hash config |
+| `POST /api/auth/refresh` | < 200 ms | — | — | rotation + Redis |
+| `POST /api/tasks` | < 400 ms | — | — | transaction + audit |
+| `PATCH /api/tasks/bulk-status` | < 800 ms | — | — | TVP proc, atomic |
+| `POST /api/tasks/{id}/attachments` | < 2 s | **< 1.5 s** (Vercel Blob) | — | 25 MB limit, Vercel CDN delivery |
+| Web first paint (LCP) | < 2.5 s | — | **< 2 s** (code splitting) | Public shell; Lighthouse gate |
+| Web CLS | < 0.1 | — | — | layout stability |
+| Copilot first token (stream) | < 2 s | — | — | Trigger realtime; LLM latency not blocking UI |
+
+**Impact summary:**
+- **Phase 1 (production blockers):** Dashboard 80% faster (400ms → 100ms), board reads 33% faster (300ms → 200ms), attachments now production-ready.
+- **Phase 2 (conditional):** Board reads 50% faster again (200ms → 100ms) via Redis response caching + covering indexes.
+
+See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full optimization roadmap and measurement strategy.
 
 ## 3. Availability target
 
@@ -39,7 +46,7 @@
 
 - Auth flows must pass the **OWASP review** in Week 6 — see `SECURITY.md`.
 - All writes audited (AuditLogs) + activity feed (ActivityLogs).
-- Rate limits: login 5/min per IP+email (sliding window, Redis); GraphQL query-cost guard.
+- Rate limits: login 5/min per IP+email (sliding window, Redis); GraphQL query-cost guard + depth limit + timeouts.
 - No secrets in code/artifacts; `.env.example` only.
 - Dependency audit gates in CI (no critical/high CVEs).
 
@@ -61,7 +68,10 @@
 
 ## 9. Mobile
 
-- Offline-tolerant: read from last cache; writes queue on retry (v1: minimal; clear on failure).
+- Offline-tolerant: read from last cache; writes queue on retry (v1: minimal).
+  - **Persistence**: queued writes persist until the operation succeeds or the user explicitly discards them — writes are never silently cleared on failure.
+  - **Idempotency**: each queued write carries a client-generated `idempotencyKey` (UUID v4); the backend deduplicates on this key so replayed requests are safe.
+  - **Conflict handling**: if the server returns a conflict (e.g. task moved by another user while offline), the client surfaces a resolution prompt — the user chooses to keep their version, accept the server version, or discard their queued write.
 - Battery-aware: no always-on socket; refresh-on-focus + pull-to-refresh.
 
 ---

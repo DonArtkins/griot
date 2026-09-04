@@ -6,7 +6,7 @@ Thanks for wanting to contribute to **Griot** (GTP 2026 Bootcamp capstone). This
 
 Everything is grouped by system, and each system has feature specs numbered from `01`. Branches follow the **same coding standard**:
 
-```
+```text
 feature/<system>/<NN>-<slug>
 ```
 
@@ -30,7 +30,7 @@ Rules:
 
 We use [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 feat(backend): add EF Core InitialCreate migration
 fix(web): correct silent-refresh interceptor retry
 docs(planning): add capacity plan + NFR
@@ -42,7 +42,7 @@ chore(infra): pin Docker base images
 1. Check `.agents/skills/` + the system's `.agents/skills/` for the relevant `SKILL.md` and follow it.
 2. Read the current **feature spec** (`<system>/project-kit/feature-specs/NN-*.md`) + its context.
 3. Implement in scope only; write tests; run the system's verification gates.
-4. Update contracts (context files, future specs, root `AGENTS.md`, progress-tracker) **in the same branch**.
+4. Update contracts (**the owning feature spec**, **all dependent feature specs** that reference it, **docs/** for cross-system contracts, context files, root `AGENTS.md`, progress-tracker) **in the same branch** — never leave a system describing a stale contract (Rule 0 hard gate).
 5. Commit + push; open a PR; fix review findings; the human merges.
 
 ## Definition of done (a PR is not done until…)

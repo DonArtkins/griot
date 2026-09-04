@@ -39,24 +39,41 @@ Full diagram source: `PROMPTS/week-02/01-database-schema-erd-figma-make.md` + `0
 
 ## 4. Indexes (from the ERD + Lyncxs query-shape discipline)
 
+### Baseline indexes (v1 — shipped with schema)
 - Every FK non-clustered.
 - `TaskItems(ColumnId, Position)` — board read + drag hot path.
 - `TaskItems(AssigneeId)`, `TaskItems(DueDate)` — my tasks + reminder agent.
 - `ActivityLogs(WorkspaceId, CreatedAt DESC)` — feed + summarize_project.
 - `Notifications(UserId, ReadAt)` — unread count.
 - `RefreshTokens(UserId)`, `RefreshTokens(TokenHash)` UQ — rotation lookup.
-- `Invites(Token)` UQ; `Invites(WorkspaceId, Email)` — no duplicate pending.
+- `Invites(Token)` UQ; `Invites(WorkspaceId, Email) WHERE Status = 'Pending'` filtered UQ — no duplicate pending invites.
 - `ApiLogs(RequestId)` UQ; `ApiLogs(UserId, CreatedAt)`; `ApiLogs(Path)`.
 - `ErrorLogs(FixStatus)` partial; `ErrorLogs(FixedAt)` pruning.
 - `AuditLogs(ActorId)`, `AuditLogs(ActivityId)`.
 - `Users.Email` UQ, `Workspaces.Slug` UQ.
 
+### Phase 2 optimization indexes (add post-k6 baseline if p95 >500ms)
+- **`TaskItems(BoardId, ColumnId, Position) INCLUDE (Title, Status, AssigneeId, DueDate)`** — covering index for board reads; eliminates key lookups; ~200ms → <100ms p95 improvement.
+- **`ActivityLogs(CreatedAt DESC)`** — partition-ready for monthly pruning; supports time-range queries for observability.
+- **`ApiLogs(CreatedAt DESC)`** — partition-ready; supports p95 latency analysis queries.
+- **`ErrorLogs(FixStatus, CreatedAt)`** — filtered scans for open/investigating errors; error dashboard queries.
+
+**Decision gate:** Add Phase 2 indexes only after k6 load tests prove p95 board reads exceed 500ms target under sustained load (500 concurrent users, 5 req/s/user for 10 min). See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` §3.
+
 ## 5. Stored procedures (Dapper hot paths)
 
 - `usp_BulkUpdateTaskStatus(@WorkspaceId, @TaskIds TVP, @Status)` — atomic bulk status update (transaction), `SYSUTCDATETIME()` on Update.
-- `usp_GetDashboardSummary(@workspaceId)` — one-round-trip dashboard (counts, urgent-open, activity head).
+- `usp_GetDashboardSummary(@workspaceId)` — one-round-trip dashboard (counts, urgent-open, activity head). **Phase 1 optimization:** cached in Redis with 60s TTL (p95 400ms → 100ms).
 
 Parametrized; `NOCOUNT ON`; idempotent file creation under `Sql/`.
+
+### Read replica strategy (Phase 2 — deferred)
+- **Trigger:** DAU >2–3k or p95 board reads >500ms despite indexes.
+- **Implementation:** Railway SQL Server readable secondary or Azure SQL geo-replica.
+- **Routing:** EF Core read-only contexts point to replica connection string; writes stay on primary.
+- **Benefit:** 10× read throughput; removes single-reader ceiling.
+- **Cost:** ~$50–200/month (Railway) or ~$100–500/month (Azure SQL Business Critical).
+- **Decision gate:** Add only after k6 evidence + Phase 2 indexes prove insufficient. See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` §3.2.
 
 ## 6. Relationships & cardinality map
 

@@ -20,73 +20,120 @@ AuthController → AuthService: LoginAsync(dto)
 AuthService → Users(DB): find by email
 AuthService: Argon2 verify hash
 AuthService: generate access JWT (15-min, sub/wid) + opaque refresh (256-bit)
-AuthService → RefreshTokens(DB): store SHA-256 hash (rotation chain empty)
+AuthService: derive FamilyId = new GUID (root of a new rotation chain)
+AuthService → RefreshTokens(DB): store { TokenHash, FamilyId, UserId,
+    ReplacedByTokenId=NULL, ExpiresAt }
 AuthService → Redis: record session + rate-limit window
 AuthService → AuthController: { accessToken, refreshToken, user }
-AuthController → User: 200 { accessToken, refreshToken }
+AuthController → User: 200 { accessToken, user }
+    [web: refreshToken in Set-Cookie httpOnly Secure SameSite=Strict
+     mobile/Postman: JSON body { refreshToken }]
 ```
 
 ## 3. The happy path (refresh rotation)
 
 ```
-User → AuthController: POST /api/auth/refresh { refreshToken }
+User → AuthController: POST /api/auth/refresh
+    [web: httpOnly cookie | mobile: secure storage | Postman: JSON body { refreshToken }]
 AuthController → AuthService: RefreshAsync(token)
-AuthService → RefreshTokens(DB): load by TokenHash
-alt token valid + not revoked + not expired
-    AuthService: revoke old row; insert new hash (ReplacedByTokenId=old.Id)
+AuthService → RefreshTokens(DB): BEGIN TRANSACTION
+    DECLARE @foundId uniqueidentifier, @familyId uniqueidentifier, @userId uniqueidentifier
+    SELECT @foundId = Id, @familyId = FamilyId, @userId = UserId
+        FROM RefreshTokens WHERE TokenHash = @hash AND RevokedAt IS NULL
+    IF @foundId IS NULL
+        → REPLAY detected (not found OR already revoked) → ROLLBACK, revoke family (see §4)
+    UPDATE RefreshTokens SET RevokedAt = SYSUTCDATETIME(), ReplacedByTokenId = @newId
+        WHERE Id = @foundId AND RevokedAt IS NULL   -- atomic guard: only one caller succeeds
+    IF @@ROWCOUNT = 0
+        → race lost (another caller revoked first) → REPLAY path
+    INSERT RefreshTokens (Id = @newId, TokenHash = @newHash, FamilyId = @familyId,
+        UserId = @userId, ReplacedByTokenId = NULL, ExpiresAt = @exp, CreatedAt = SYSUTCDATETIME())
+    COMMIT
+alt row found + RevokedAt IS NULL (within transaction)
     AuthService: issue new access JWT
     AuthService → Redis: update session
-    AuthController → User: 200 { new accessToken, new refreshToken }
-else invalid/revoked/expired
-    AuthService: if token was already rotated → REVOKE ENTIRE FAMILY (replay!)
+    AuthController → User: 200 { new accessToken }
+        [web: new refresh in Set-Cookie httpOnly; mobile: JSON { refreshToken }; Postman: JSON { refreshToken }]
+else row not found OR RevokedAt already set
+    AuthService: REVOKE ENTIRE FAMILY (same FamilyId) — replay detected
     AuthController → User: 401 (clear session)
 ```
+
+> **Transport rule** (aligned with `SECURITY.md`): The refresh token is *never* returned in a `localStorage`-accessible field on web. Web clients receive it via `Set-Cookie: refreshToken=…; HttpOnly; Secure; SameSite=Strict`. Mobile clients receive it in the JSON response body and store it in platform secure storage (Android Keystore / iOS Secure Enclave). Postman / API testing uses the JSON body field `refreshToken` directly.
+
+> **Transaction invariant**: The `WHERE RevokedAt IS NULL` predicate inside the transaction is the sole gate. Any path that does *not* match this predicate — whether the row is missing entirely or already has `RevokedAt` set — is treated identically as a replay attempt and triggers full family revocation. There is no "soft miss" case.
 
 ## 4. The failure branch (replay race — the Week-6 OWASP case)
 
 ```
-Attacker → AuthController: POST /api/auth/refresh { stolenRefresh }
-AuthService → RefreshTokens(DB): hash not found (already rotated) OR found but ReplacedByTokenId set
-AuthService: revoke all rows for family (same UserId + chain)
-AuthController → User: 401
-Note: the legitimate client's NEXT refresh also fails → must re-login. This is DESIRED: rotation is one-time-use.
+Attacker → AuthController: POST /api/auth/refresh
+    [presents stolenRefresh via cookie or body]
+AuthService → RefreshTokens(DB): BEGIN TRANSACTION
+    SELECT ... WHERE TokenHash = @hash AND RevokedAt IS NULL
+    → row NOT found (already rotated) OR found with RevokedAt set
+    → REPLAY detected
+    UPDATE RefreshTokens SET RevokedAt = NOW()
+        WHERE FamilyId = @familyId        -- scoped revocation: entire family only
+    COMMIT
+AuthController → Attacker: 401
+Note: the legitimate client's NEXT refresh also fails (same FamilyId revoked)
+      → must re-login. This is DESIRED: FamilyId scopes the blast radius; rotation is one-time-use.
 ```
+
+> **FamilyId invariant**: Every row in `RefreshTokens` carries the `FamilyId` of the issuance event. On replay the revocation `UPDATE` targets only `WHERE FamilyId = @familyId` — it does not revoke tokens in other families (other sessions) for the same user. This bounds the impact to the compromised session while still invalidating every token that traces back to the leaked root.
+
+> **RefreshTokens schema** (from ERD): `Id` (PK), `TokenHash` (SHA-256 of opaque token), `FamilyId` (GUID, assigned at login, propagated on rotation), `UserId` (FK), `ReplacedByTokenId` (FK, self-ref), `ExpiresAt`, `RevokedAt`, `CreatedAt`. Index on `(TokenHash, RevokedAt)` for `WHERE TokenHash = @hash AND RevokedAt IS NULL` query. Index on `FamilyId` for family-scoped revocation on replay.
 
 ## 5. The prompt (single, extensive — no length limit)
 
 Paste the full prompt below into Figma Make. It draws all three sequence frames in one pass.
 
 ```text
-UML sequence diagram: Griot login + refresh rotation. Lifelines left→right: User/Client, AuthController (/api/auth/*), AuthService (Griot.Application), SQL Server (Users/RefreshTokens), Redis. Use three labeled frames.
+UML sequence diagram: Griot login + refresh rotation. Lifelines left→right: User/Client,
+AuthController (/api/auth/*), AuthService (Griot.Application),
+SQL Server (Users/RefreshTokens), Redis. Use three labeled frames.
 
 FRAME 1 — LOGIN (happy path):
 User → AuthController: POST /api/auth/login {email, password}
 AuthController → AuthService: LoginAsync(dto)
 AuthService → SQL Server: find user by email
-AuthService: Argon2 verify hash
-AuthService: generate access JWT (15-min, claims sub/wid) + opaque refresh (256-bit)
-AuthService → SQL Server: store SHA-256 hash (rotation chain empty)
+AuthService [self]: Argon2 verify hash (no timing leak)
+AuthService [self]: generate access JWT (15-min, claims sub/wid) + opaque refresh (256-bit)
+AuthService [self]: FamilyId = new GUID (root of rotation chain)
+AuthService → SQL Server: INSERT RefreshTokens
+    { TokenHash=SHA256(token), FamilyId, UserId, ReplacedByTokenId=NULL, ExpiresAt }
 AuthService → Redis: record session + rate-limit window
-AuthController → User: 200 { accessToken, refreshToken, user }
+AuthController → User: 200 { accessToken, user }
+Note over AuthController,User: Transport: web → Set-Cookie refreshToken HttpOnly Secure SameSite=Strict
+    mobile/Postman → JSON body { refreshToken }
 
 FRAME 2 — REFRESH (happy path):
-User → AuthController: POST /api/auth/refresh { refreshToken }
+User → AuthController: POST /api/auth/refresh
+Note over User,AuthController: web: httpOnly cookie | mobile/Postman: JSON body { refreshToken }
 AuthController → AuthService: RefreshAsync(token)
-AuthService → SQL Server: load by TokenHash
-alt token valid + not revoked + not expired
-    AuthService: revoke old row; insert new hash (ReplacedByTokenId = old.Id)
-    AuthService: issue new access JWT
-    AuthService → Redis: update session
-    AuthController → User: 200 { new accessToken, new refreshToken }
-else invalid/revoked/expired
-    AuthController → User: 401 (clear session)
+AuthService → SQL Server: BEGIN TRANSACTION
+    SELECT ... WHERE TokenHash = @hash AND RevokedAt IS NULL
+AuthService [self]: if no row → treat as REPLAY → GOTO FRAME 3 path
+    UPDATE RefreshTokens SET RevokedAt=NOW(), ReplacedByTokenId=@newId
+        WHERE Id=@foundId AND RevokedAt IS NULL  [race guard]
+    INSERT RefreshTokens { TokenHash=newHash, FamilyId=same, UserId, ReplacedByTokenId=oldId, ExpiresAt }
+    COMMIT
+AuthService [self]: issue new access JWT
+AuthService → Redis: update session
+AuthController → User: 200 { accessToken }
+Note over AuthController,User: Transport: web → Set-Cookie refreshToken HttpOnly Secure SameSite=Strict
+    mobile/Postman → JSON body { refreshToken }
 
 FRAME 3 — REPLAY RACE (failure branch, red border):
-Attacker (separate lifeline) → AuthController: POST /api/auth/refresh { stolenRefresh }
-AuthService → SQL Server: hash not found (already rotated) OR found but ReplacedByTokenId set
-AuthService: REVOKE ALL ROWS for the family (same UserId chain)
-AuthController → User: 401
-Annotation: "Any reuse of an already-rotated refresh token revokes the WHOLE family (OWASP case). Legit client must re-login — desired: rotation is one-time-use."
+Attacker [separate lifeline] → AuthController: POST /api/auth/refresh (stolen token)
+AuthService → SQL Server: BEGIN TRANSACTION
+    SELECT ... WHERE TokenHash = @hash AND RevokedAt IS NULL → NOT FOUND or already revoked
+    UPDATE RefreshTokens SET RevokedAt=NOW() WHERE FamilyId=@familyId  [scoped to family only]
+    COMMIT
+AuthController → Attacker: 401
+Annotation: "Miss on WHERE RevokedAt IS NULL = replay. FamilyId scopes revocation to the
+    compromised session — other user sessions are unaffected. Legitimate client's next
+    refresh also 401s → must re-login. Desired: rotation is one-time-use. (OWASP A07)"
 ```
 
 ### Refine
@@ -94,12 +141,17 @@ Annotation: "Any reuse of an already-rotated refresh token revokes the WHOLE fam
 - "Add a self-arrow on AuthService: Argon2 verify (no timing leak)."
 - "Rename the DB lifeline to 'SQL Server: Users + RefreshTokens'."
 - "Make the replay-race frame red-bordered."
+- "Annotate the FamilyId field on the INSERT arrow in Frame 1 and 2."
 
 ---
 
 ## Definition of Done
 
 - [ ] Login + refresh + replay-race frames all present
-- [ ] Rotation (revoke old → insert new → ReplacedByTokenId) explicit
-- [ ] 401 + family-revoke on reuse; labels match `jwt-argon2-auth` skill
+- [ ] Rotation (revoke old → insert new → ReplacedByTokenId) explicit and inside a single transaction
+- [ ] `FamilyId` column present in `RefreshTokens`; assigned at login; propagated on rotation; used for scoped revocation on replay
+- [ ] `WHERE RevokedAt IS NULL` is the sole gate; a miss (row absent or already revoked) triggers family revocation — no soft-miss path
+- [ ] 401 + family-revoke (`WHERE FamilyId = @familyId`) on replay; other user sessions unaffected
+- [ ] Transport documented on every auth response: web = httpOnly Secure cookie; mobile = JSON body + secure storage; Postman = JSON body
+- [ ] Labels match `jwt-argon2-auth` skill
 - [ ] Approved → PNG → `project-kit/diagrams/architecture/sequence-login-refresh.png`

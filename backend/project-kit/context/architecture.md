@@ -21,8 +21,23 @@ backend/
 |---|---|---|
 | Griot.Api | HTTP: routing, serialization, auth middleware, CORS, GraphQL | business logic |
 | Griot.Application | business rules, orchestration | EF, HTTP, Redis |
-| Griot.Infrastructure | EF Core DbContext, repositories, Dapper, Redis, migrations | business rules |
+| Griot.Infrastructure | EF Core DbContext, repositories, Dapper, Redis, migrations, **blob storage** | business rules |
 | Griot.Domain | entities + enums | references anything |
+
+## Optimization layers (integrated phases)
+
+### Phase 1: Production blockers (ship before launch)
+- **Blob storage service** (`Griot.Infrastructure.BlobStorage`): `IBlobStorageService` interface with Vercel Blob REST API implementation. Injected into `AttachmentService`. See `feature-specs/11-blob-storage-integration.md`.
+- **Dashboard summary caching** (`DashboardService`): Redis cache with 60s TTL. Key: `dashboard:summary:{workspaceId}`. Purge on workspace-level writes.
+- **GraphQL DataLoader** (`Griot.Api/GraphQL/DataLoaders`): `AssigneeDataLoader`, `CommentDataLoader` batch queries per request. Eliminates N+1 (board with 50 tasks: 101 queries → 3 queries).
+- **Pagination middleware** (`Griot.Api/Middleware`): `MaxPageSize = 1,000` validation. Returns 400 if client requests >1k items.
+
+### Phase 2: Post-k6 conditional optimizations
+- **GraphQL response caching** (HotChocolate + Redis): Cache board queries by `(workspaceId, userId, timestamp)` key. Invalidate on writes. Configured via `.AddQueryCachePipeline().AddRedisQueryStorage()`.
+- **Read replica routing** (EF Core contexts): Separate read-only DbContext points to replica connection string. Writes stay on primary. See `docs/database/DATABASE-DESIGN.md` §5.
+
+### Phase 3: Post-bootcamp enhancements
+- **Cloudflare R2 migration** (`IBlobStorageService` implementation swap): S3-compatible API. Zero-egress pricing. See `feature-specs/11-blob-storage-integration.md` §2.3.
 
 ## DI & composition root
 
