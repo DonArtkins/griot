@@ -112,10 +112,23 @@ Add to `backend/Griot.Api/Griot.Api.csproj`:
 <!-- Alternative: Use Vercel Blob REST API directly (no SDK needed) -->
 ```
 
-**Decision:** Use Vercel Blob **REST API** (no SDK dependency) — simpler for .NET:
-- `POST https://blob.vercel-storage.com/{store-id}/put` (upload)
-- `DELETE https://blob.vercel-storage.com/{store-id}?url=...` (delete)
-- Auth: Bearer token from `BLOB_READ_WRITE_TOKEN` env var
+**Decision:** Use Vercel Blob **REST API** via standard HTTP client — documented SDK behavior:
+- **Upload:** `PUT https://{account}.public.blob.vercel-storage.com/{path}` with `x-vercel-blob-token` header
+- **Delete:** `POST https://blob.vercel-storage.com/delete` with JSON body `{ "urls": ["https://..."] }`
+- Auth: Bearer token from `BLOB_READ_WRITE_TOKEN` env var in `x-vercel-blob-token` header or `Authorization: Bearer` header
+
+**Note:** The SDK's `put()` and `del()` functions abstract these endpoints. For .NET, we replicate their behavior:
+```csharp
+// Upload
+var request = new HttpRequestMessage(HttpMethod.Put, $"https://{account}.public.blob.vercel-storage.com/{path}");
+request.Headers.Add("x-vercel-blob-token", token);
+request.Content = new StreamContent(fileStream);
+
+// Delete
+var request = new HttpRequestMessage(HttpMethod.Post, "https://blob.vercel-storage.com/delete");
+request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+request.Content = new StringContent(JsonSerializer.Serialize(new { urls = new[] { blobUrl } }));
+```
 
 **Future (R2 migration):** Add `AWSSDK.S3` NuGet package for S3-compatible API.
 

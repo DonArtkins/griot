@@ -100,34 +100,83 @@ From R&D presentation (`research/Netdata_RD_Presentation.pptx`):
 
 ## 3. Implementation Details
 
-### 3.1 Installation (one-line per Railway node)
+### 3.1 Installation
 
-**Method 1: Kickstart script (recommended for Railway)**
+**Railway Deployment: Docker Sidecar (recommended)**
 
-SSH into each Railway node (or add to Dockerfile):
+Railway deploys from Docker images. Install Netdata as a sidecar container in your Dockerfile or docker-compose.yml, NOT via SSH kickstart (SSH changes are lost on redeploy).
 
-```bash
-# Install Netdata agent
-wget -O /tmp/netdata-kickstart.sh https://get.netdata.cloud/kickstart.sh
-sh /tmp/netdata-kickstart.sh --stable-channel --disable-telemetry
+**Option A: Multi-container Railway service (Dockerfile + docker-compose.yml)**
 
-# Verify installation
-systemctl status netdata
-curl http://localhost:19999/api/v1/info
+```dockerfile
+# backend/Dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "Griot.Api.dll"]
 ```
 
-**Method 2: Docker sidecar (alternative for containerized deployments)**
-
-Add to `docker-compose.yml`:
-
 ```yaml
+# docker-compose.yml (Railway multi-container support)
 services:
+  api:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      - ConnectionStrings__Default=${DATABASE_URL}
+  
   netdata:
-    image: netdata/netdata:latest
+    image: netdata/netdata:v1.46.3  # Pinned version (not :latest)
     container_name: netdata
-    hostname: griot-api-prod  # unique per node
+    hostname: griot-api-railway  # unique per Railway service
     cap_add:
       - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    environment:
+      - NETDATA_CLAIM_TOKEN=${NETDATA_CLAIM_TOKEN}
+      - NETDATA_CLAIM_URL=https://app.netdata.cloud
+    volumes:
+      - netdata_config:/etc/netdata
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+    restart: unless-stopped
+
+volumes:
+  netdata_config:
+  netdata_lib:
+  netdata_cache:
+```
+
+**Option B: Single-container Dockerfile (if Railway doesn't support compose)**
+
+Add Netdata to existing backend Dockerfile:
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+
+# Install Netdata
+RUN apt-get update && apt-get install -y wget && \
+    wget -O /tmp/netdata-kickstart.sh https://get.netdata.cloud/kickstart.sh && \
+    sh /tmp/netdata-kickstart.sh --stable-channel --disable-telemetry --dont-wait && \
+    rm /tmp/netdata-kickstart.sh
+
+COPY --from=build /app/publish .
+
+# Start both Netdata and API
+CMD /usr/sbin/netdata -D && dotnet Griot.Api.dll
+```
+
+**Verification:**
+```bash
+# Check Netdata is running
+curl http://localhost:19999/api/v1/info
+
+# Check claim status
+curl http://localhost:19999/api/v1/info | grep "cloud_base_url"
+```
       - SYS_ADMIN
     security_opt:
       - apparmor:unconfined
@@ -507,18 +556,30 @@ alarm: api_cpu_high
 
 ### 6.3 Incident simulation (Day 2 ops drill)
 
-**Simulate high CPU incident:**
+**⚠️ WARNING: Run ONLY in isolated staging environment. NEVER in production.**
 
-1. SSH into API node → run `stress --cpu 4 --timeout 120s`
-2. Wait for Netdata alert to fire (CPU >80% for >1 min)
-3. Verify Slack notification received within 2 min
-4. Open Netdata Cloud → drill into **Applications** → identify `stress` process
-5. Kill process → verify alert auto-resolves
+These procedures deliberately stress system resources and can cause outages. Railway staging service must be separate from production.
 
-**Simulate slow SQL queries:**
+**Simulate high CPU incident (staging only):**
 
-1. Execute `SELECT * FROM TaskItems WHERE 1=1` (full table scan, no WHERE clause)
-2. Repeat 100 times → monitor Netdata SQL Server collector
+1. **Ensure you're in staging:**
+   ```bash
+   echo $RAILWAY_ENVIRONMENT  # Must output "staging", NOT "production"
+   ```
+2. SSH into staging API node → run `stress --cpu 4 --timeout 120s`
+3. Wait for Netdata alert to fire (CPU >80% for >1 min)
+4. Verify Slack notification received within 2 min
+5. Open Netdata Cloud → drill into **Applications** → identify `stress` process
+6. Kill process → verify alert auto-resolves
+
+**Simulate slow SQL queries (staging only):**
+
+1. **Ensure you're connected to staging database:**
+   ```sql
+   SELECT DB_NAME();  -- Must NOT be production database
+   ```
+2. Execute `SELECT * FROM TaskItems WHERE 1=1` (full table scan, no WHERE clause)
+3. Repeat 100 times → monitor Netdata SQL Server collector
 3. Verify anomaly detection flags abnormal query count spike
 4. Document in `ErrorLogs` → tune alert threshold if false positive
 
