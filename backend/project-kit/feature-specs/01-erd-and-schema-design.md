@@ -33,13 +33,13 @@ The bootcamp's Week-2 deliverable **"Database schema design in Figma"**: an appr
 
 ## Setup / Initialization
 
-No code. Steps: open the Figma Make project → paste PROMPTS §5 into Make's AI (Plan mode) → refine 13 tables + 4 enums + 15 relationships + 7 index notes → approve → export PNG → register in the ledger.
+No code. Steps: open the Figma Make project → paste PROMPTS §5 into Make's AI (Plan mode) → refine 16 tables + 5 enums + 19 relationships + 13 index notes → approve → export PNG → register in the ledger.
 
 ## Implementation Notes
 
-- Entity roster: `Users`, `Workspaces`, `WorkspaceMembers`, `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`.
-- Enums: `TaskStatus`, `Priority`, `WorkspaceRole`, `NotificationType` (values per `backend/project-kit/context/data-layer.md`).
-- Every entity traces to a Week-1 screen. No screen, no entity.
+- Entity roster: `Users`, `Workspaces`, `WorkspaceMembers`, `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`, `ApiLogs`, `ErrorLogs`, `AuditLogs`.
+- Enums: `TaskStatus`, `Priority`, `WorkspaceRole`, `NotificationType`, `ErrorFixStatus` (values per `backend/project-kit/context/data-layer.md`).
+- Every entity traces to a Week-1 screen OR an observability requirement (ApiLogs/ErrorLogs/AuditLogs). No screen + no observability requirement, no entity.
 - Crow's-foot cardinality; module color codes; legend; index sticky notes.
 
 ## Separation of Concerns
@@ -61,7 +61,7 @@ Any SQL, migrations, or entity code (feature 02).
 
 ## Acceptance Criteria
 
-- [ ] Figma Make project contains all 13 tables, 4 enums, 15 relationships, legend, and index notes
+- [ ] Figma Make project contains all 16 tables (13 core + ApiLogs/ErrorLogs/AuditLogs), 5 enums, 19 relationships, legend, and 13 index notes
 - [ ] Names/values match `data-layer.md` exactly
 - [ ] Human-approved; PNG exported to `project-kit/diagrams/erd/griot-erd-v1.0.0.png`
 - [ ] Ledger updated

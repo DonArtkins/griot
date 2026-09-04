@@ -4,7 +4,7 @@
 
 | # | Failure scenario | Blast radius | Mitigation (designed) | Detection |
 |---|---|---|---|---|
-| 1 | **Redis down** | Rate limiting + refresh metadata + token budgets fail; login hammering unprotected | Decide **fail-closed for rate limiting** (deny if Redis unreachable) OR fail-open + circuit-breaker; document choice in auth ADR | `/health` checks Redis ping; alert |
+| 1 | **Redis down** | Rate limiting + refresh metadata + token budgets fail; login hammering unprotected | **Policy: fail-closed for rate limiting** (deny the request if Redis is unreachable — never fail-open). Login/refresh behavior when Redis is unavailable: `POST /api/auth/login` → HTTP 503 (service unavailable, retry later); `POST /api/auth/refresh` → HTTP 503. Both endpoints MUST NOT bypass the rate-limit window; denying early is safer than allowing unlimited auth attempts. Documented in auth ADR. Aligns with `/health` Redis ping (MONITORING.md §1) — the health check will report degraded before these paths are hit in production. | `/health` checks Redis ping; alert |
 | 2 | **Railway cold start (free tier)** | First request after idle is slow (multi-second) | Keep 1 running instance; health-check ping every 60 s (no free-tier spin-down) | uptime ping latency alert |
 | 3 | **Refresh-token race/replay** | Session takeover if a stolen token is reused | Rotation + family-revoke on reuse; integration test (qa) | Watchdog: repeated 401 on refresh → alert |
 | 4 | **N+1 query under load** | Board/dashboard slow at scale | DataLoader for assignee/comments; indexes on FKs; k6 baseline | k6 in CI + dashboard p95 check |
@@ -21,7 +21,7 @@
 | 15 | **GraphQL depth/bomb** | Memory outage | query-cost guard + depth limit + timeouts | 400s/429s logged to ErrorLogs |
 
 ## Top-3 risks to watch day 1
-1. Redis single point (mitigate fail-closed rate limit).
+1. Redis single point — **fail-closed policy in effect**: login + refresh return 503 when Redis is unreachable; rate-limit window is never bypassed (see risk #1 above and MONITORING.md §1).
 2. Railway cold start (keep instance warm + uptime ping).
 3. Refresh replay (covered by test; watch 401 spikes).
 

@@ -16,13 +16,23 @@
 
 ### AI agents (Trigger.dev)
 1. Trigger dashboard → the task/agent → **Deactivate** (stops scheduled runs).
-2. Redeploy the last-good version via `npx trigger.dev@latest deploy` from `ai/`.
+2. Redeploy the last-good version via `npx trigger.dev@3 deploy` from `ai/` (version is pinned in `ai/package.json` devDependencies — use the exact version recorded there, not `@latest`).
 
 ### Mobile
 - APK artifact is immutable per release; rollback = install the previous APK (documented in the release note).
 
 ### Database
-- Migrations run as a **release command**. If a migration fails: Railway **does not** promote the release if the command exits non-zero (verify). For an already-applied bad migration, restore from the last volume snapshot (Railway volume backup) — do NOT re-run forward-only scripts backwards.
+- **Expand/contract migrations**: All schema changes must support application rollback without database rollback. Rolling back the application image does NOT undo applied migrations.
+- **Migration failure**: Railway does not promote the release if the migration command exits non-zero (the deployment is rejected). No manual intervention needed.
+- **Post-deployment schema issue**: If an already-applied migration causes production issues:
+  1. **Application rollback first**: Railway rollback to previous image (works if migration was expand-phase compatible).
+  2. **Database recovery** (coordinated procedure):
+     - Restore from last Railway volume snapshot (point-in-time backup).
+     - Verify Recovery Point Objective (RPO): check `AuditLogs` / `ActivityLogs` for last recorded transaction timestamp vs backup timestamp.
+     - Reapply any lost transactions if within acceptable RPO window, or document data loss.
+     - Do NOT attempt to manually reverse forward-only migrations; use tested backup restore.
+  3. **Communication**: Notify team and users of any data loss or downtime window.
+- **Prevention**: Test migrations in staging environment with production-like data volume before deploying to production.
 
 ## What notices before a user does
 

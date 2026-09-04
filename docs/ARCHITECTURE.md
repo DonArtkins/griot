@@ -71,7 +71,7 @@ _Rule that never changes: **AI (`ai/` + `mcp/`) only talks to the backend API** 
 2. Agent tool-calls → backend GraphQL with `GRIOT_SERVICE_TOKEN` → `ai-agent` principal.
 3. Trivial lookups short-circuit; LLM only where needed; cost cap checked (Redis).
 4. Writes: agent returns a **proposed action** → web renders approval card → user approves → **web app** calls REST → backend writes → caches update. The agent NEVER writes directly.
-5. Every tool call → `ActivityLogs`/`AuditLogs` (traceable runId ↔ payloadHash ↔ audit row).
+5. Every tool call → `ActivityLogs`; state-changing writes also → `AuditLogs` (traceable runId ↔ payloadHash ↔ audit row).
 
 ### 3.3 Scheduled AI (digest/reminders)
 Trigger cron → agent → GraphQL (service token) → backend creates notifications. Durable + idempotent.
@@ -84,8 +84,9 @@ Flutter app → same REST + GraphQL endpoints; refresh token in `flutter_secure_
 
 - **SQL Server 2022** (primary): 16 tables (13 core + `ApiLogs`, `ErrorLogs`, `AuditLogs`) + 5 enums. EF Core 8 (95% CRUD) + Dapper (2 procs). Full design: `docs/database/DATABASE-DESIGN.md`.
 - **PostgreSQL 16** (secondary/test): cohort exercises.
-- **Redis 7**: rate limiting, refresh-token/session metadata, AI token budgets.
-- **Files/attachments**: metadata in SQL Server; objects in a blob store (v1: local/disk or minimal; v2: Cloudinary/S3 — ADR).
+- **Redis 7**: rate limiting, refresh-token/session metadata, AI token budgets. **Optimization phases:** Phase 1 adds dashboard summary caching (60s TTL); Phase 2 adds GraphQL response caching (board queries cached by `workspaceId + userId + timestamp` key, invalidated on writes).
+- **Vercel Blob (v1 — free tier)**: Attachment storage leveraging free Hobby tier (1 GB storage + 10 GB transfer/month included with existing Vercel account). Public blob URLs served via Vercel CDN (512 MB cache limit per blob). **File limits:** 25 MB per file, 100 MB per workspace quota. **Migration path (Phase 3):** Documented migration to Cloudflare R2 when egress >100 GB/month (zero-egress pricing saves ~$50/month per TB vs Vercel's $0.05/GB). Decision rationale: free tier unblocks v1 launch immediately; R2 migration deferred until scale justifies effort.
+- **Netdata monitoring (Phase 1)**: Per-second metrics with anomaly detection on all Railway nodes (API, DB, Redis). Tuned retention (7-day tier-0, 2 GB disk cap per node) prevents disk growth. Free Community tier covers 5 nodes with Slack alerting. See `infra/project-kit/feature-specs/07-netdata-monitoring.md`.
 
 ## 5. Auth & security (defense in depth)
 
@@ -104,10 +105,14 @@ Flutter app → same REST + GraphQL endpoints; refresh token in `flutter_secure_
 
 ## 6. Scaling & capacity (the "how many users + how do I grow" doc)
 
-Full treatment: `docs/planning/CAPACITY-PLAN.md`. Summary:
+Full treatment: `docs/planning/CAPACITY-PLAN.md` + `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md`. Summary:
 
 - **Baseline (current architecture, v1)** comfortably handles **~500–1,500 concurrent users** on Railway Hobby (1–2 backend instances) with p95 < 500 ms, given board-heavy reads and the index strategy. It handles far more with the optimizations below.
 - **Bottlenecks today**: single SQL Server writer, per-process EF contexts, no read replicas, webhooks/poll for fan-out.
+- **Optimization roadmap (3 phases):**
+  - **Phase 1 (production blockers — ship before launch):** Vercel Blob storage, Netdata monitoring, dashboard summary caching (Redis, 60s TTL), GraphQL DataLoader (N+1 prevention), API pagination caps (MaxPageSize = 1,000). Effort: 4–8 days. Impact: unblocks scale, p95 dashboard drops 400ms → 100ms.
+  - **Phase 2 (post-k6 baseline — only if needed):** Missing database indexes (covering + partition-ready), GraphQL response caching (HotChocolate + Redis), read replica (SQL Server secondary). Trigger: p95 board reads >500ms or DAU >2–3k. Effort: 3–5 days.
+  - **Phase 3 (post-bootcamp):** Cloudflare R2 migration (when egress >100 GB/month), Prometheus + Grafana (custom dashboards), mobile offline queue (`sqflite` persistence), web code splitting. Trigger: cost/scale justifies effort.
 - **To scale to 10k+ / millions** (in order of ROI):
   1. Add indexes from the ERD + proc the dashboard (already designed).
   2. Move reads to a **read replica** (SQL Server secondary readable) + cache hot boards in Redis.
@@ -119,8 +124,10 @@ Full treatment: `docs/planning/CAPACITY-PLAN.md`. Summary:
 
 ## 7. Observability & operations
 
-- `ApiLogs`/`ErrorLogs`/`AuditLogs` give request tracing, error lifecycle, and change history (planned pre-implementation).
-- `/health` on the API; uptime ping; Railway/Vercel logs; Week-6/7 k6 + OWASP + monitoring docs (`docs/observability/MONITORING.md`).
+- **Netdata (Phase 1):** Per-second metrics with anomaly detection on all Railway nodes. Local dashboards at `:19999` per node + centralized Netdata Cloud view (free tier: 5 nodes). Tuned retention prevents disk growth (7-day tier-0, 2 GB cap/node). Slack alerting for CPU >80%, RAM >90%, disk >90%, API process down. See `infra/project-kit/feature-specs/07-netdata-monitoring.md`.
+- **Application logging:** `ApiLogs`/`ErrorLogs`/`AuditLogs` give request tracing, error lifecycle, and change history (planned pre-implementation). Railway/Vercel logs for stdout/stderr.
+- **Health checks:** `/health` endpoint (liveness + readiness) checks DB ping + Redis ping. Uptime ping (Better Uptime/UptimeRobot) → 60s polling.
+- **Week-6/7 gates:** k6 load baseline (500 concurrent users, p95 <500ms), OWASP security review, monitoring docs (`docs/observability/MONITORING.md`).
 
 ## 8. Production readiness
 

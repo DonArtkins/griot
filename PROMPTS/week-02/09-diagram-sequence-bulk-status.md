@@ -18,13 +18,16 @@ Client → TaskController: PATCH /api/tasks/bulk-status { workspaceId, taskIds[]
 TaskController → TaskService: BulkUpdateStatusAsync(workspaceId, ids, status)
 TaskService: validate every id belongs to workspace (permissions)
 TaskService → SQL Server: EXEC usp_BulkUpdateTaskStatus @WorkspaceId, @TaskIds (TVP), @Status
-SQL Server (proc): BEGIN TRAN; UPDATE Tasks SET Status=@Status, UpdatedAt=SYSUTCDATETIME() WHERE Id IN (SELECT … TVP); COMMIT
-SQL Server → TaskService: affected rows / ok
-TaskService → SQL Server: INSERT ActivityLogs (bulk update)
-TaskService → SQL Server: INSERT AuditLogs (before/after JSON of moved ids)
-TaskService → Client: 200 { updatedCount, failedIds: [] }
-alt partial failure
-    proc rolls back WHOLE batch → 409/400 with error detail
+SQL Server (proc): BEGIN TRAN
+    UPDATE TaskItems SET Status=@Status, UpdatedAt=SYSUTCDATETIME() WHERE Id IN (SELECT value FROM @TaskIds) AND WorkspaceId=@WorkspaceId
+    DECLARE @affected INT = @@ROWCOUNT
+    DECLARE @expected INT = (SELECT COUNT(DISTINCT value) FROM @TaskIds)
+    IF @affected != @expected THROW 50409, 'Invalid task ID in batch', 1  -- all-or-nothing validation
+    INSERT ActivityLogs (workspace, actor, action, payload)
+    INSERT AuditLogs (actor, entityType, before, after)
+    COMMIT
+SQL Server → TaskService: ok / throw
+TaskService → Client: 200 { updatedCount } OR 409 { error: 'Invalid task ID in batch' }
 ```
 
 ## 3. The prompt (single, extensive — no length limit)
@@ -37,21 +40,26 @@ UML sequence diagram: Griot bulk status update. Lifelines left→right: Client (
 FLOW:
 Client → TaskController: PATCH /api/tasks/bulk-status { workspaceId, taskIds[], status }
 TaskController → TaskService: BulkUpdateStatusAsync(workspaceId, ids, status)
-TaskService: validate every id belongs to the workspace (alt invalid id → early 404/400, no DB call)
+TaskService: validate every id belongs to the workspace
 TaskService → SQL Server: EXEC usp_BulkUpdateTaskStatus @WorkspaceId, @TaskIds (TVP), @Status
 SQL Server (proc):
     BEGIN TRAN
-    UPDATE Tasks SET Status = @Status, UpdatedAt = SYSUTCDATETIME()
+    UPDATE TaskItems SET Status = @Status, UpdatedAt = SYSUTCDATETIME()
     WHERE Id IN (SELECT value FROM @TaskIds) AND WorkspaceId = @WorkspaceId
+    DECLARE @affected INT = @@ROWCOUNT
+    DECLARE @expected INT = (SELECT COUNT(DISTINCT value) FROM @TaskIds)
+    IF @affected != @expected THROW 50409, 'Invalid task ID in batch', 1
+    INSERT INTO ActivityLogs (WorkspaceId, ActorId, Action, EntityType, Payload, CreatedAt)
+    VALUES (@WorkspaceId, @ActorId, 'BulkStatusUpdate', 'TaskItem', @PayloadJson, SYSUTCDATETIME())
+    INSERT INTO AuditLogs (ActorId, Action, EntityType, EntityId, Before, After, CreatedAt)
+    SELECT @ActorId, 'StatusUpdate', 'TaskItem', Id, @BeforeJson, @AfterJson, SYSUTCDATETIME() FROM @TaskIds
     COMMIT
-SQL Server → TaskService: affected row count
-TaskService → SQL Server: INSERT ActivityLogs (bulk update)
-TaskService → SQL Server: INSERT AuditLogs (before/after JSON of moved ids)
-TaskService → TaskController: 200 { updatedCount, failedIds: [] }
+SQL Server → TaskService: ok / throw
+TaskService → TaskController: 200 { updatedCount } OR 409 { error: 'Invalid task ID in batch' }
 
 FAILURE ALT (red):
-Any invalid id or update error → the ENTIRE proc transaction ROLLS BACK → response 409 { failedIds }
-Draw a labeled BRACKET around the proc's BEGIN TRAN / UPDATE / COMMIT: "transaction boundary (all-or-nothing — no half-applied drag)"
+If @affected != @expected → THROW → transaction ROLLS BACK (including UPDATE + all INSERTs) → response 409
+Draw a labeled BRACKET around BEGIN TRAN to COMMIT: "atomic unit: status update + activity logs + audit logs"
 
 ANNOTATION box:
 "Atomicity contract: usp_BulkUpdateTaskStatus is a single transaction; if ANY id in the TVP is invalid, the ENTIRE batch rolls back. The service returns 409 with {failedIds}. Web drag-drop + mobile picker both rely on this — never a half-applied status."
