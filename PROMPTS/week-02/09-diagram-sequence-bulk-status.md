@@ -62,7 +62,7 @@ If @affected != @expected → THROW → transaction ROLLS BACK (including UPDATE
 Draw a labeled BRACKET around BEGIN TRAN to COMMIT: "atomic unit: status update + activity logs + audit logs"
 
 ANNOTATION box:
-"Atomicity contract: usp_BulkUpdateTaskStatus is a single transaction; if ANY id in the TVP is invalid, the ENTIRE batch rolls back. The service returns 409 with {failedIds}. Web drag-drop + mobile picker both rely on this — never a half-applied status."
+"Atomicity contract: usp_BulkUpdateTaskStatus is a single transaction; if ANY id in the TVP is invalid, the ENTIRE batch rolls back. The service returns 409 { error: 'Invalid task ID in batch' }. Web drag-drop + mobile picker both rely on this — never a half-applied status."
 ```
 
 ### Refine

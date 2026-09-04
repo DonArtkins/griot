@@ -44,10 +44,10 @@ See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full details, cost-benef
 5. **API pagination caps** — `MaxPageSize = 1,000` validation middleware. **Impact:** Prevents abuse (client requests 10k tasks → OOM). **Effort:** 2 hours.
 
 ### Phase 2: Post-k6 baseline (conditional — only if needed)
-**Trigger:** p95 board reads >500ms OR DAU >2–3k | **Effort:** 3–5 days
+**Trigger:** k6 evidence showing p95 latency targets missed after Phase 1 optimizations | **Effort:** 3–5 days
 
 1. **Database indexes** — Covering index for board reads (`TaskItems(BoardId, ColumnId, Position) INCLUDE (...)`), partition-ready indexes for time-range queries. **Impact:** 200ms → <100ms p95 board reads.
-2. **GraphQL response caching** — HotChocolate + Redis. Cache board queries by `(workspaceId, userId, timestamp)` key. **Impact:** Hot boards served from Redis (~1ms) instead of SQL (~50–200ms). 90%+ cache-hit ratio expected.
+2. **GraphQL response caching** — HotChocolate + Redis. Cache board queries by `(boardId, workspaceId, userId, timestamp)` key. **Impact:** Hot boards served from Redis (~1ms) instead of SQL (~50–200ms). 90%+ cache-hit ratio expected.
 3. **Read replica** — SQL Server readable secondary (Railway or Azure). Route reads to replica, writes to primary. **Impact:** 10× read throughput. **Cost:** ~$50–200/month.
 
 ### Phase 3: Post-bootcamp enhancements (deferred)
@@ -89,7 +89,7 @@ See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full details, cost-benef
 ## 5. Verdict
 
 - **Now**: architecture targets cohort/demo + early public (~1,500 concurrent) — **these are design targets until k6 load evidence confirms them** (QE week baseline + regression tests required before claiming production-ready capacity).
-- **Next (post-bootcamp, in ROI order)**: read replica → Redis cache → queue/fan-out → blob store → CQRS. No rewrite needed at any step; the architecture was designed so each is additive.
+- **Next (phased roadmap)**: **Phase 1** (production blockers): Vercel Blob + dashboard caching + Netdata monitoring. **Phase 2** (post-k6 conditional): database indexes + GraphQL caching + read replica. **Phase 3** (post-bootcamp): R2 migration + code splitting + offline queue. No rewrite needed at any step; the architecture was designed so each is additive. See `OPTIMIZATION-RECOMMENDATIONS.md` for full roadmap.
 
 ---
 

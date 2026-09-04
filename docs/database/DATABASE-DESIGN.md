@@ -68,7 +68,7 @@ Full diagram source: `PROMPTS/week-02/01-database-schema-erd-figma-make.md` + `0
 Parametrized; `NOCOUNT ON`; idempotent file creation under `Sql/`.
 
 ### Read replica strategy (Phase 2 — deferred)
-- **Trigger:** DAU >2–3k or p95 board reads >500ms despite indexes.
+- **Trigger:** k6 evidence showing p95 latency targets missed after Phase 2 indexes are applied. DAU >2–3k is insufficient alone; read replica adds only when indexes + caching cannot meet NFRs.
 - **Implementation:** Railway SQL Server readable secondary or Azure SQL geo-replica.
 - **Routing:** EF Core read-only contexts point to replica connection string; writes stay on primary.
 - **Benefit:** 10× read throughput; removes single-reader ceiling.

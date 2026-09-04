@@ -151,7 +151,7 @@ graphql:board:{boardId}:{userId}:{timestamp_rounded_to_minute}
 ```
 - `boardId` → different boards cached separately
 - `userId` → user-specific (respects workspace membership)
-- `timestamp_rounded_to_minute` → cache shared across users within same minute
+- `timestamp_rounded_to_minute` → cache entries grouped by minute for efficient TTL management
 
 **Invalidation strategy:**
 - **Time-based (TTL):** 5 minutes (hot boards stay cached)
