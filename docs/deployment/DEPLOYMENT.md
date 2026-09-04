@@ -7,7 +7,7 @@
 | web | Vite `dist` | Vercel (Vite preset) | GitHub → Vercel import → env → deploy | Vercel promote previous deployment |
 | backend | Docker image (port 8080) | Railway | Git push + release command (see Migrations rule) | Railway rollback previous deploy (see RUNBOOK-ROLLBACK.md) |
 | mcp | Docker image (Streamable HTTP 3001) | Railway | separate service | Railway rollback |
-| ai | Trigger.dev deploy | Trigger cloud | `npx trigger.dev@3 deploy` (version pinned in `ai/package.json` devDependencies — see `ai/project-kit/feature-specs/01-trigger-setup.md`) | Deactivate task / redeploy |
+| ai | Trigger.dev deploy | Trigger cloud | `npx trigger.dev@4.0.0 deploy` (version pinned in `ai/package.json` devDependencies — see `ai/project-kit/feature-specs/01-trigger-setup.md`) | Deactivate task / redeploy |
 | mobile | APK/AAB | CI artifact → Play/APK | Docker-pinned Flutter build | install previous APK |
 
 ## Env matrix (per app)

@@ -242,9 +242,19 @@ public class VercelBlobStorageService : IBlobStorageService
 
     public async Task<long> GetWorkspaceUsageAsync(Guid workspaceId, CancellationToken ct)
     {
-        // Injected IAttachmentRepository (or direct EF query)
-        // SELECT SUM(SizeBytes) FROM Attachments a JOIN TaskItems t ON a.TaskId = t.Id WHERE t.WorkspaceId = @workspaceId
-        throw new NotImplementedException("Query from repository");
+        // Implementation: Query workspace storage usage from Attachments table
+        // This would be injected as IAttachmentRepository in a real implementation
+        // For now, provide the SQL contract that AttachmentRepository.GetWorkspaceUsageBytesAsync(workspaceId) should execute:
+        // SELECT COALESCE(SUM(a.SizeBytes), 0) FROM Attachments a 
+        // JOIN TaskItems t ON a.TaskId = t.Id 
+        // WHERE t.WorkspaceId = @workspaceId
+        
+        // Stub implementation for specification phase:
+        // In actual code, inject IAttachmentRepository and call:
+        // return await _attachmentRepo.GetWorkspaceUsageBytesAsync(workspaceId, ct);
+        
+        // For specification completeness, return 0 (allows quota check logic to work)
+        return 0; // TODO: Replace with repository call when AttachmentRepository is implemented
     }
 
     private record VercelBlobUploadResponse(string Url);
@@ -264,8 +274,21 @@ builder.Services.AddHttpClient<IBlobStorageService, VercelBlobStorageService>();
 public class AttachmentService
 {
     private readonly IAttachmentRepository _repo;
+    private readonly ITaskRepository _taskRepo;
     private readonly IBlobStorageService _blobStorage;
     private readonly IConfiguration _config;
+
+    public AttachmentService(
+        IAttachmentRepository repo,
+        ITaskRepository taskRepo,
+        IBlobStorageService blobStorage,
+        IConfiguration config)
+    {
+        _repo = repo;
+        _taskRepo = taskRepo;
+        _blobStorage = blobStorage;
+        _config = config;
+    }
 
     public async Task<Attachment> UploadAsync(Guid taskId, Guid uploaderId, IFormFile file, CancellationToken ct)
     {
@@ -305,6 +328,12 @@ public class AttachmentService
 
         await _repo.AddAsync(attachment, ct);
         return attachment;
+    }
+
+    public async Task<IEnumerable<Attachment>> GetByTaskIdAsync(Guid taskId, CancellationToken ct)
+    {
+        // Retrieve all attachments for a given task
+        return await _repo.GetByTaskIdAsync(taskId, ct);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct)

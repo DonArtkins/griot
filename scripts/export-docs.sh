@@ -92,7 +92,7 @@ export_doc() {
       --from markdown \
       --to pdf \
       --output "$output" \
-      "${PANDOC_PDF_OPTS[@]}" 2>&1 | grep -v "^$"; then
+      "${PANDOC_PDF_OPTS[@]}" 2>&1; then
       echo -e "${GREEN}  ✓ PDF exported${NC}"
     else
       echo -e "${RED}  ✗ PDF export failed${NC}"
@@ -103,7 +103,7 @@ export_doc() {
       --from markdown \
       --to docx \
       --output "$output" \
-      "${PANDOC_DOCX_OPTS[@]}" 2>&1 | grep -v "^$"; then
+      "${PANDOC_DOCX_OPTS[@]}" 2>&1; then
       echo -e "${GREEN}  ✓ Word doc exported${NC}"
     else
       echo -e "${RED}  ✗ Word export failed${NC}"
@@ -137,17 +137,17 @@ main() {
     
     if [ "$FORMAT" == "both" ] || [ "$FORMAT" == "pdf" ]; then
       if export_doc "$doc" "pdf"; then
-        ((success++))
+        : $((success++))
       else
-        ((failed++))
+        : $((failed++))
       fi
     fi
     
     if [ "$FORMAT" == "both" ] || [ "$FORMAT" == "docx" ]; then
       if export_doc "$doc" "docx"; then
-        ((success++))
+        : $((success++))
       else
-        ((failed++))
+        : $((failed++))
       fi
     fi
   done
@@ -161,6 +161,9 @@ main() {
   fi
   echo -e "  Output:  ${EXPORTS_DIR}/"
   echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
+  
+  # Return nonzero if any exports failed
+  [ "$failed" -eq 0 ]
 }
 
 # Run
