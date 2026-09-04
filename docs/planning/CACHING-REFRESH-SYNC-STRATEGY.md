@@ -83,26 +83,40 @@ public async Task<DashboardSummary> GetSummaryAsync(Guid workspaceId, Cancellati
 {
     var cacheKey = $"dashboard:summary:{workspaceId}";
     
-    // Try cache first
-    var cached = await _redis.StringGetAsync(cacheKey);
-    if (cached.HasValue)
+    // Try cache first (fail-open: Redis failure should not block request)
+    try
     {
-        _logger.LogInformation("Dashboard cache hit for workspace {WorkspaceId}", workspaceId);
-        return JsonSerializer.Deserialize<DashboardSummary>(cached);
+        var cached = await _redis.StringGetAsync(cacheKey);
+        if (cached.HasValue)
+        {
+            _logger.LogInformation("Dashboard cache hit for workspace {WorkspaceId}", workspaceId);
+            return JsonSerializer.Deserialize<DashboardSummary>(cached);
+        }
+    }
+    catch (Exception ex)
+    {
+        _logger.LogWarning(ex, "Redis read failed for dashboard cache, falling back to database");
     }
     
-    // Cache miss → query database
+    // Cache miss or Redis failure → query database
     var summary = await _db.QueryFirstAsync<DashboardSummary>(
         "EXEC usp_GetDashboardSummary @workspaceId",
         new { workspaceId }
     );
     
-    // Store in cache with 60s TTL
-    await _redis.StringSetAsync(
-        cacheKey,
-        JsonSerializer.Serialize(summary),
-        TimeSpan.FromSeconds(60)
-    );
+    // Store in cache with 60s TTL (fail-open: don't block on cache write failure)
+    try
+    {
+        await _redis.StringSetAsync(
+            cacheKey,
+            JsonSerializer.Serialize(summary),
+            TimeSpan.FromSeconds(60)
+        );
+    }
+    catch (Exception ex)
+    {
+        _logger.LogWarning(ex, "Redis write failed for dashboard cache, continuing without caching");
+    }
     
     return summary;
 }
@@ -124,21 +138,23 @@ public async Task<DashboardSummary> GetSummaryAsync(Guid workspaceId, Cancellati
 
 ### 2.3 Phase 2: GraphQL response caching
 
-**Implementation:**
+**Implementation Note:**
+Hot Chocolate 14+ has distinct caching mechanisms. This specification documents **HTTP cache control** for client-side caching, NOT server-side response caching. For server-side response caching in Hot Chocolate 14+, use custom middleware or application-level caching (see dashboard example above).
+
+**HTTP Cache Control (recommended approach):**
 ```csharp
 // backend/Griot.Api/Program.cs
 services.AddGraphQLServer()
     .AddQueryType<Query>()
     .AddMutationType<Mutation>()
-    .AddQueryCachePipeline(options =>
+    .AddCacheControl(options =>
     {
-        options.UseRedis = true;
-        options.DefaultCacheDuration = TimeSpan.FromMinutes(5);
-    })
-    .AddRedisQueryStorage(sp => sp.GetRequiredService<IConnectionMultiplexer>());
+        options.Enable = true;
+        options.DefaultMaxAge = TimeSpan.FromMinutes(5);
+    });
 
-// Opt-in per resolver
-[UseQueryCache(Duration = 300)] // 5 minutes
+// Opt-in per resolver with HTTP cache headers
+[CacheControl(MaxAge = 300)] // 5 minutes - emits Cache-Control: max-age=300
 public async Task<Board> GetBoardAsync(Guid id, [Service] IBoardService service)
 {
     return await service.GetByIdAsync(id);
@@ -156,8 +172,19 @@ graphql:board:{boardId}:{userId}:{timestamp_rounded_to_minute}
 **Invalidation strategy:**
 - **Time-based (TTL):** 5 minutes (hot boards stay cached)
 - **Event-based (Phase 2 refinement):** Purge on board writes
-  - On `TaskCreated`, `TaskUpdated`, `TaskMoved`: `await _redis.KeyDeleteAsync($"graphql:board:{boardId}:*")`
-  - Use wildcard delete or maintain a set of active cache keys per board
+  - On `TaskCreated`, `TaskUpdated`, `TaskMoved`:
+    ```csharp
+    // KeyDeleteAsync does not support wildcards - use IServer.Keys to find matching keys
+    var server = _redis.GetServer(_redis.GetEndPoints().First());
+    var pattern = $"graphql:board:{boardId}:*";
+    var keys = server.Keys(pattern: pattern).ToArray();
+    if (keys.Length > 0)
+    {
+        await _redis.KeyDeleteAsync(keys);
+        _logger.LogInformation("Invalidated {Count} cache entries for board {BoardId}", keys.Length, boardId);
+    }
+    ```
+  - Alternative: Maintain a Redis SET of active keys per board for exact-key deletion
 
 **Metrics:**
 - Expected cache hit ratio: **70–80%** (users viewing same board within 5-min window)
@@ -218,8 +245,8 @@ const cache = new InMemoryCache({
           keyArgs: ['id'],
         },
         tasks: {
-          // Cache by filters (status, priority, assignee)
-          keyArgs: ['boardId', 'status', 'priority', 'assigneeId'],
+          // Cache by ALL query-shaping arguments to prevent collision
+          keyArgs: ['boardId', 'status', 'priority', 'assigneeId', 'dueDateFrom', 'dueDateTo', 'sortBy', 'sortDirection', 'page', 'pageSize'],
           // Merge strategy: replace (don't append pagination results)
           merge: false,
         },
@@ -317,9 +344,9 @@ await persistCache({
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,        // Data fresh for 30 seconds
-      cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-      retry: 1,                 // Retry once on failure
+      staleTime: 30_000,      // Data fresh for 30 seconds
+      gcTime: 5 * 60 * 1000,  // Garbage collect after 5 minutes (v5: renamed from cacheTime)
+      retry: 1,               // Retry once on failure
       refetchOnWindowFocus: true, // Refetch on tab focus
     },
     mutations: {
@@ -342,8 +369,8 @@ apiClient.interceptors.response.use(
       originalRequest._retried = true;
       
       try {
-        // POST /api/auth/refresh (httpOnly cookie sent automatically)
-        await axios.post(`${API_URL}/api/auth/refresh`);
+        // POST /api/auth/refresh (send httpOnly cookie with withCredentials for cross-origin)
+        await axios.post(`${API_URL}/api/auth/refresh`, {}, { withCredentials: true });
         
         // Retry original request with new access token
         return apiClient(originalRequest);
@@ -363,17 +390,15 @@ apiClient.interceptors.response.use(
 **Cache invalidation (mutations):**
 ```typescript
 // web/src/features/tasks/mutations/useUpdateTask.ts
-const updateTask = useMutation(
-  (data) => apiClient.patch(`/api/tasks/${data.id}`, data),
-  {
-    onSuccess: (_, variables) => {
-      // Invalidate affected queries
-      queryClient.invalidateQueries(['board', variables.boardId]);
-      queryClient.invalidateQueries(['task', variables.id]);
-      toast.success('Task updated');
-    },
-  }
-);
+const updateTask = useMutation({
+  mutationFn: (data) => apiClient.patch(`/api/tasks/${data.id}`, data),
+  onSuccess: (_, variables) => {
+    // Invalidate affected queries (v5: object form)
+    queryClient.invalidateQueries({ queryKey: ['board', variables.boardId] });
+    queryClient.invalidateQueries({ queryKey: ['task', variables.id] });
+    toast.success('Task updated');
+  },
+});
 ```
 
 ### 3.3 Zustand (client-only UI state)
@@ -812,8 +837,8 @@ private async Task RevokeTokenFamilyAsync(Guid familyId, CancellationToken ct)
 useEffect(() => {
   const silentRefresh = async () => {
     try {
-      // POST /api/auth/refresh (httpOnly cookie sent automatically)
-      const response = await axios.post(`${API_URL}/api/auth/refresh`);
+      // POST /api/auth/refresh (send httpOnly cookie with withCredentials for cross-origin)
+      const response = await axios.post(`${API_URL}/api/auth/refresh`, {}, { withCredentials: true });
       const { accessToken } = response.data;
       authStore.setAccessToken(accessToken);
     } catch (error) {
@@ -840,7 +865,7 @@ useEffect(() => {
   
   const timer = setTimeout(async () => {
     try {
-      const response = await axios.post(`${API_URL}/api/auth/refresh`);
+      const response = await axios.post(`${API_URL}/api/auth/refresh`, {}, { withCredentials: true });
       authStore.setAccessToken(response.data.accessToken);
     } catch (error) {
       authStore.clearAuth();
