@@ -631,7 +631,8 @@ Add to `Postman/Griot.postman_collection.json`:
 
 ### 7.3 Audit trail
 - Every upload/delete → `ActivityLogs` (action = `AttachmentUploaded`/`AttachmentDeleted`, payload = JSON with file metadata)
-- Every delete → `AuditLogs` (before = attachment metadata, after = null)
+- Every upload/delete → `AuditLogs` (upload: before = null, after = attachment metadata; delete: before = attachment metadata, after = null)
+  - **Rationale:** Attachments are state-changing writes (Attachment table INSERT/DELETE). Per ARCHITECTURE.md §3.2, all state-changing writes require AuditLogs for compliance traceability.
 
 ### 7.4 OWASP compliance (Week 6 gate)
 - **A03:2021 – Injection:** Validated — file uploads are binary, not executed; MIME type whitelisted

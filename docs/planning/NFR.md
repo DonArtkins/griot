@@ -68,11 +68,17 @@ See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full optimization roadma
 
 ## 9. Mobile
 
-- Offline-tolerant: read from last cache; writes queue on retry (v1: minimal).
-  - **Persistence**: queued writes persist until the operation succeeds or the user explicitly discards them — writes are never silently cleared on failure.
-  - **Idempotency**: each queued write carries a client-generated `idempotencyKey` (UUID v4); the backend deduplicates on this key so replayed requests are safe.
-  - **Conflict handling**: if the server returns a conflict (e.g. task moved by another user while offline), the client surfaces a resolution prompt — the user chooses to keep their version, accept the server version, or discard their queued write.
-- Battery-aware: no always-on socket; refresh-on-focus + pull-to-refresh.
+- **v1 Behavior (online-first):** Mobile app requires network connectivity for task creation/updates. If offline → show "No connection" error, block write actions, display cached read-only data (Apollo/GraphQL cache). No writes queued; user must retry when online.
+
+- **Phase 3 Enhancement (post-bootcamp, deferred):** Offline-tolerant write queue
+  - **Persistence**: queued writes persist (sqflite) until operation succeeds or user explicitly discards — writes never silently cleared
+  - **Idempotency**: each queued write carries client-generated `idempotencyKey` (UUID v4); backend deduplicates so replayed requests are safe
+  - **Conflict handling**: if server returns conflict (task moved by another user while offline), client surfaces resolution prompt — user chooses to keep their version, accept server version, or discard
+  - **See:** `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` Phase 3 for implementation timeline (~6-10 days)
+
+- **Battery-aware (v1):** no always-on socket; refresh-on-focus + pull-to-refresh
+
+**Rationale for deferral:** v1 scope focuses on stable online experience. Offline-write queue requires mature conflict resolution UX + backend idempotency infrastructure (6-10 days implementation). Most project-management tools (Asana, Monday, Linear) also fail gracefully offline. Post-launch usage data will inform Phase 3 priority.
 
 ---
 

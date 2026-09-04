@@ -19,15 +19,42 @@ TaskController → TaskService: BulkUpdateStatusAsync(workspaceId, ids, status)
 TaskService: validate every id belongs to workspace (permissions)
 TaskService → SQL Server: EXEC usp_BulkUpdateTaskStatus @WorkspaceId, @TaskIds (TVP), @Status
 SQL Server (proc): BEGIN TRAN
+    -- Capture before state for audit (before UPDATE)
+    SELECT Id, Status INTO #BeforeState FROM TaskItems WHERE Id IN (SELECT value FROM @TaskIds)
+    
     UPDATE TaskItems SET Status=@Status, UpdatedAt=SYSUTCDATETIME() WHERE Id IN (SELECT value FROM @TaskIds) AND WorkspaceId=@WorkspaceId
     DECLARE @affected INT = @@ROWCOUNT
     DECLARE @expected INT = (SELECT COUNT(DISTINCT value) FROM @TaskIds)
     IF @affected != @expected THROW 50409, 'Invalid task ID in batch', 1  -- all-or-nothing validation
-    INSERT ActivityLogs (workspace, actor, action, payload)
-    INSERT AuditLogs (actor, entityType, before, after)
+    
+    -- INSERT ActivityLogs with sourced parameters
+    INSERT INTO ActivityLogs (WorkspaceId, ActorId, Action, EntityType, EntityId, Payload, CreatedAt)
+    SELECT @WorkspaceId, @ActorId, 'BulkStatusUpdate', 'TaskItem', value, @PayloadJson, SYSUTCDATETIME()
+    FROM @TaskIds
+    
+    -- INSERT AuditLogs with before/after snapshots per task
+    INSERT INTO AuditLogs (ActorId, Action, EntityType, EntityId, Before, After, CreatedAt)
+    SELECT @ActorId, 'StatusUpdate', 'TaskItem', t.value,
+           (SELECT Status FROM #BeforeState WHERE Id = t.value FOR JSON PATH, WITHOUT_ARRAY_WRAPPER),
+           JSON_OBJECT('status': @Status),
+           SYSUTCDATETIME()
+    FROM @TaskIds t
+    
     COMMIT
 SQL Server → TaskService: ok / throw
 TaskService → Client: 200 { updatedCount } OR 409 { error: 'Invalid task ID in batch' }
+
+**Stored Procedure Signature:**
+```sql
+CREATE PROCEDURE dbo.usp_BulkUpdateTaskStatus
+    @WorkspaceId uniqueidentifier,
+    @TaskIds TaskIdListType READONLY,  -- TVP: TABLE(value uniqueidentifier)
+    @Status nvarchar(50),
+    @ActorId uniqueidentifier,  -- Caller's user ID for audit trail
+    @PayloadJson nvarchar(max)  -- JSON with taskIds and new status for ActivityLogs
+AS
+-- (body as shown above with proper parameter usage)
+```
 ```
 
 ## 3. The prompt (single, extensive — no length limit)
