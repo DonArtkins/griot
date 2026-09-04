@@ -29,12 +29,12 @@
 - Breaks at scale: Railway ephemeral filesystem + no CDN + no size caps = user-facing failures
 - Missing from ERD constraints: no `SizeBytes` validation, no quota tracking per workspace
 
-### Recommendation: **Cloudflare R2 (primary)** with Vercel Blob as fallback
+### Recommendation: **Blob Storage Strategy** (Vercel Blob → R2 migration path)
 
 | Solution | Storage | Egress | Why |
 |---|---|---|---|
-| **Cloudflare R2** | **$0.015/GB** | **$0 (FREE)** | Zero-egress = massive savings on high-bandwidth workloads; S3-compatible API |
-| Vercel Blob | $0.023/GB | $0.05/GB | Hobby 1GB free; excellent DX; already on Vercel stack |
+| **Vercel Blob (v1)** | **1 GB FREE** + $0.023/GB overage | **10 GB/mo FREE** + $0.05/GB overage | Free tier covers demo/early prod; excellent DX; already on Vercel stack |
+| **Cloudflare R2 (migration)** | **$0.015/GB** | **$0 (FREE)** | Zero-egress = massive savings at scale; S3-compatible API; migrate when egress >100 GB/month |
 | AWS S3 | $0.023/GB | $0.09/GB | Industry standard but 6× more expensive egress than R2 |
 | Azure Blob | $0.023/GB | $0.087/GB | Similar to S3; no advantage for this workload |
 
@@ -43,7 +43,7 @@
 - Vercel Blob: $230 storage + $500 egress = **$730/month**
 - S3: $230 storage + $900 egress = **$1,130/month**
 
-**Decision:** Start with **Vercel Blob free tier** (leveraging existing Vercel account: 1 GB storage + 10 GB transfer/month included at no cost); migrate to **R2 for production** when egress consistently exceeds 100 GB/month (cost savings become significant at scale).
+**Decision:** Start with **Vercel Blob free tier** (leveraging existing Vercel account: 1 GB storage + 10 GB transfer/month included at no cost = $0); migrate to **R2 for production** when egress consistently exceeds 100 GB/month (cost savings of $580/month become significant). See Phase 1/Phase 3 roadmap in CAPACITY-PLAN.md.
 
 ### Implementation checklist
 - [ ] Add `MaxFileSizeBytes` constant (25 MB per attachment, 100 MB workspace quota)
