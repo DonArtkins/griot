@@ -18,10 +18,15 @@
 ## 2. REST endpoints (all `/api`, JWT-protected except auth)
 
 ### Auth
-- `POST /api/auth/register` — 201 `{ user, accessToken, refreshToken }` · 400 invalid · 409 email exists
-- `POST /api/auth/login` — 200 tokens · 401 bad creds · 429 login throttled
-- `POST /api/auth/refresh` — 200 rotated tokens · 401 replay/invalid (revokes family)
-- `POST /api/auth/logout` — 204 (revoke refresh)
+- `POST /api/auth/register` — 201 `{ user, accessToken }` + `Set-Cookie: refreshToken=…; HttpOnly; Secure; SameSite=Strict` (web) · 400 invalid · 409 email exists
+- `POST /api/auth/login` — 200 `{ accessToken, user }` + `Set-Cookie: refreshToken=…; HttpOnly; Secure; SameSite=Strict` (web) · 401 bad creds · 429 login throttled
+  > **Refresh-token transport** (aligned with `SECURITY.md`):
+  > - **Web**: refresh token delivered via `Set-Cookie: refreshToken=…; HttpOnly; Secure; SameSite=Strict` only — never in the JSON body. Web clients send it back via Cookie header; no `localStorage` access.
+  > - **Mobile**: refresh token returned in JSON response body `{ refreshToken }` and stored in platform secure storage (Android Keystore / iOS Secure Enclave via Flutter `flutter_secure_storage`).
+  > - **Postman / API testing**: refresh token returned in JSON response body `{ refreshToken }` and chained into the `{{refreshToken}}` environment variable for subsequent calls.
+  > The `POST /api/auth/refresh` endpoint accepts either the `Cookie: refreshToken=…` header (web) or `{ "refreshToken": "…" }` JSON body (mobile/Postman).
+- `POST /api/auth/refresh` — 200 rotated tokens (same transport split as above) · 401 replay/invalid (revokes FamilyId)
+- `POST /api/auth/logout` — 204 (revoke refresh; clears `Set-Cookie` on web)
 
 ### Workspaces
 - `GET /api/workspaces` — list (membership) · `POST /api/workspaces` — 201
@@ -64,9 +69,10 @@
 ```text
 Build the backend API exactly per `backend/project-kit/context/api-surface.md` and this list. Verify every route/type against the approved ERD at `project-kit/diagrams/erd/`; update the spec if the ERD differs. Enforce:
 - Separation of concerns: thin controllers/resolvers to `Griot.Application` services to repos (EF 95% + Dapper for `usp_BulkUpdateTaskStatus` + `usp_GetDashboardSummary` only). Zero business logic in controllers.
-- Auth: Argon2, 15-min JWT (claims sub/wid), rotated opaque refresh (SHA-256 at rest, family revoke on reuse), Redis sliding-window rate limit on login + query-cost guard on /graphql, CORS allow-list.
+- Auth: Argon2, 15-min JWT (claims sub/wid), rotated opaque refresh (SHA-256 at rest, FamilyId for scoped family-revoke on replay), Redis sliding-window rate limit on login + query-cost guard on /graphql, CORS allow-list. Refresh-token transport: web via `Set-Cookie: HttpOnly; Secure; SameSite=Strict` (never in JSON body); mobile via JSON body + secure storage; Postman via JSON body. The `/api/auth/refresh` endpoint accepts Cookie (web) or JSON body (mobile/Postman). Single-transaction rotation: `WHERE RevokedAt IS NULL` is the sole gate; any miss is a replay → revoke `WHERE FamilyId = @familyId`.
 - Service-token principal: GRIOT_SERVICE_TOKEN to restricted ai-agent (no deletes/invites). HMAC on /api/webhooks/trigger.
 - Errors: 404 on ownership miss (never disclose existence), 400 validation, 401 unauthenticated, 403 forbidden, 409 conflict/illegal state (incl. illegal task transition + bulk atomic rollback), 429 rate limit.
+  - **`PATCH /api/tasks/bulk-status` specific rule:** the entire batch runs inside `usp_BulkUpdateTaskStatus` as a single TVP transaction. If **any** `taskId` in the batch is invalid (not found, wrong workspace, or wrong state), the proc rolls back the entire transaction and the endpoint returns **409** (not 404 or 400). Do not return 404 for individual missing task ids in a batch, and do not return 400 for a state mismatch — both are 409 to keep the atomic contract unambiguous. Pre-validation (empty array, malformed input) is 400 before the proc is even called.
 - Pagination: fixed page size, stable order (e.g. tasks by (ColumnId, Position)); cursor or skip/take.
 - Latency budgets (p95): board < 500ms, dashboard < 500ms, login < 300ms, bulk-status < 800ms — meet with indexes + DataLoader + the two procs.
 - Postman: save Postman/Griot.postman_collection.json (REST + GraphQL folders, env-chained baseUrl/accessToken/refreshToken) covering every route + negative cases (401/403/404/409/429) + JSON-schema assertions on auth/task/board/dashboard.
@@ -78,7 +84,8 @@ Build the backend API exactly per `backend/project-kit/context/api-surface.md` a
 ## 5. Refine / verify
 
 - Re-verify the task transition endpoint rejects an illegal move with 409.
-- Confirm the bulk-status proc is atomic; test a batch with one bad id.
+- Confirm the bulk-status proc is atomic; test a batch with one bad id → must return **409** (not 404 or 400), full rollback, zero rows updated.
+- Confirm pre-validation (empty array, malformed body) returns 400 before the proc is invoked.
 - Confirm the Postman collection runs end-to-end and is Newman-able (qa).
 
 ## 6. Done

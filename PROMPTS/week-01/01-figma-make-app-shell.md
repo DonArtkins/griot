@@ -15,7 +15,7 @@
   - **Left sidebar (rail)**: Griot logo + workspace name/avatar at top; nav Dashboard · Boards · Projects · Team · Notifications; workspace switcher; **Invite** button pinned bottom.
   - **Top bar**: breadcrumb (Workspace / Project / Board), global search with ⌘K hint, notification bell with unread badge, user avatar menu (Profile, Settings, Sign out).
 - **Component language** (design once, reuse everywhere): TaskCard, BoardColumn, StatusChip, PriorityChip, MemberChip/AvatarStack, Modal, EmptyState, LoadingSkeleton, Toast.
-- **Status color contract** = the enum map: InProgress=blue, InReview=amber, Done=green, Backlog/Todo=neutral. Priority: Low=info, Medium=warning, High=danger-orange, Urgent=danger-red. These MUST match the EF Core enums later (no re-skin).
+- **Status color contract** = the enum map: InProgress=blue, InReview=amber, Done=green, Backlog=neutral, **Todo=neutral** (Backlog and Todo are two distinct `TaskStatus` enum values — both render with a neutral chip color, but MUST appear as separate board columns). Priority: Low=info, Medium=warning, High=danger-orange, Urgent=danger-red. These MUST match the EF Core enums later (no re-skin).
 - Every async surface ships **EmptyState + LoadingSkeleton + ErrorState-with-retry**.
 
 ### Screen 1 — Dashboard
@@ -27,7 +27,7 @@
 
 ### Screen 2 — Kanban Board
 - Header: board title, filter bar (status/priority/assignee chips), **Add Task**.
-- **4 columns** (Backlog, In Progress, In Review, Done): colored header accent, title + count badge, scrollable TaskCards, "+ Add task" ghost at column bottom, WIP-limit note.
+- **5 columns** (Backlog, Todo, In Progress, In Review, Done) — one column per `TaskStatus` enum value: colored header accent, title + count badge, scrollable TaskCards, "+ Add task" ghost at column bottom, WIP-limit note.
 - **TaskCard**: title (2-line clamp), PriorityChip, due date (red if overdue), assignee avatar, comment-count icon, subtle hover lift.
 - Empty column: dashed "Drop tasks here" zone. Loading: skeleton cards.
 
@@ -63,14 +63,14 @@ GLOBAL CHROME (identical on all screens):
 - Left sidebar rail: Griot logo + workspace name/avatar; nav Dashboard, Boards, Projects, Team, Notifications; workspace switcher; Invite button pinned bottom.
 - Top bar: breadcrumb (Workspace / Project / Board), centered global search with ⌘K hint, notification bell with unread badge, user avatar menu (Profile, Settings, Sign out).
 - Component language reused everywhere: TaskCard, BoardColumn, StatusChip, PriorityChip, MemberChip/AvatarStack, Modal, EmptyState, LoadingSkeleton, Toast.
-- Status color contract (MUST match the backend enum): InProgress = blue, InReview = amber, Done = green, Backlog/Todo = neutral. Priority: Low = info, Medium = warning, High = danger-orange, Urgent = danger-red.
+- Status color contract (MUST match the backend enum): InProgress = blue, InReview = amber, Done = green, Backlog = neutral, Todo = neutral. Note: Backlog and Todo are two DISTINCT TaskStatus enum values — both neutral-colored, but each is a separate board column. Priority: Low = info, Medium = warning, High = danger-orange, Urgent = danger-red.
 - Every async surface ships EmptyState + LoadingSkeleton + ErrorState-with-retry.
 
 SCREEN 1 — DASHBOARD:
 Greeting header (workspace name, member avatar stack, New Project primary button). Project cards grid (3-col desktop / 2-col tablet / 1-col mobile): project name + key, progress bar (Done/total), near-deadline pulse, last-activity line, contributor avatars. Right column: Recent activity feed (actor → action → entity, relative time, inline chips) + Notifications summary card (latest 3 unread, See all). Empty state when no projects: centered illustration Create your first project.
 
 SCREEN 2 — KANBAN BOARD:
-Header with board title, filter chips (status/priority/assignee), Add Task. Exactly 4 columns: Backlog, In Progress, In Review, Done — each with colored header accent, title + count badge, scrollable TaskCards, a + Add task ghost button at the column bottom, and a WIP-limit note. TaskCard = title (2-line clamp), PriorityChip, due date (red if overdue), assignee avatar, comment count, subtle hover lift. Empty column = dashed Drop tasks here zone. Loading = skeleton cards.
+Header with board title, filter chips (status/priority/assignee), Add Task. Exactly 5 columns: Backlog, Todo, In Progress, In Review, Done — one column per TaskStatus enum value — each with colored header accent, title + count badge, scrollable TaskCards, a + Add task ghost button at the column bottom, and a WIP-limit note. TaskCard = title (2-line clamp), PriorityChip, due date (red if overdue), assignee avatar, comment count, subtle hover lift. Empty column = dashed Drop tasks here zone. Loading = skeleton cards.
 
 SCREEN 3 — TASK DETAIL (modal over the board):
 Left/main: title (inline editable), rich description (paragraphs + task list), comment thread (avatar, name, time, body + Add comment composer), attachments (file chips with name/size/type + upload dropzone). Right rail Properties: StatusChip dropdown (ONLY legal transitions), PriorityChip dropdown, Assignee search, Due-date picker with overdue alert, Creator + created time, task reference id. Footer: Delete (confirm dialog), Copy link, Close. Keyboard navigable, focus-trapped.
@@ -83,9 +83,9 @@ Header + Mark all read. Group list Today / This week / Earlier. Each item: type 
 
 CROSS-CUTTING:
 - Empty/loading/error states are designed assets everywhere (never grey rectangles).
-- Accessibility: 44px min touch targets, visible focus rings, WCAG AA, keyboard-navigable board + modal.
+- Accessibility: 44px min touch targets (web WCAG requirement, not a mobile-app screen), visible focus rings, WCAG AA, keyboard-navigable board + modal.
 - All colors/spacing/radius/typography use token-style naming — no raw ad-hoc values.
-- Do NOT include: timelines/Gantt, custom fields, guest access, automations, multi-board reports, or mobile layouts.
+- SCOPE DECISION (resolved): Responsive web breakpoints (desktop/tablet/mobile-viewport) for the web app ARE in scope — the 1-col mobile-viewport project-grid and horizontally-scrolling board columns above are responsive-web states within the same Figma web screens, not separate native-app screens. Do NOT produce separate native mobile app screens or Flutter/iOS/Android layouts. Do NOT include: timelines/Gantt, custom fields, guest access, automations, multi-board reports. The mobile app is a separate system in `mobile/` (Week 4) and is NOT part of this web shell design.
 ```
 
 ---

@@ -1,6 +1,6 @@
 # Week 02 · Diagram 02 — C4 Container Diagram (Level 2)
 
-**Master spec + Figma Make paste prompts.** This diagram is the box-level view that must map **1:1 to `docker-compose.yml` and the Railway service list**. Protocols on every arrow.
+**Master spec + Figma Make paste prompts.** This is the box-level view. The **five compose-deployable services** (`api`, `sqlserver`, `postgres`, `redis`, `mcp`) match the service keys in `docker-compose.yml`. They are also the target Railway services, though the Railway production topology may differ (see `infra/AGENTS.md` for the authoritative deployment config — Railway may combine or split services). `web` (Vercel), `mobile` (Play/APK), and `ai` (Trigger cloud) are **external hosts/clients** drawn as containers with their host badge, NOT compose services. Protocols on every arrow.
 
 ---
 
@@ -32,12 +32,21 @@
 | API | Redis | TCP 6379 (rate limit, refresh, budgets) |
 | API | Email provider | SMTP / HTTPS (invites, reminders, digests) |
 
+> **MCP transport trust model — stdio vs Streamable HTTP:**
+>
+> | Transport | Trust boundary | Authentication | Scopes / permissions | Rejection behavior |
+> |---|---|---|---|---|
+> | **stdio (local)** | Process-level — client runs as the same OS user who launched the MCP server; no network exposure | None required. OS process isolation is the trust boundary; the MCP server trusts the calling process implicitly. | Full tool roster available | N/A — connection is rejected at the OS level if the process is not authorized to spawn the server. Never available in Docker/Railway. |
+> | **Streamable HTTP (remote / Docker / Railway)** | Network-exposed endpoint (`http://mcp:3001`); reachable by any agent on the internal network | Bearer token required: `Authorization: Bearer <GRIOT_MCP_TOKEN>`. `GRIOT_MCP_TOKEN` is a long-lived static secret (distinct from `GRIOT_SERVICE_TOKEN`), injected via environment and validated on every request before any tool dispatch. | Scoped to read + task-write operations: `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`. No admin operations (workspace delete, invite, role change). Scope enforcement is in the MCP server layer; the .NET API enforces it again via the `ai-agent` principal. | Missing or invalid bearer token → `401 Unauthorized` (rejected before any tool dispatch). Unrecognized tool name → `404 Tool Not Found`. Scope violation → `403 Forbidden`. All rejections logged with `clientIp`, `tool`, and `timestamp` for OWASP audit. |
+>
+> External AI clients (Claude Desktop, Cursor, VS Code Copilot, Cline, Griot's own `ai/` agents) **must** present a valid `GRIOT_MCP_TOKEN` when connecting over HTTP. Stdio connections bypass this gate and are only permitted in local development.
+
 ## 3. The prompt (single, extensive — no length limit)
 
 Paste the full prompt below into Figma Make. It builds all 8 containers AND every arrow in one extensive pass.
 
 ```text
-C4 Container diagram Level 2 for Griot, the box-level deployment view. Draw these 8 containers (rounded rects), each with a tech badge and a host corner-badge:
+C4 Container diagram Level 2 for Griot, the box-level deployment view. Draw these 8 boxes (rounded rects), each with a tech badge and a host corner-badge. Mark which are compose/Railway deployable services (`api`, `sqlserver`, `postgres`, `redis`, `mcp`) vs external host clients (`web`, `mobile`, `ai`):
 
 1. web — Vite + React 18 + MUI; Public shell + App shell + Copilot panel [host: Vercel]
 2. mobile — Flutter 3.19 / Dart 3; Android companion [host: Play/APK]
@@ -55,12 +64,15 @@ CONNECT WITH LABELED ARROWS (protocol on every arrow):
 - ai → api: HTTPS GraphQL GRIOT_SERVICE_TOKEN; api → ai: HMAC webhook (dashed return)
 - mcp → api: HTTPS GraphQL GRIOT_SERVICE_TOKEN
 - External AI clients → mcp: MCP stdio/Streamable HTTP
+Note on mcp arrow: "stdio (local dev): OS process trust — no token required.
+    Streamable HTTP (Docker/Railway): Bearer GRIOT_MCP_TOKEN required.
+    Missing/invalid token → 401. Scope violation → 403. All rejections logged."
 - api → sqlserver: TCP 1433 TDS (EF Core 8 + Dapper 2)
 - api → postgres: TCP 5432 (secondary/test only)
 - api → redis: TCP 6379
 - api → email provider: SMTP/HTTPS (invites, reminders, digest)
 
-ANNOTATION: "This diagram maps 1:1 to docker-compose.yml + the Railway service list — exactly these 8 containers, no extras." Container names must match the compose service keys (api, sqlserver, postgres, redis, mcp). Color: web=Vercel brand, api/mcp/sqlserver/postgres/redis=Railway, ai=Trigger. Readable at 100% zoom; orthogonal routing.
+ANNOTATION: "The compose/Railway deployable services shown are: api, sqlserver, postgres, redis, mcp — matching the service keys in docker-compose.yml. web → Vercel, mobile → Play/APK, ai → Trigger cloud are EXTERNAL hosts/clients, not compose services. Note: Railway may split or combine services differently from compose for production (see infra/AGENTS.md); this diagram shows the logical service topology, not a 1:1 Railway config guarantee. Color: web=Vercel brand, api/mcp/sqlserver/postgres/redis=Railway, ai=Trigger. Readable at 100% zoom; orthogonal routing."
 ```
 
 ### Refine
@@ -73,7 +85,9 @@ ANNOTATION: "This diagram maps 1:1 to docker-compose.yml + the Railway service l
 
 ## 3. Definition of Done
 
-- [ ] 8 containers present with tech + host + port badges
+- [ ] 8 boxes present with tech + host + port badges; 5 compose/Railway services vs 3 external hosts clearly distinguished
 - [ ] Every arrow has a protocol label; no unlabeled edges
 - [ ] Container names == compose service keys; matches deployment docs
+- [ ] MCP arrow annotated with dual trust model: stdio (OS process trust, no token) vs Streamable HTTP (Bearer `GRIOT_MCP_TOKEN` required; 401 on miss, 403 on scope violation, all rejections logged)
+- [ ] `GRIOT_MCP_TOKEN` is distinct from `GRIOT_SERVICE_TOKEN`; both documented in the diagram notes
 - [ ] Approved → PNG → `project-kit/diagrams/architecture/c4-container.png`

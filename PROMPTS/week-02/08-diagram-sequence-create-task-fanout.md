@@ -18,7 +18,8 @@
 Client → TaskController/GriotMutation: createTask { title, columnId, assigneeId?, priority?, dueDate? }
 → TaskService: CreateTaskAsync(dto)
 TaskService → SQL Server: BEGIN TX
-TaskService → SQL Server: INSERT TaskItems (Position = max + 1 in column)
+TaskService → SQL Server: SELECT MAX(Position) FROM TaskItems WHERE ColumnId = @ColumnId WITH (UPDLOCK, HOLDLOCK)  ← serializable lock prevents duplicate position under concurrent inserts
+TaskService → SQL Server: INSERT TaskItems (Position = locked_max + 1)
 TaskService → SQL Server: INSERT ActivityLogs (actor, action=Created, entity=Task, payload)
 TaskService → SQL Server: INSERT Notifications (assignee if assigned; type=Assignment, targetRef=task)
 TaskService → SQL Server: INSERT AuditLogs (before=null, after=snapshot)
@@ -46,7 +47,8 @@ FLOW:
 Client → TaskController/GriotMutation: createTask { title, columnId, assigneeId?, priority?, dueDate? }
 TaskController/GriotMutation → TaskService: CreateTaskAsync(dto)
 TaskService → SQL Server: BEGIN TRANSACTION
-TaskService → SQL Server: INSERT TaskItems (Position = max+1 in column)
+TaskService → SQL Server: SELECT MAX(Position) FROM TaskItems WHERE ColumnId=@ColumnId WITH (UPDLOCK, HOLDLOCK)  [serializable lock — prevents duplicate positions under concurrent inserts]
+TaskService → SQL Server: INSERT TaskItems (Position = locked_max + 1)
 TaskService → SQL Server: INSERT ActivityLogs (actor, action=Created, entity=Task, payload JSON)
 TaskService → SQL Server: INSERT Notifications (type=Assignment, targetRef=taskId) if assignee set
 TaskService → SQL Server: INSERT AuditLogs (before=null, after=JSON snapshot)

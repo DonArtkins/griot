@@ -1,6 +1,6 @@
 # Week 02 · Prompt 02 — ERD in Figma Make: THE MASTER PROMPT (no length limit)
 
-> 📌 **Paste this entire prompt into Figma Make.** There is **NO character limit here** — it is written to be complete, exhaustive, and detailed so the AI produces the full 16-table / 5-enum / 19-relationship / 13-index ERD in **one generation** (or in as many Pt-as-needed follow-ups if the canvas tool truncates — each follow-up repeats the missing table by name).
+> 📌 **Paste this entire prompt into Figma Make.** There is **NO character limit here** — it is written to be complete, exhaustive, and detailed so the AI produces the full 16-table / 5-enum / 21-relationship / 19-index ERD in **one generation** (or in as many follow-ups as needed if the canvas tool truncates — each follow-up repeats the missing table by name).
 > **Tool:** Figma Make, live project: `https://www.figma.com/make/bTB7eE6s39O6yvtYfq0DeR/Griot`
 > **Output:** `project-kit/diagrams/erd/griot-erd-v1.0.0.png`
 
@@ -28,6 +28,8 @@ Design a complete, production-grade entity-relationship diagram (ERD) for **Grio
 - WorkspaceRole: Owner · Admin · Member
 - NotificationType: Mention · Assignment · DueDate · System
 - ErrorFixStatus: Open · Investigating · Fixed · Verified · WonTFix
+- InviteStatus: Pending · Accepted · Declined · Expired  *(inline on Invites.Status — not a separate EF Core enum)*
+- ProjectStatus: Active · Archived  *(inline on Projects.Status — not a separate EF Core enum)*
 
 ## TABLES — 16 total (exact columns)
 
@@ -82,12 +84,15 @@ Id GUID PK | RequestId GUID ? | UserId FK→Users ? | ExceptionType nvarchar(200
 
 ### AuditLogs (Observability — change history)
 Id GUID PK | ActivityId FK→ActivityLogs ? | ActorId FK→Users | Action nvarchar(50) | EntityType nvarchar(50) | EntityId GUID | Before nvarchar(max) JSON ? | After nvarchar(max) JSON ? | CreatedAt datetime2
+
+OBSERVABILITY GOVERNANCE (annotation box connected to all three amber tables):
+"Retention: ApiLogs/ActivityLogs/AuditLogs = 90-day hot window, pruned monthly. ErrorLogs = keep Open/Investigating indefinitely; prune Fixed after 90 days from FixedAt. PII/secrets redaction before write: IpAddress last-octet masked; QueryString credentials stripped at middleware; Message/StackTrace secrets scrubbed by logging middleware; JSON Payload/Before/After must never contain plaintext passwords or tokens. Append-only — no UPDATE/DELETE on these tables."
 ```
 
 ### ⚡ PROMPT (continue — relationships, indexes, conventions)
 
 ```text
-## RELATIONSHIPS — 19 edges, label every edge with the FK name
+## RELATIONSHIPS — 21 edges, label every edge with the FK name
 1. WorkspaceMembers.WorkspaceId → Workspaces.Id (1:N) + WorkspaceMembers.UserId → Users.Id (1:N) [M:N join Users↔Workspaces, Role on association]
 2. Workspaces.OwnerId → Users.Id (N:1)
 3. Workspaces 1:N WorkspaceMembers (cascade members)
@@ -97,19 +102,21 @@ Id GUID PK | ActivityId FK→ActivityLogs ? | ActorId FK→Users | Action nvarch
 7. Users 1:N RefreshTokens (rotation chain via ReplacedByTokenId)
 8. Users 1:N Notifications (ReadAt nullable = unread)
 9. Users 1:N ApiLogs (nullable)
-10. Users 1:N ErrorLogs (nullable)
-11. ActivityLogs 1:N AuditLogs (optional: AuditLogs.ActivityId → ActivityLogs.Id)
-12. Projects 1:N Boards
-13. Boards 1:N Columns (ordered)
-14. Columns 1:N TaskItems (Position within column)
-15. TaskItems.AssigneeId → Users.Id (N:1 nullable) — draw SEPARATELY
-16. TaskItems.CreatorId → Users.Id (N:1 required) — draw SEPARATELY
-17. TaskItems 1:N Comments (cascade)
-18. TaskItems 1:N Attachments (cascade)
-19. Users 1:N Workspaces-created (Owner relation, same as #2)
+10. Users 1:N ErrorLogs (nullable, via UserId)
+11. ErrorLogs.SolvedByUserId → Users.Id (N:1 nullable) — who resolved the error — draw SEPARATELY from #10
+12. AuditLogs.ActorId → Users.Id (N:1 required) — who performed the audited action
+13. ActivityLogs 1:N AuditLogs (optional: AuditLogs.ActivityId → ActivityLogs.Id)
+14. Projects 1:N Boards
+15. Boards 1:N Columns (ordered)
+16. Columns 1:N TaskItems (Position within column)
+17. TaskItems.AssigneeId → Users.Id (N:1 nullable) — draw SEPARATELY
+18. TaskItems.CreatorId → Users.Id (N:1 required) — draw SEPARATELY
+19. TaskItems 1:N Comments (cascade)
+20. TaskItems 1:N Attachments (cascade)
+21. Invites.InvitedById → Users.Id (N:1 required) — who sent the invite
 
-## INDEXES — sticky-note column on the right
-- Every FK column → non-clustered index
+## INDEXES — sticky-note column on the right (19 index stickies total)
+- Every FK column → non-clustered index (1 rule sticky covering all FKs)
 - TaskItems(ColumnId, Position) — board read + drag hot path
 - TaskItems(AssigneeId), TaskItems(DueDate) — my tasks + reminder agent
 - ActivityLogs(WorkspaceId, CreatedAt DESC) — feed + summarize_project
@@ -123,6 +130,8 @@ Id GUID PK | ActivityId FK→ActivityLogs ? | ActorId FK→Users | Action nvarch
 
 ## CONVENTIONS NOTE (small annotation box)
 - GUID PKs; timestamps SYSUTCDATETIME() (UTC, never GETDATE()); enums stored as varchar via HasConversion<string>() so SQL reads are readable; nvarchar(max) only for bodies/JSON; audit + error trails append-only; soft-delete NOT used (hard delete + AuditLog tombstone).
+- Observability retention: ApiLogs/ActivityLogs/AuditLogs 90-day hot window, pruned monthly; ErrorLogs Open/Investigating kept indefinitely, Fixed pruned 90d after FixedAt.
+- PII/secrets redaction: IpAddress last-octet masked; QueryString credentials stripped at middleware; Message/StackTrace scrubbed by logging middleware; JSON Payload/Before/After must never contain plaintext passwords or tokens.
 ```
 
 ---
@@ -141,7 +150,7 @@ Paste the full prompt once. If the canvas omits any table (named above), **do no
 
 ## Definition of Done (this ERD)
 
-- [ ] 16 tables + 5 enums + 19 labelled crow's-foot edges + 13 index stickies + legend + conventions note, all on one canvas
+- [ ] 16 tables + 5 enums + 21 labelled crow's-foot edges + 19 index stickies + legend + conventions note, all on one canvas
 - [ ] Names/values match `backend/project-kit/context/data-layer.md` + `docs/database/DATABASE-DESIGN.md` exactly
 - [ ] Module color-coding (purple/blue/teal/amber) applied
 - [ ] Approved → PNG → `project-kit/diagrams/erd/griot-erd-v1.0.0.png` → ledger updated

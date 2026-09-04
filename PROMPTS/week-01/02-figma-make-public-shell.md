@@ -21,7 +21,7 @@
 - **Social proof row**: testimonials/logos placeholder.
 - **CTA band**: headline + email capture or "Get started free" button.
 - **Footer**: logo, Product/Company/Legal links, copyright.
-- Hero must stay LCP < 2.5 s (lazy-load the board shot).
+- Hero must stay LCP < 2.5 s — the above-the-fold board screenshot is the LCP candidate, so **load it eagerly** (`loading="eager"`, `fetchpriority="high"`) with explicit responsive `width`/`height` attributes (or `aspect-ratio` CSS) to prevent CLS; do NOT lazy-load the hero. Lazy-load only below-the-fold screenshots (bento cards, feature screenshots).
 
 ### Page 2 — Pricing `/pricing`
 - **Header**: title + Monthly/Yearly toggle (-12.5%).
@@ -53,7 +53,7 @@ PAGE 1 — LANDING (/):
 - Social-proof row (testimonials/logos placeholder).
 - CTA band with email capture or Get started free.
 - Footer: Product / Company / Legal links + copyright.
-- LCP under 2.5s: lazy-load the hero screenshot.
+- LCP under 2.5s: load the hero screenshot EAGERLY (loading="eager", fetchpriority="high") with explicit responsive `width` and `height` attributes (or `aspect-ratio` CSS) to prevent CLS — do NOT add lazy loading to the above-the-fold hero image; lazy-load ONLY card screenshots and feature-bento screenshots that are below the fold.
 
 PAGE 2 — PRICING (/pricing):
 - Header + Monthly/Yearly toggle (-12.5%).
