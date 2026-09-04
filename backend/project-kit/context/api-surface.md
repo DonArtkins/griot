@@ -39,7 +39,8 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 - **Workspace quota:** 100 MB total per workspace (checked before upload)
 - **MIME types:** Whitelist (images, PDF, .docx, .xlsx); blacklist executables (.exe, .dll, .bat, .sh, .ps1)
 - **Storage:** Vercel Blob free tier (1 GB + 10 GB transfer/month). Public URLs served via Vercel CDN (512 MB cache limit per blob).
-- **Migration path (Phase 3):** Cloudflare R2 when egress >100 GB/month. See `feature-specs/11-blob-storage-integration.md`.
+- **Access control model:** Bearer-by-URL (Vercel Blob generates signed URLs with embedded tokens). Workspace membership checked at upload/delete; URL access relies on URL secrecy. For strict private access in Phase 3, migrate to R2 with authenticated download endpoints.
+- **Migration path (Phase 3):** Cloudflare R2 when egress >100 GB/month or when private access enforcement required. See `feature-specs/11-blob-storage-integration.md`.
 
 ## Pagination (Phase 1 — abuse prevention)
 - **MaxPageSize:** 1,000 items (enforced via middleware)

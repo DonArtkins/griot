@@ -39,9 +39,12 @@ AuthController → AuthService: RefreshAsync(token)
 AuthService → RefreshTokens(DB): BEGIN TRANSACTION
     DECLARE @foundId uniqueidentifier, @familyId uniqueidentifier, @userId uniqueidentifier
     SELECT @foundId = Id, @familyId = FamilyId, @userId = UserId
-        FROM RefreshTokens WHERE TokenHash = @hash AND RevokedAt IS NULL
+        FROM RefreshTokens 
+        WHERE TokenHash = @hash 
+          AND RevokedAt IS NULL 
+          AND ExpiresAt > SYSUTCDATETIME()  -- Security: reject expired tokens
     IF @foundId IS NULL
-        → REPLAY detected (not found OR already revoked) → ROLLBACK, revoke family (see §4)
+        → EXPIRED or REPLAY detected (not found OR already revoked OR expired) → ROLLBACK, return 401
     UPDATE RefreshTokens SET RevokedAt = SYSUTCDATETIME(), ReplacedByTokenId = @newId
         WHERE Id = @foundId AND RevokedAt IS NULL   -- atomic guard: only one caller succeeds
     IF @@ROWCOUNT = 0
@@ -49,7 +52,7 @@ AuthService → RefreshTokens(DB): BEGIN TRANSACTION
     INSERT RefreshTokens (Id = @newId, TokenHash = @newHash, FamilyId = @familyId,
         UserId = @userId, ReplacedByTokenId = NULL, ExpiresAt = @exp, CreatedAt = SYSUTCDATETIME())
     COMMIT
-alt row found + RevokedAt IS NULL (within transaction)
+alt row found + RevokedAt IS NULL + ExpiresAt > SYSUTCDATETIME() (within transaction)
     AuthService: issue new access JWT
     AuthService → Redis: update session
     AuthController → User: 200 { new accessToken }
@@ -69,12 +72,23 @@ else row not found OR RevokedAt already set
 Attacker → AuthController: POST /api/auth/refresh
     [presents stolenRefresh via cookie or body]
 AuthService → RefreshTokens(DB): BEGIN TRANSACTION
-    SELECT ... WHERE TokenHash = @hash AND RevokedAt IS NULL
-    → row NOT found (already rotated) OR found with RevokedAt set
-    → REPLAY detected
-    UPDATE RefreshTokens SET RevokedAt = NOW()
-        WHERE FamilyId = @familyId        -- scoped revocation: entire family only
-    COMMIT
+    -- Security fix: Recover FamilyId by TokenHash without RevokedAt filter
+    DECLARE @familyId uniqueidentifier
+    SELECT @familyId = FamilyId FROM RefreshTokens WHERE TokenHash = @hash
+    
+    IF @familyId IS NULL
+        → token hash not found (invalid token) → ROLLBACK, return 401
+    
+    -- Now check if already rotated/revoked
+    IF NOT EXISTS (SELECT 1 FROM RefreshTokens WHERE TokenHash = @hash AND RevokedAt IS NULL)
+        → REPLAY detected (already rotated OR already revoked)
+        UPDATE RefreshTokens SET RevokedAt = SYSUTCDATETIME()
+            WHERE FamilyId = @familyId AND RevokedAt IS NULL  -- revoke entire family
+        COMMIT
+        → return 401 with replay indicator
+    ELSE
+        → normal rotation path (should not reach here if initial SELECT failed)
+    
 AuthController → Attacker: 401
 Note: the legitimate client's NEXT refresh also fails (same FamilyId revoked)
       → must re-login. This is DESIRED: FamilyId scopes the blast radius; rotation is one-time-use.
@@ -112,8 +126,8 @@ User → AuthController: POST /api/auth/refresh
 Note over User,AuthController: web: httpOnly cookie | mobile/Postman: JSON body { refreshToken }
 AuthController → AuthService: RefreshAsync(token)
 AuthService → SQL Server: BEGIN TRANSACTION
-    SELECT ... WHERE TokenHash = @hash AND RevokedAt IS NULL
-AuthService [self]: if no row → treat as REPLAY → GOTO FRAME 3 path
+    SELECT ... WHERE TokenHash = @hash AND RevokedAt IS NULL AND ExpiresAt > SYSUTCDATETIME()
+AuthService [self]: if no row → treat as EXPIRED or REPLAY → return 401 (GOTO FRAME 3 if replay suspected)
     UPDATE RefreshTokens SET RevokedAt=NOW(), ReplacedByTokenId=@newId
         WHERE Id=@foundId AND RevokedAt IS NULL  [race guard]
     INSERT RefreshTokens { TokenHash=newHash, FamilyId=same, UserId, ReplacedByTokenId=oldId, ExpiresAt }

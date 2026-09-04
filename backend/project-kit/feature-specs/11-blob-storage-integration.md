@@ -292,18 +292,29 @@ public class AttachmentService
 
     public async Task<Attachment> UploadAsync(Guid taskId, Guid uploaderId, IFormFile file, CancellationToken ct)
     {
+        // SECURITY NOTE: This specification phase implementation has known issues that MUST be fixed before production:
+        // 1. File validation: ContentType is client-controlled; add extension and magic-byte validation (see §7.1)
+        // 2. Quota atomicity: Concurrent uploads can bypass quota; implement atomic reservation (see FIXME below)
+        // 3. Workspace authorization: Add explicit workspace membership check before upload (see FIXME below)
+        
         // 1. Validate file size
         var maxSize = _config.GetValue<long>("BlobStorage:MaxFileSizeBytes");
         if (file.Length > maxSize)
             throw new ValidationException($"File size exceeds {maxSize / 1024 / 1024} MB limit.");
 
         // 2. Validate MIME type
+        // FIXME (Security): Add extension validation against BlockedExtensions from §7.1
+        // FIXME (Security): Add magic-byte validation - do not trust client-controlled ContentType alone
         var allowedTypes = _config.GetSection("BlobStorage:AllowedMimeTypes").Get<string[]>()!;
         if (!allowedTypes.Contains(file.ContentType))
             throw new ValidationException($"File type {file.ContentType} not allowed.");
 
         // 3. Validate workspace quota
+        // FIXME (Security): Add workspace membership check - verify uploaderId is member of task's workspace
         var task = await _taskRepo.GetByIdAsync(taskId, ct);
+        // FIXME (Security): Make quota enforcement atomic - use database-level reservation to prevent race conditions
+        // Current read-then-check pattern allows concurrent uploads to bypass quota
+        // Suggested fix: Add WorkspaceStorageReservations table with atomic INSERT/UPDATE
         var usage = await _blobStorage.GetWorkspaceUsageAsync(task.Board.Project.WorkspaceId, ct);
         var quota = _config.GetValue<long>("BlobStorage:MaxWorkspaceQuotaBytes");
         if (usage + file.Length > quota)
@@ -332,6 +343,8 @@ public class AttachmentService
 
     public async Task<IEnumerable<Attachment>> GetByTaskIdAsync(Guid taskId, CancellationToken ct)
     {
+        // FIXME (Security): Add workspace membership check before listing attachments
+        // Verify caller has access to the task's workspace
         // Retrieve all attachments for a given task
         return await _repo.GetByTaskIdAsync(taskId, ct);
     }
@@ -340,6 +353,10 @@ public class AttachmentService
     {
         var attachment = await _repo.GetByIdAsync(id, ct);
         if (attachment == null) throw new NotFoundException("Attachment not found.");
+
+        // FIXME (Security): Add workspace membership/role check before deletion
+        // Verify the attachment's task belongs to a workspace the caller can access
+        // Verify caller has permission to delete (owner, workspace admin, or uploader)
 
         // Delete from blob storage first (idempotent — 404 is OK)
         await _blobStorage.DeleteAsync(attachment.StorageUrl, ct);

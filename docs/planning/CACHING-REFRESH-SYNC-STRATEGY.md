@@ -391,7 +391,21 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   setAccessToken: (token) => set({ accessToken: token }),
-  clearAuth: () => set({ accessToken: null }),
+  clearAuth: () => {
+    set({ accessToken: null });
+    
+    // Security: Clear all cached data on logout/account switch
+    // Apollo client cache
+    import('@/lib/apollo-client').then(({ apolloClient }) => {
+      apolloClient.clearStore(); // Clears cache + refetches active queries
+    });
+    
+    // TanStack Query cache
+    import('@tanstack/react-query').then(({ useQueryClient }) => {
+      const queryClient = useQueryClient();
+      queryClient.clear(); // Clears all queries and mutations
+    });
+  },
 }));
 
 // web/src/stores/ui-store.ts
