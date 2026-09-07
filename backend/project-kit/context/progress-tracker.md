@@ -6,8 +6,8 @@ Week 2. The backend kit and 9 feature specs are written. The approved ERD is req
 
 | Spec | Title | Status |
 |---|---|---|
-| 01 | ERD & schema design (Figma/Figma Make) | Depends on PROMPTS/week-02 |
-| 02 | SQL Server implementation (EF Core) | Pending ERD approval |
+| 01 | ERD & schema design (Figma/Figma Make) | ✅ Done |
+| 02 | SQL Server implementation (EF Core) | ✅ Done |
 | 03 | Stored procedures & optimized queries | Pending |
 | 04 | REST APIs (.NET 8) | Pending |
 | 05 | GraphQL layer (HotChocolate) | Pending |

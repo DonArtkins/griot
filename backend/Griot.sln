@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{65E72A54-86D6-4FC2-8E53-79C1EDAD5B5E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Griot.Domain", "src\Griot.Domain\Griot.Domain.csproj", "{7A077CF2-35D0-47D6-8ECA-EC73BA5CBDC1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Griot.Application", "src\Griot.Application\Griot.Application.csproj", "{2205DBBF-F2FB-449A-8F50-4859945F9BA9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Griot.Infrastructure", "src\Griot.Infrastructure\Griot.Infrastructure.csproj", "{8330F47C-09FC-4F70-80FE-854397E8CFB7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Griot.Api", "src\Griot.Api\Griot.Api.csproj", "{6092FFE2-B4E1-4ECA-BB5C-CD64A5390900}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7A077CF2-35D0-47D6-8ECA-EC73BA5CBDC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A077CF2-35D0-47D6-8ECA-EC73BA5CBDC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A077CF2-35D0-47D6-8ECA-EC73BA5CBDC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A077CF2-35D0-47D6-8ECA-EC73BA5CBDC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2205DBBF-F2FB-449A-8F50-4859945F9BA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2205DBBF-F2FB-449A-8F50-4859945F9BA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2205DBBF-F2FB-449A-8F50-4859945F9BA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2205DBBF-F2FB-449A-8F50-4859945F9BA9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8330F47C-09FC-4F70-80FE-854397E8CFB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8330F47C-09FC-4F70-80FE-854397E8CFB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8330F47C-09FC-4F70-80FE-854397E8CFB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8330F47C-09FC-4F70-80FE-854397E8CFB7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6092FFE2-B4E1-4ECA-BB5C-CD64A5390900}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6092FFE2-B4E1-4ECA-BB5C-CD64A5390900}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6092FFE2-B4E1-4ECA-BB5C-CD64A5390900}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6092FFE2-B4E1-4ECA-BB5C-CD64A5390900}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7A077CF2-35D0-47D6-8ECA-EC73BA5CBDC1} = {65E72A54-86D6-4FC2-8E53-79C1EDAD5B5E}
+		{2205DBBF-F2FB-449A-8F50-4859945F9BA9} = {65E72A54-86D6-4FC2-8E53-79C1EDAD5B5E}
+		{8330F47C-09FC-4F70-80FE-854397E8CFB7} = {65E72A54-86D6-4FC2-8E53-79C1EDAD5B5E}
+		{6092FFE2-B4E1-4ECA-BB5C-CD64A5390900} = {65E72A54-86D6-4FC2-8E53-79C1EDAD5B5E}
+	EndGlobalSection
+EndGlobal
