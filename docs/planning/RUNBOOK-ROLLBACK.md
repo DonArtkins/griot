@@ -16,7 +16,7 @@
 
 ### AI agents (Trigger.dev)
 1. Trigger dashboard → the task/agent → **Deactivate** (stops scheduled runs).
-2. Redeploy the last-good version via `npx trigger.dev@3 deploy` from `ai/` (version is pinned in `ai/package.json` devDependencies — use the exact version recorded there, not `@latest`).
+2. Redeploy the last-good version via `npx trigger.dev@4.0.0 deploy` from `ai/` (version is pinned in `ai/package.json` devDependencies — use the exact version recorded there, not `@latest`).
 
 ### Mobile
 - APK artifact is immutable per release; rollback = install the previous APK (documented in the release note).
@@ -26,12 +26,19 @@
 - **Migration failure**: Railway does not promote the release if the migration command exits non-zero (the deployment is rejected). No manual intervention needed.
 - **Post-deployment schema issue**: If an already-applied migration causes production issues:
   1. **Application rollback first**: Railway rollback to previous image (works if migration was expand-phase compatible).
-  2. **Database recovery** (coordinated procedure):
-     - Restore from last Railway volume snapshot (point-in-time backup).
-     - Verify Recovery Point Objective (RPO): check `AuditLogs` / `ActivityLogs` for last recorded transaction timestamp vs backup timestamp.
-     - Reapply any lost transactions if within acceptable RPO window, or document data loss.
-     - Do NOT attempt to manually reverse forward-only migrations; use tested backup restore.
-  3. **Communication**: Notify team and users of any data loss or downtime window.
+  2. **Database recovery** (Railway volume snapshots):
+     - **Railway volume snapshots** are fixed-point backups taken at Railway-defined intervals (typically 24 hours)
+     - **NOT arbitrary timestamp recovery (PITR)** — Railway snapshots restore to snapshot time only, not custom timestamps
+     - **Recovery process:**
+       1. Railway dashboard → Database service → Backups tab
+       2. Select last good snapshot → Restore to new volume
+       3. Update connection string to restored volume
+       4. Verify RPO: Check last `AuditLogs`/`ActivityLogs` timestamp vs snapshot time
+     - **RPO (Recovery Point Objective):** Time since last snapshot (typically 24 hours)
+     - **Data loss:** Transactions between snapshot time and incident time are lost
+     - **Transaction replay:** NOT feasible with current schema (AuditLogs contains state snapshots, not commands). Document data loss and coordinate with affected users.
+  3. **Communication**: Notify team and users of data loss window and RPO.
+  4. **Future enhancement (if RPO >24h unacceptable):** Enable PostgreSQL PITR with WAL archiving to external storage (requires setup, see `docs/planning/CODERABBIT-REMAINING-ISSUES.md` §2.2).
 - **Prevention**: Test migrations in staging environment with production-like data volume before deploying to production.
 
 ## What notices before a user does

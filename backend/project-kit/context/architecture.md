@@ -33,7 +33,7 @@ backend/
 - **Pagination middleware** (`Griot.Api/Middleware`): `MaxPageSize = 1,000` validation. Returns 400 if client requests >1k items.
 
 ### Phase 2: Post-k6 conditional optimizations
-- **GraphQL response caching** (HotChocolate + Redis): Cache board queries by `(workspaceId, userId, timestamp)` key. Invalidate on writes. Configured via `.AddQueryCachePipeline().AddRedisQueryStorage()`.
+- **GraphQL response caching** (HotChocolate + Redis): Cache board queries by `(boardId, workspaceId, userId, timestamp)` key. Invalidate on writes. Configured via `.AddQueryCachePipeline().AddRedisQueryStorage()`.
 - **Read replica routing** (EF Core contexts): Separate read-only DbContext points to replica connection string. Writes stay on primary. See `docs/database/DATABASE-DESIGN.md` §5.
 
 ### Phase 3: Post-bootcamp enhancements

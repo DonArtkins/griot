@@ -79,7 +79,7 @@ The PDF's "2026 Core Technology Stack" is the contract. Every line is mapped to 
 
 | Item | Griot uses | Notes |
 |---|---|---|
-| **Docker 26+** | exact | Real Docker Engine (Parrot aliases docker→podman — fix per). |
+| **Docker 26+** | exact | Real Docker Engine (Parrot aliases docker→podman — fix per §6.3). |
 | **Docker Compose v2** | exact | Local stack: api + sqlserver + postgres + redis. |
 | **Vercel** | exact | Frontend hosting, Vite preset, env-var config (Week 5). |
 | **GitHub Actions** | exact | PR-gated tests + deploy on main (Weeks 5–6). |
@@ -146,15 +146,27 @@ Figma Make (the AI prototyping surface in the research screenshot) takes a struc
 
 ---
 
-## 6. Environment Setup — Parrot OS, Everything Needed, Zero Collision with the Personal Stack
+## 6. Environment Setup — Parrot OS, Sababisha-Wide, Zero Collision with the Personal Stack
 
-> Goal: one reproducible instructions file for a fresh Parrot machine with **both** stacks live:
-> the GTP/bootcamp stack (this project) and the personal stack (unrelated work). Nothing below is a singleton global install that could break personal projects.
+> **Scope correction (superseding the original per-GTP-only version of this section):** this setup is no longer GTP-only. It is **Sababisha-organization-wide** — one shared Docker Engine, one shared SQL Server/Postgres/Redis backing-services stack, used by **every** Sababisha project, GTP-derived or not. Griot (this GTP capstone) is one *consumer* of this infrastructure, not its owner. A future non-GTP Sababisha project reuses the exact same running containers — see §6.4b for how.
+>
+> Directory convention: `~/sababisha/infra/` (the shared compose file + backing services) and `~/sababisha/projects/<area>/<project-name>/` (every project's own code — GTP projects nest under `~/sababisha/projects/gtp/<project-name>`, e.g. `~/sababisha/projects/gtp/griot`). Personal, non-Sababisha work stays fully outside `~/sababisha/` — nothing below is a singleton global install that could break it.
 
-### 6.1 The Parrot-specific gotchas that still apply (unchanged)
-1. **Parrot aliases `docker` to Podman by default.** `docker --version` on stock Parrot invokes Podman in compatibility mode. Install real Docker Engine (steps in 6.3) and confirm with `docker info | grep -i containerd` / the absence of the `podman` compatibility banner; optionally `sudo apt remove podman docker.io` if the shim shadows the real binary in `PATH`.
-2. Run `sudo apt update && sudo apt full-upgrade -y` first — Parrot ships stripped repos.
-3. **VS Code → VSCodium** stays (same source, telemetry stripped, Open VSX marketplace). The C# Dev Kit / C# extension is available on Open VSX, so there is no extension gap for the .NET stack.
+### 6.1 The Parrot-specific gotchas that still apply (updated with real incidents from this machine)
+
+1. **Parrot aliases `docker` to Podman by default — and this is now confirmed, not theoretical.** The first real run on this machine showed `docker --version` reporting a normal Docker Engine version string, but every `docker` command actually failed against `unix:///run/user/1000/podman/podman.sock` — the CLI genuinely was talking to Podman's rootless socket, not the Docker daemon, even though `docker-ce`/`docker-compose-plugin` were installed. **`docker --version` succeeding is not proof the real daemon is being used** — always check the failing socket path in the error, or `docker info | grep -i containerd`, to confirm which backend is answering.
+2. **`systemctl status docker` reported `Loaded... disabled` / `Active: inactive (dead)`.** Installing the packages does not start or enable the daemon. Fix is `sudo systemctl enable --now docker`, then re-check `docker --version` / `sudo docker run hello-world` — do this as a standing step in §6.3, not an afterthought.
+3. Run `sudo apt update && sudo apt full-upgrade -y` first — Parrot ships stripped repos.
+4. **VS Code → VSCodium** stays (same source, telemetry stripped, Open VSX marketplace). The C# Dev Kit / C# extension is available on Open VSX and was already installed and confirmed on this machine — no extension gap for the .NET stack.
+5. **Docker's `apt` repo has no `echo` (Parrot's codename) release — you must hardcode a real Debian codename.** Using `$(. /etc/os-release && echo "$VERSION_CODENAME")` on Parrot resolves to `echo`, which 404s against `download.docker.com` (Docker only publishes for actual Debian/Ubuntu codenames). Parrot 7.4 tracks **Debian 13 (trixie)** upstream, so the repo line must hardcode `trixie` — see the corrected command in §6.3.
+6. **A reboot does not fix a failed install, and does not start a disabled daemon.** If `docker` commands fail after a restart, check both (a) whether the packages actually installed and (b) whether the daemon is enabled — see gotcha 2. Don't assume a fresh boot fixes either.
+7. **`dotnet-install.sh` completing successfully does not put `dotnet` on `PATH` for future shells.** On this machine the script reported "Installation finished successfully" and even printed the version, but `dotnet --version` in the *same* and later shells returned `command not found` — the script only patches the current process's PATH, not `~/.bashrc`. The `export PATH="$PATH:$HOME/.dotnet"` line in §6.5 is not a suggestion; add it to `~/.bashrc` and `source ~/.bashrc` (or open a new shell) before trusting any `dotnet` command, including inside `backend/` for `dotnet new tool-manifest` / `dotnet tool install dotnet-ef`.
+8. **`flutter` is not yet installed on this machine.** Every reference to it below (`flutter`, `flutter doctor`) currently returns `command not found`. This is a real gap, not a false alarm — install it before Week 4 per the guide's Android toolchain steps; it is intentionally not detailed further in this doc since Week 4 owns it.
+9. **MCP Inspector v1 (`@modelcontextprotocol/inspector@0.15.0`) has a broken CLI arg parser on Node 20** — `npx @modelcontextprotocol/inspector node src/server.ts` throws `ERR_PARSE_ARGS_INVALID_OPTION_VALUE` on `--env` before it even reaches your server. The GUI mode (bare `npx @modelcontextprotocol/inspector`) works fine and was confirmed running on `http://127.0.0.1:6274` with a session token. Prefer the bare GUI invocation, or upgrade to v2 (`npm i @modelcontextprotocol/inspector@latest`) if the CLI form is actually needed — v1 only gets security fixes.
+10. **A stray semicolon-prefixed command (`;s`) is a bash syntax error, not a typo worth chasing** — `bash: syntax error near unexpected token ';'` just means the previous line's terminal wrapping merged into the next; retype the intended command.
+11. **The old standalone `docker-compose` package conflicts with `docker-compose-plugin` and will fail the install with a dpkg overwrite error** — both ship the same file at `/usr/libexec/docker/cli-plugins/docker-compose`. Confirmed on this machine: `docker-compose-plugin`'s unpack step failed with `trying to overwrite '.../docker-compose', which is also in package docker-compose`. Fix: `sudo apt remove -y docker-compose` first, then `sudo apt install -y docker-compose-plugin`. The §6.3 block below now removes `docker-compose` up front for this reason.
+12. **`docker` commands can still hit `podman.sock` even after the daemon is enabled and running, if something in the shell is redirecting them** — this showed up *after* `systemctl enable --now docker` had already succeeded (`Active: active (running)` confirmed) and `hello-world` had already run cleanly, which ruled out a daemon problem. Check, in order: `echo $DOCKER_HOST` (a stale var pointing at podman's socket overrides the real daemon — `unset` it and remove any export line from `~/.bashrc`), and `type docker` (should resolve to `/usr/bin/docker`; an alias or shell function shadowing it is the other cause). On this machine `type docker` confirmed the real binary, so the podman-socket line was leftover terminal scrollback from before the fix, not a new failure.
+13. **A first `docker compose up -d` pull looks stalled but usually isn't.** `mssql/server:2022-latest` is a large image (well over 1GB); watching "Pulling" with no progress bar movement for a while is normal on the first run, especially over a slower connection — it is not the same failure mode as gotchas 1–2 above. Give it time before assuming something is broken; `docker compose ps` in a second terminal shows real status if in doubt.
 
 ### 6.2 Phase 0 — System prep (one-time, non-destructive)
 ```bash
@@ -165,63 +177,157 @@ git config --global user.name "Don Artkins"
 git config --global user.email "info.donartkins.ke@gmail.com"
 ```
 
-### 6.3 Phase 1 — Real Docker Engine + Compose v2 (the only root-install in this guide)
+### 6.3 Phase 1 — Real Docker Engine + Compose v2 (the only root-install in this guide, Sababisha-wide — one install serves every project)
+
+**⚠️ Do not substitute `$VERSION_CODENAME` for the codename below.** It resolves to `echo` on Parrot, which does not exist in Docker's repo and 404s. Hardcode `trixie` (Parrot 7.4's Debian base) instead.
+
 ```bash
+# Clean up first if a previous attempt left a broken repo file behind
+sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
+
+# Remove conflicting unofficial packages (safe to run even if none are installed)
+sudo apt remove -y podman docker.io docker-compose docker-compose-v2 docker-doc docker-buildx podman-docker containerd runc 2>/dev/null
+
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
-  $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo groupadd docker 2>/dev/null; sudo usermod -aG docker $USER   # re-login once
-docker --version   # must say "Docker version 2x.x" – NOT podman
-docker compose version
-```
 
-### 6.4 Phase 2 — The GTP backend stack containers (isolated by design)
-One compose project `gtp` owns all of the programme's daemons, prefixed `gtp-*`, with distinct host ports so they **cannot collide** with personal Postgres/Redis:
+# Hardcoded 'trixie', NOT $VERSION_CODENAME — see warning above
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian trixie stable" | sudo tee /etc/apt/sources.list.d/docker.list
+
+sudo apt update
+
+# Confirmed necessary on this machine: docker-compose-plugin will fail to unpack
+# ("trying to overwrite '.../docker-compose', which is also in package docker-compose")
+# if the old standalone docker-compose package is still present — remove it explicitly,
+# don't rely on the earlier blanket removal line catching it.
+sudo apt remove -y docker-compose 2>/dev/null
+
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker $USER   # docker group is created automatically by the package; no need for groupadd
+
+# Confirmed necessary on this machine — installing the package does not start or enable it:
+sudo systemctl enable --now docker
+
+# Confirmed useful on this machine — a stale env var can silently redirect docker
+# commands to Podman's socket even with the real daemon running:
+echo $DOCKER_HOST   # should print nothing; if it shows a podman.sock path, run: unset DOCKER_HOST
+type docker         # should say "docker is /usr/bin/docker" — not an alias or function
+```
+**Log out and back in now** (or `newgrp docker` for the current shell only) — group membership does not apply retroactively, and every command below silently fails with "permission denied" or a Podman-socket "command not found"-looking error otherwise.
 
 ```bash
-mkdir -p ~/gtp && cd ~/gtp   # dedicated GTP home; keep personal work elsewhere
+docker --version           # must say "Docker version 2x.x" — NOT podman
+docker compose version
+sudo systemctl status docker   # confirm Active: active (running), not inactive/disabled
+sudo docker run hello-world    # confirms pull + run works end-to-end
+```
+
+**If `docker` commands still fail after all of this:** check which failure you actually have —
+- `command not found` / `apt update` errored on a 404 or missing Release file → the install never completed; re-run the block from the top.
+- A working `docker --version` but every real command errors against `unix:///run/user/1000/podman/podman.sock` → the daemon isn't the one answering; re-check `sudo systemctl status docker` and re-run `sudo systemctl enable --now docker`, then retry `sudo docker run hello-world`.
+- `Active: inactive (dead)` in `systemctl status` → the daemon was never started; `sudo systemctl enable --now docker` fixes this specifically.
+
+A reboot alone does not fix any of the three.
+
+### 6.4 Phase 2 — The Sababisha-wide backing-services stack (supersedes the old per-GTP `gtp-*` version)
+
+**Superseded:** the original version of this section stood up a `gtp`-only compose project at `~/gtp/docker-compose.yml` with `gtp-*`-prefixed containers. That has been torn down (`docker compose down` + `rm ~/gtp/docker-compose.yml`) and replaced with the version below, which lives at the **Sababisha org level** and is shared by every project.
+
+One compose project — `sababisha-infra` — owns one running SQL Server, one Postgres, and one Redis for the **entire organization**. Every Sababisha project (GTP-derived like Griot, or standalone) connects to these same containers; isolation between projects happens at the *database* level (one database per project on the shared SQL Server instance), not by duplicating the whole engine per project.
+
+```bash
+mkdir -p ~/sababisha/infra ~/sababisha/projects
+cd ~/sababisha/infra
 cat > docker-compose.yml <<'YAML'
 services:
-  gtp-sqlserver:
+  sababisha-sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${GTP_SA_PASSWORD:-GriotDev2026!}"
-    ports: ["14333:1433"]            # note: host 14333 → container 1433 (no clash with anything else)
-    volumes: [gtp_mssql:/var/opt/mssql]
-  gtp-postgres:
+      MSSQL_SA_PASSWORD: "${SABABISHA_SA_PASSWORD:-SababishaDev2026!}"
+    ports: ["14333:1433"]
+    volumes: [sababisha_mssql:/var/opt/mssql]
+  sababisha-postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_PASSWORD: "${GTP_PG_PASSWORD:-griot-pg}"
-    ports: ["5433:5432"]             # 5433 host → keeps personal 5432 untouched
-    volumes: [gtp_pg:/var/lib/postgresql/data]
-  gtp-redis:
+      POSTGRES_PASSWORD: "${SABABISHA_PG_PASSWORD:-sababisha-pg}"
+    ports: ["5433:5432"]
+    volumes: [sababisha_pg:/var/lib/postgresql/data]
+  sababisha-redis:
     image: redis:7-alpine
     ports: ["6380:6379"]
 volumes:
-  gtp_mssql:
-  gtp_pg:
+  sababisha_mssql:
+  sababisha_pg:
 YAML
+
 docker compose up -d
-docker exec gtp-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "GriotDev2026!" -C -Q "SELECT @@VERSION"
-docker exec gtp-redis redis-cli ping        # PONG
+docker exec sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "SababishaDev2026!" -C -Q "SELECT @@VERSION"
+docker exec sababisha-redis redis-cli ping        # PONG
 ```
 
-> The `.env` with `GTP_SA_PASSWORD` is git-ignored in this repo; defaults here are development-only.
+> The `.env` with `SABABISHA_SA_PASSWORD` is git-ignored; defaults here are development-only. Host ports (14333, 5433, 6380) are chosen the same way the old `gtp-*` setup chose them — to avoid colliding with any personal-stack Postgres/Redis/SQL Server running on the default ports (5432, 6379, 1433).
+
+Create Griot's own database on the shared instance (one `CREATE DATABASE` per project, not a new container per project):
+```bash
+docker exec -it sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "SababishaDev2026!" -C -Q "CREATE DATABASE Griot"
+```
+Griot's connection string points at `Server=localhost,14333;Database=Griot;...` — same shared server, isolated purely by database name.
+
+**Confirm the daemon is actually up before running any of the above** — this whole phase depends on §6.3's daemon-enabled fix; if `sababisha-sqlserver` won't start or `docker compose up -d` hangs, go back and confirm `sudo systemctl status docker` shows `active (running)` first.
+
+### 6.4a Project layout on disk (current, as of this incident's cleanup)
+```
+~/sababisha/
+├── infra/
+│   └── docker-compose.yml          # the ONE shared compose file — sababisha-sqlserver/-postgres/-redis
+└── projects/
+    └── gtp/
+        └── griot/                  # moved here from its original location during setup
+            ├── backend/            # per-project .NET SDK pin (§6.7) + EF tools live HERE, not at infra level
+            └── ...
+```
+Personal, non-Sababisha work stays entirely outside `~/sababisha/` and is untouched by any of this.
+
+### 6.4b How another Sababisha or GTP project plugs into this (no new containers, ever)
+
+This is the actual point of moving the setup to org level: **a new project never re-runs §6.3 or §6.4.** Docker Engine and the `sababisha-infra` containers are installed and started exactly once per machine. Onboarding a new project — whether it's a future GTP cohort deliverable or an unrelated Sababisha product — is just:
+
+1. **Create its folder** under the right area:
+   ```bash
+   mkdir -p ~/sababisha/projects/gtp/<new-project-name>        # another GTP project
+   mkdir -p ~/sababisha/projects/<new-project-name>             # a non-GTP Sababisha project
+   ```
+2. **Make sure the shared infra is running** (it usually already is — this is a no-op if so):
+   ```bash
+   docker compose -f ~/sababisha/infra/docker-compose.yml up -d
+   ```
+3. **Create one database for it** on the already-running SQL Server (and/or a schema on the shared Postgres, if it needs Postgres instead):
+   ```bash
+   docker exec -it sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "SababishaDev2026!" -C -Q "CREATE DATABASE <NewProjectName>"
+   ```
+4. **Point its own connection string** at `localhost,14333` / `localhost,5433` / `localhost,6380` with its own database/schema name — never a new container, new port, or new compose file.
+5. **Pin its own `.NET` SDK/EF tools per-repo** (§6.7) if it's a .NET project — this part stays per-project by design, since different Sababisha projects may need different .NET/EF versions over time; only the database *engines* are shared, not the tooling versions.
+
+The only thing that ever needs `sudo` again on this machine, for any future project, is a Docker Engine version upgrade (§6.3's "Upgrade" path) — never a fresh install.
 
 ### 6.5 Phase 3 — .NET 8 SDK (per-user, version-pinned in the repo)
 ```bash
 wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
 chmod +x /tmp/dotnet-install.sh
 /tmp/dotnet-install.sh --channel 8.0
-# add to ~/.bashrc: export PATH="$PATH:$HOME/.dotnet"
+
+# Confirmed necessary on this machine — the script itself does NOT persist PATH:
+echo 'export PATH="$PATH:$HOME/.dotnet"' >> ~/.bashrc
+source ~/.bashrc
+
 dotnet --version
 dotnet new globaljson --sdk-version 8.0.1xx --roll-forward latestFeature   # inside the repo!
 ```
 > `global.json` pins the SDK *per repo* → personal .NET usage elsewhere (if ever) is unaffected.
+>
+> **If `dotnet --version` still says `command not found` after the install script reports success:** this is the PATH issue, not a failed install — confirm the `export` line actually landed in `~/.bashrc` (not just the current shell) and open a fresh terminal.
 
 Global tools scoped to this repo only:
 ```bash
@@ -240,67 +346,70 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 nvm install 20 && nvm use 20 && echo "20" > .nvmrc   # .nvmrc keeps GTP repos on 20
 node -v && npm -v
 ```
-> Personal `nvm` default can stay at 24/whatever — GTP repos switch to 20 via `.nvmrc`.
+> Personal `nvm` default can stay at 24/whatever — GTP repos switch to 20 via `.nvmrc`. Confirmed on this machine: personal default sits on Node 24 (`lts/krypton`), and `nvm use` inside the repo correctly picks up 20 via `.nvmrc` without touching the default.
 
 ### 6.7 Phase 5 — Frontend/mobile/test tooling
 ```bash
 npm install -g pnpm               # monorepo-friendly
 npm install -D @playwright/test   # (Cypress in weeks 5-6 uses its own deps)
-flutter                          # see week-04 + Android toolchain
+flutter                           # NOT YET INSTALLED on this machine — see gotcha 8 above; install before Week 4
 ```
 
 ### 6.8 Phase 6 — AI layer tooling (own-stack, per-project, isolated)
 
 ```bash
-cd ~/gtp/griot/ai && nvm use                 # .nvmrc → 20 (pinned)
+cd ~/sababisha/projects/gtp/griot/ai && nvm use     # .nvmrc → 20 (pinned)
 npx trigger.dev@latest login                 # connect to the Trigger.dev cloud project
 npx trigger.dev@latest init --project-ref <PROJECT_REF>
 npm install @trigger.dev/sdk @trigger.dev/react-hooks
 echo "ANTHROPIC_API_KEY=…" >> .env           # LLM keys live ONLY here, never in web/
 
-cd ~/gtp/griot/mcp && npm init -y
+cd ~/sababisha/projects/gtp/griot/mcp && npm init -y
 npm i @modelcontextprotocol/sdk zod
-npx @modelcontextprotocol/inspector node src/server.ts   # GUI smoke-test of the MCP tools
+npx @modelcontextprotocol/inspector             # GUI smoke-test — bare invocation; see gotcha 9 re: the v1 CLI --env bug
 ```
 
-Both Node projects are separate from `web/` (own `.nvmrc`, own lockfiles) — same isolation rules as everything else; LLM keys never leave `ai/.env`.
+Both Node projects are separate from `web/` (own `.nvmrc`, own lockfiles) — same isolation rules as everything else; LLM keys never leave `ai/.env`. Trigger.dev login was confirmed working end-to-end on this machine (device-code flow, account retrieved).
 
 ## 7. Verification checklist (tick once after setup)
 
 ```bash
 git --version && node -v && npm -v
 dotnet --version && dotnet ef --version
-docker --version && docker compose version          # real Engine, not podman
-docker compose -f ~/gtp/docker-compose.yml ps      # gtp-sqlserver, gtp-postgres, gtp-redis up
-docker exec gtp-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$GTP_SA_PASSWORD" -C -Q "SELECT @@VERSION"
-docker exec gtp-redis redis-cli ping
+docker --version && docker compose version           # real Engine, not podman
+sudo systemctl status docker                          # must show active (running), not inactive/disabled
+docker compose -f ~/sababisha/infra/docker-compose.yml ps   # sababisha-sqlserver, sababisha-postgres, sababisha-redis up
+docker exec sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "SELECT @@VERSION"
+docker exec sababisha-redis redis-cli ping
 psql -h localhost -p 5433 -U postgres -c "SELECT version();"
 codium --version
-flutter doctor
+flutter doctor                                   # expect command-not-found until Flutter is installed — see §6.7
 nvm ls                                           # 20 present; personal default untouched
 npx trigger.dev@latest --version                # AI layer CLI (per-project)
-npx @modelcontextprotocol/inspector --version   # MCP Inspector (per-project)
+npx @modelcontextprotocol/inspector --version   # MCP Inspector (per-project) — bare GUI form, not --env flags
 ```
 
 ---
 
-## 8. The Isolation Contract — GTP stack vs. the personal stack
+## 8. The Isolation Contract — Sababisha stack vs. the personal stack (and how projects share within Sababisha)
 
-The single most important operational rule for this whole programme:
+There are now **two** boundaries in play, not one: Sababisha-wide vs. personal (unchanged in spirit), and — new — Sababisha **infra** (shared) vs. Sababisha **project** (isolated per-project). The single most important operational rule for this whole setup:
 
 | Question | Rule |
 |---|---|
-| Where do GTP projects live? | `~/gtp/…` (or this repo tree). Personal work lives *outside* it. |
-| Global OS installs | Only Docker Engine + standard tooling .3). Everything else is per-user/per-repo. |
-| Node versions | `nvm` per project: GTP repos carry `.nvmrc` → `20`; personal projects keep their own `.nvmrc`/engine. `nvm use` is per-shell, never a global default change. |
-| .NET | Per-user SDK in `~/.dotnet` + **per-repo `global.json`** pinning 8.0; `.NET tools` scoped via `dotnet new tool-manifest`. |
-| Databases | GTP daemons are Docker containers named `gtp-*` on non-default host ports (14333, 5433, 6380) — they cannot shadow a personal Postgres/Redis/MySQL on 5432/6379/3306. Data lives in `gtp_*` Docker volumes. |
-| Package versions | GTP repos pin versions in lockfiles (`packages-lock.json`, `.NET` `Directory.Packages.props`). Personal repos are untouched by GTP installs. |
-| CI/cloud | Vercel/Railway projects are separate; secrets are per-project. No shared credentials between "Griot" and personal apps. |
-| AI layer | Trigger.dev project + MCP server live **inside the GTP repo** (`ai/`, `mcp/`) with their own lockfiles; LLM keys are per-GTP-project env, never in `web/` and never global. |
-| "Contamination" boundary | The only shared resource is the Docker daemon itself — and even there, namespaces, networks and port mappings keep everything separate. |
+| Where does Sababisha work live? | `~/sababisha/` — `infra/` for the one shared compose file, `projects/<area>/<name>/` for every project's own code (GTP projects nest under `projects/gtp/`). Personal work lives *outside* `~/sababisha/` entirely. |
+| Global OS installs | Only Docker Engine (§6.3) + standard CLI tooling (§6.2). Installed **once**, used by every current and future Sababisha project. Everything else is per-user/per-repo. |
+| Databases — shared or per-project? | **Shared engine, isolated by database.** One `sababisha-sqlserver`, one `sababisha-postgres`, one `sababisha-redis` container (§6.4) on fixed non-default host ports (14333, 5433, 6380) — chosen so they never collide with a personal Postgres/Redis/SQL Server on the OS defaults (5432, 6379, 1433). Every project gets its **own database** on the shared SQL Server (`CREATE DATABASE Griot`, `CREATE DATABASE <NextProject>`, ...) rather than its own container. Data lives in `sababisha_mssql`/`sababisha_pg` Docker volumes — shared volumes, project-separated by database name inside them. |
+| Node versions | `nvm` per project: each Sababisha repo carries its own `.nvmrc` (GTP repos → `20`); personal projects keep their own `.nvmrc`/engine. `nvm use` is per-shell, never a global default change. |
+| .NET | Per-user SDK in `~/.dotnet` (installed once, §6.5) + **per-repo `global.json`** pinning a version per project — this stays per-project on purpose, since different Sababisha projects may need different .NET/EF versions over time even though they share the same database engine. `.NET tools` scoped via `dotnet new tool-manifest` per repo. |
+| Package versions | Every project pins its own lockfiles (`package-lock.json`, `.NET` `Directory.Packages.props`). No project's installs affect another's, or the personal stack's. |
+| CI/cloud | Vercel/Railway/Azure projects are separate per Sababisha project; secrets are per-project. No shared credentials between Griot, any other Sababisha project, and personal apps. |
+| AI layer | Trigger.dev project + MCP server live **inside each project's own repo** (`ai/`, `mcp/`) with their own lockfiles; LLM keys are per-project env, never shared across projects and never global. |
+| "Contamination" boundary | The only resources genuinely shared across *all* Sababisha projects are the Docker daemon and the three `sababisha-*` containers themselves — and even there, one database per project inside them keeps data fully separated. Nothing is shared with the personal stack at any layer. |
 
-**How to work daily:** open a terminal → `cd ~/gtp/griot` → `nvm use` (reads `.nvmrc` → 20) → `dotnet run` or `npm run dev` → containers already up via `docker compose`. Close it, `cd ~/work/mypersonalproject` → `nvm use` → personal versions. Nothing about the GTP toolchain is visible to the personal one and vice versa.
+**Onboarding a brand-new Sababisha project** (GTP or otherwise) is §6.4b, in full — in short: make its folder, confirm `sababisha-infra` is already up (it usually is), create its one database, point its connection string at it, done. No new containers, no new Docker install, no new `sudo`.
+
+**How to work daily:** open a terminal → `docker compose -f ~/sababisha/infra/docker-compose.yml up -d` (no-op if already running) → `cd ~/sababisha/projects/gtp/griot` → `nvm use` (reads `.nvmrc` → 20) → `dotnet run` or `npm run dev`. Switching to a different Sababisha project is just `cd ~/sababisha/projects/<other>` — the same running `sababisha-*` containers serve it too, no restart needed. Closing out and moving to personal work: `cd ~/work/mypersonalproject` → `nvm use` → personal versions. Nothing about the Sababisha toolchain is visible to the personal one and vice versa.
 
 ---
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**

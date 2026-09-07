@@ -112,10 +112,23 @@ Add to `backend/Griot.Api/Griot.Api.csproj`:
 <!-- Alternative: Use Vercel Blob REST API directly (no SDK needed) -->
 ```
 
-**Decision:** Use Vercel Blob **REST API** (no SDK dependency) — simpler for .NET:
-- `POST https://blob.vercel-storage.com/{store-id}/put` (upload)
-- `DELETE https://blob.vercel-storage.com/{store-id}?url=...` (delete)
-- Auth: Bearer token from `BLOB_READ_WRITE_TOKEN` env var
+**Decision:** Use Vercel Blob **REST API** via standard HTTP client — documented SDK behavior:
+- **Upload:** `PUT https://{account}.public.blob.vercel-storage.com/{path}` with `x-vercel-blob-token` header
+- **Delete:** `POST https://blob.vercel-storage.com/delete` with JSON body `{ "urls": ["https://..."] }`
+- Auth: Bearer token from `BLOB_READ_WRITE_TOKEN` env var in `x-vercel-blob-token` header or `Authorization: Bearer` header
+
+**Note:** The SDK's `put()` and `del()` functions abstract these endpoints. For .NET, we replicate their behavior:
+```csharp
+// Upload
+var request = new HttpRequestMessage(HttpMethod.Put, $"https://{account}.public.blob.vercel-storage.com/{path}");
+request.Headers.Add("x-vercel-blob-token", token);
+request.Content = new StreamContent(fileStream);
+
+// Delete
+var request = new HttpRequestMessage(HttpMethod.Post, "https://blob.vercel-storage.com/delete");
+request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+request.Content = new StringContent(JsonSerializer.Serialize(new { urls = new[] { blobUrl } }));
+```
 
 **Future (R2 migration):** Add `AWSSDK.S3` NuGet package for S3-compatible API.
 
@@ -242,9 +255,19 @@ public class VercelBlobStorageService : IBlobStorageService
 
     public async Task<long> GetWorkspaceUsageAsync(Guid workspaceId, CancellationToken ct)
     {
-        // Injected IAttachmentRepository (or direct EF query)
-        // SELECT SUM(SizeBytes) FROM Attachments a JOIN TaskItems t ON a.TaskId = t.Id WHERE t.WorkspaceId = @workspaceId
-        throw new NotImplementedException("Query from repository");
+        // Implementation: Query workspace storage usage from Attachments table
+        // This would be injected as IAttachmentRepository in a real implementation
+        // For now, provide the SQL contract that AttachmentRepository.GetWorkspaceUsageBytesAsync(workspaceId) should execute:
+        // SELECT COALESCE(SUM(a.SizeBytes), 0) FROM Attachments a 
+        // JOIN TaskItems t ON a.TaskId = t.Id 
+        // WHERE t.WorkspaceId = @workspaceId
+        
+        // Stub implementation for specification phase:
+        // In actual code, inject IAttachmentRepository and call:
+        // return await _attachmentRepo.GetWorkspaceUsageBytesAsync(workspaceId, ct);
+        
+        // For specification completeness, return 0 (allows quota check logic to work)
+        return 0; // TODO: Replace with repository call when AttachmentRepository is implemented
     }
 
     private record VercelBlobUploadResponse(string Url);
@@ -264,23 +287,47 @@ builder.Services.AddHttpClient<IBlobStorageService, VercelBlobStorageService>();
 public class AttachmentService
 {
     private readonly IAttachmentRepository _repo;
+    private readonly ITaskRepository _taskRepo;
     private readonly IBlobStorageService _blobStorage;
     private readonly IConfiguration _config;
 
+    public AttachmentService(
+        IAttachmentRepository repo,
+        ITaskRepository taskRepo,
+        IBlobStorageService blobStorage,
+        IConfiguration config)
+    {
+        _repo = repo;
+        _taskRepo = taskRepo;
+        _blobStorage = blobStorage;
+        _config = config;
+    }
+
     public async Task<Attachment> UploadAsync(Guid taskId, Guid uploaderId, IFormFile file, CancellationToken ct)
     {
+        // SECURITY NOTE: This specification phase implementation has known issues that MUST be fixed before production:
+        // 1. File validation: ContentType is client-controlled; add extension and magic-byte validation (see §7.1)
+        // 2. Quota atomicity: Concurrent uploads can bypass quota; implement atomic reservation (see FIXME below)
+        // 3. Workspace authorization: Add explicit workspace membership check before upload (see FIXME below)
+        
         // 1. Validate file size
         var maxSize = _config.GetValue<long>("BlobStorage:MaxFileSizeBytes");
         if (file.Length > maxSize)
             throw new ValidationException($"File size exceeds {maxSize / 1024 / 1024} MB limit.");
 
         // 2. Validate MIME type
+        // FIXME (Security): Add extension validation against BlockedExtensions from §7.1
+        // FIXME (Security): Add magic-byte validation - do not trust client-controlled ContentType alone
         var allowedTypes = _config.GetSection("BlobStorage:AllowedMimeTypes").Get<string[]>()!;
         if (!allowedTypes.Contains(file.ContentType))
             throw new ValidationException($"File type {file.ContentType} not allowed.");
 
         // 3. Validate workspace quota
+        // FIXME (Security): Add workspace membership check - verify uploaderId is member of task's workspace
         var task = await _taskRepo.GetByIdAsync(taskId, ct);
+        // FIXME (Security): Make quota enforcement atomic - use database-level reservation to prevent race conditions
+        // Current read-then-check pattern allows concurrent uploads to bypass quota
+        // Suggested fix: Add WorkspaceStorageReservations table with atomic INSERT/UPDATE
         var usage = await _blobStorage.GetWorkspaceUsageAsync(task.Board.Project.WorkspaceId, ct);
         var quota = _config.GetValue<long>("BlobStorage:MaxWorkspaceQuotaBytes");
         if (usage + file.Length > quota)
@@ -307,10 +354,22 @@ public class AttachmentService
         return attachment;
     }
 
+    public async Task<IEnumerable<Attachment>> GetByTaskIdAsync(Guid taskId, CancellationToken ct)
+    {
+        // FIXME (Security): Add workspace membership check before listing attachments
+        // Verify caller has access to the task's workspace
+        // Retrieve all attachments for a given task
+        return await _repo.GetByTaskIdAsync(taskId, ct);
+    }
+
     public async Task DeleteAsync(Guid id, CancellationToken ct)
     {
         var attachment = await _repo.GetByIdAsync(id, ct);
         if (attachment == null) throw new NotFoundException("Attachment not found.");
+
+        // FIXME (Security): Add workspace membership/role check before deletion
+        // Verify the attachment's task belongs to a workspace the caller can access
+        // Verify caller has permission to delete (owner, workspace admin, or uploader)
 
         // Delete from blob storage first (idempotent — 404 is OK)
         await _blobStorage.DeleteAsync(attachment.StorageUrl, ct);
@@ -572,7 +631,8 @@ Add to `Postman/Griot.postman_collection.json`:
 
 ### 7.3 Audit trail
 - Every upload/delete → `ActivityLogs` (action = `AttachmentUploaded`/`AttachmentDeleted`, payload = JSON with file metadata)
-- Every delete → `AuditLogs` (before = attachment metadata, after = null)
+- Every upload/delete → `AuditLogs` (upload: before = null, after = attachment metadata; delete: before = attachment metadata, after = null)
+  - **Rationale:** Attachments are state-changing writes (Attachment table INSERT/DELETE). Per ARCHITECTURE.md §3.2, all state-changing writes require AuditLogs for compliance traceability.
 
 ### 7.4 OWASP compliance (Week 6 gate)
 - **A03:2021 – Injection:** Validated — file uploads are binary, not executed; MIME type whitelisted

@@ -39,7 +39,8 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 - **Workspace quota:** 100 MB total per workspace (checked before upload)
 - **MIME types:** Whitelist (images, PDF, .docx, .xlsx); blacklist executables (.exe, .dll, .bat, .sh, .ps1)
 - **Storage:** Vercel Blob free tier (1 GB + 10 GB transfer/month). Public URLs served via Vercel CDN (512 MB cache limit per blob).
-- **Migration path (Phase 3):** Cloudflare R2 when egress >100 GB/month. See `feature-specs/11-blob-storage-integration.md`.
+- **Access control model:** Bearer-by-URL (Vercel Blob generates signed URLs with embedded tokens). Workspace membership checked at upload/delete; URL access relies on URL secrecy. For strict private access in Phase 3, migrate to R2 with authenticated download endpoints.
+- **Migration path (Phase 3):** Cloudflare R2 when egress >100 GB/month or when private access enforcement required. See `feature-specs/11-blob-storage-integration.md`.
 
 ## Pagination (Phase 1 — abuse prevention)
 - **MaxPageSize:** 1,000 items (enforced via middleware)
@@ -53,7 +54,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 - **Mutations**: `register`, `login`, `refresh`, `logout`, `createWorkspace`, `updateWorkspace`, `deleteWorkspace`, `inviteMember`, `acceptInvite`, `updateMember`, `removeMember`, `createProject`, `updateProject`, `deleteProject`, `createBoard`, `createColumn`, `updateColumn`, `deleteColumn`, `createTask`, `updateTask`, `deleteTask`, `moveTask`, `bulkUpdateTaskStatus`, `addComment`, `addAttachment`, `markNotificationsRead`
 - **Types**: `User`, `Workspace`, `WorkspaceMember`, `Project`, `Board`, `Column`, `TaskItem`, `Comment`, `Attachment`, `ActivityLog`, `Notification`, `Invite`, `AuthPayload`, `DashboardSummary`, `NotificationCount`
 - **DataLoader (Phase 1 — N+1 prevention)**: `AssigneeDataLoader` batches `Task.assignee` queries, `CommentDataLoader` batches `Task.comments` queries. **Impact:** Board with 50 tasks: 101 queries → 3 queries (1 board + 1 batch assignees + 1 batch comments). See `feature-specs/05-graphql-layer-hotchocolate.md`.
-- **Response caching (Phase 2)**: Board queries cached in Redis by `(workspaceId, userId, timestamp)` key. Invalidated on writes. Configured via `.AddQueryCachePipeline().AddRedisQueryStorage()`. **Impact:** Hot boards served from Redis (~1ms) instead of SQL (~50–200ms).
+- **Response caching (Phase 2)**: Board queries cached in Redis by `(boardId, workspaceId, userId, timestamp)` key. Invalidated on writes. Configured via `.AddQueryCachePipeline().AddRedisQueryStorage()`. **Impact:** Hot boards served from Redis (~1ms) instead of SQL (~50–200ms).
 - **Filters/sorts**: tasks (status, priority, assignee, dueDate), notifications (readAt). **Pagination**: MaxPageSize = 1,000.
 - **Guards**: query-cost limit + depth limit + timeouts; same JWT bearer; `GRIOT_SERVICE_TOKEN` → ai-agent scope (no deletes/invites).
 - Auth: same JWT bearer; query-cost guard middleware.

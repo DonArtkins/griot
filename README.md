@@ -26,6 +26,23 @@ Each system is self-contained (own `AGENTS.md`, `.agents/skills/`, `project-kit/
 - Diagrams: 12 design diagrams specified in `PROMPTS/week-02/` → to be generated in **Figma Make**
 - ERD: 16 tables / 5 enums (decided pre-implementation — no schema rework later)
 
+## Getting Started
+
+### First-time setup (after git clone)
+
+Binary files (PDFs, PowerPoints, screenshots) are stored in Cloudinary to avoid bloating the Git repository. Download them with:
+
+```bash
+./scripts/cloudinary-download.sh
+```
+
+This restores all research documents and screenshots (~15 MB, 14 files). See `docs/tooling/CLOUDINARY-BINARY-FILES.md` for details.
+
+**What you get:**
+- `research/GTP 2026 BOOTCAMP EDITION.pdf` — Official bootcamp spec
+- `research/Netdata_RD_Presentation.pptx` — Monitoring strategy
+- `research/screenshots/*.png` — Deployment evidence & UI references
+
 ## Quick links
 
 - **Docs**: `docs/README.md` · **Architecture**: `docs/ARCHITECTURE.md` · **Database**: `docs/database/DATABASE-DESIGN.md`
