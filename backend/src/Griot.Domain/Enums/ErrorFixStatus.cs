@@ -6,5 +6,5 @@ public enum ErrorFixStatus
     Investigating,
     Fixed,
     Verified,
-    WonTFix
+    WontFix
 }

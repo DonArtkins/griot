@@ -14,10 +14,10 @@ Full diagram source: `PROMPTS/week-02/01-database-schema-erd-figma-make.md` + `0
 | PostgreSQL 16 | secondary / test | cohort exercises, alternate-engine discussion |
 | Redis 7 | runtime support | rate limit, refresh metadata, AI token budgets |
 
-## 2. Tables (16) & enums (5)
+## 2. Tables (18) & enums (6)
 
-### Core (13)
-`Users` · `Workspaces` · `WorkspaceMembers` (M:N join + Role) · `Invites` · `Projects` · `Boards` · `Columns` · `TaskItems` · `Comments` · `Attachments` · `ActivityLogs` (feed + AI audit) · `Notifications` · `RefreshTokens`
+### Core (15)
+`Users` · `Workspaces` · `WorkspaceMembers` (M:N join + Role) · `Invites` · `Projects` · `Boards` · `Columns` · `TaskItems` · `Comments` · `Attachments` · `ActivityLogs` (feed + AI audit) · `Notifications` · `RefreshTokens` · `OtpChallenges` · `Reports`
 
 ### Observability & audit (3 — added in planning so schema never changes)
 - **ApiLogs**: `Id`,`RequestId`(UQ),`UserId?`,`Method`,`Path`,`QueryString?`,`StatusCode`,`DurationMs`,`UserAgent?`,`IpAddress?`(masked),`CreatedAt`
@@ -25,7 +25,7 @@ Full diagram source: `PROMPTS/week-02/01-database-schema-erd-figma-make.md` + `0
 - **AuditLogs**: `Id`,`ActivityId?`(→ActivityLogs),`ActorId`,`Action`,`EntityType`,`EntityId`,`Before`(JSON?),`After`(JSON?),`CreatedAt`
 
 ### Enums
-`TaskStatus` (Backlog·Todo·InProgress·InReview·Done) · `Priority` (Low·Medium·High·Urgent) · `WorkspaceRole` (Owner·Admin·Member) · `NotificationType` (Mention·Assignment·DueDate·System) · `ErrorFixStatus` (Open·Investigating·Fixed·Verified·WonTFix)
+`TaskStatus` (Backlog·Todo·InProgress·InReview·Done) · `Priority` (Low·Medium·High·Urgent) · `WorkspaceRole` (Owner·Admin·Member) · `NotificationType` (Mention·Assignment·DueDate·System) · `ErrorFixStatus` (Open·Investigating·Fixed·Verified·WontFix) · `TwoFactorMethod` (EmailOtp·Totp·None)
 
 ## 3. Key conventions (Lyncxs-informed)
 

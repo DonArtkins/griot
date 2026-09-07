@@ -36,6 +36,6 @@ The approved ERD in that project is the implementation contract for the backend'
 
 ## Rules
 
-- Enums (5): `TaskStatus` (Backlog/Todo/InProgress/InReview/Done), `Priority` (Low/Medium/High/Urgent), `WorkspaceRole` (Owner/Admin/Member), `NotificationType` (Mention/Assignment/DueDate/System), `ErrorFixStatus` (Open/Investigating/Fixed/Verified/WonTFix).
+- Enums (5): `TaskStatus` (Backlog/Todo/InProgress/InReview/Done), `Priority` (Low/Medium/High/Urgent), `WorkspaceRole` (Owner/Admin/Member), `NotificationType` (Mention/Assignment/DueDate/System), `ErrorFixStatus` (Open/Investigating/Fixed/Verified/WontFix).
 - Entity names: `Users`, `Workspaces`, `WorkspaceMembers`, `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`.
 - A schema change means: update the Make ERD → re-approve → update backend spec 02 + dependent specs + context + progress-trackers together (contract sync gate).

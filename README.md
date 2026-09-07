@@ -1,6 +1,6 @@
 # Griot — Project Management with an AI Copilot
 
-**Griot** (*GREE-oh*) is a project-management web app for small teams — the "accurate, shared record of what happened and what's next". Workspaces → projects → boards → tasks, with comments, attachments, roles & invites, an activity feed, notifications — and an AI copilot that summarizes the board, drafts tasks, and acts on approval.
+**Griot** (*GREE-oh*) is a project-management web app for small teams — the "accurate, shared record of what happened and what's next". Workspaces → projects → boards → tasks, with comments, attachments, roles & invites, an activity feed, notifications — and an AI copilot that summarizes the board, drafts tasks, and acts on approval. It also features robust OTP 2FA authentication, comprehensive System Reports, and an autonomous AI Agent that executes multi-step workflows across the system.
 
 > Built for the **Sababisha Solutions GTP 2026 Bootcamp** on the bootcamp-exact stack, plus an [own-stack] AI layer (Trigger.dev agents + MCP server).
 

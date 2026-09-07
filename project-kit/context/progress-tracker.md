@@ -2,7 +2,7 @@
 
 ## Current State
 
-Bootcamp Week 2 — **Planning / system-design phase** (no code yet). Diagrams + docs being finalized in Figma Make before implementation starts.
+Bootcamp Week 2 — **Implementation phase**. Backend implementation is underway.
 
 | System | Kit | Status |
 |---|---|---|
@@ -18,12 +18,11 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 
 ## Next Steps
 
-1. Generate + approve the **12 diagrams** in Figma Make from `PROMPTS/week-02/04…14` + the ERD (prompts A–H in `02-…-sequence`).
-2. Export PNGs → `diagrams/{erd,architecture}/` → update the ledger.
-3. Fill `inspo/` with desired UI screenshots (web + mobile visual contract).
-4. Then implementation (backend spec 01 → 10) — planning must be complete + approved first.
+1. Fill `inspo/` with desired UI screenshots (web + mobile visual contract).
+2. Continue backend implementation (backend spec 03 → 10).
 
 ## Session Notes
+- **2026-09-07 (2)** — Integrated new features from `@research/ai-features-research.md`: OTP 2FA (Resend email), System Reports (SQL Server stored procs + AI scheduled/ad-hoc), and AI Copilot upgrade to Level 4 Autonomous Agent (reasoning loop + human gate). Updated all planning files, contracts, and AGENTS.md across the monorepo.
 
 - **2026-09-03** — Rebuilt repo as seven-system monorepo per the PDF + Foundrie pattern: per-app AGENTS.md, `.agents/skills/`, per-app project kits, one feature spec per bootcamp deliverable. Root kit consolidated to system-map / stack-contract / integration-contracts.
 - **2026-09-03 (2)** — Planning deep-dive: schema expanded to **16 tables / 5 enums** (added ApiLogs, ErrorLogs, AuditLogs so no schema rework later). Wrote 12 system-design diagram specs (C4×2, API component, sequence×3, state, deployment, auth matrix, API surface, AI context) with **extensive single-prompt figures (no character limit)**. Added `docs/` production suite (architecture, database, NFR, capacity/scaling, risk register, runbook, change-management, SEO, deployment, monitoring, API docs) + ADRs + LICENSE (MIT) + CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG + `inspo/`. Added Context7 + DOCX/PDF MCP skills. Bumped root AGENTS hard rules.

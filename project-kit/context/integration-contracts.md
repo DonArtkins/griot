@@ -28,19 +28,19 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 
 ## REST route contract (owned by backend spec 04)
 
-Prefix `/api`. Auth module `register/login/refresh/logout`; then `/workspaces`, `/workspaces/{id}/members`, `/invites/{token}/accept`, `/projects`, `/boards`, `/columns`, `/tasks`, `/tasks/bulk-status`, `/tasks/{id}/comments`, `/tasks/{id}/attachments`, `/activity`, `/notifications`, `/notifications/read-all`, `/dashboard/summary`, `/webhooks/trigger`. Full shapes in `backend/project-kit/context/api-surface.md`.
+Prefix `/api`. Auth module `register/login/refresh/logout/otp/request/verify`; then `/workspaces`, `/workspaces/{id}/members`, `/invites/{token}/accept`, `/projects`, `/boards`, `/columns`, `/tasks`, `/tasks/bulk-status`, `/tasks/{id}/comments`, `/tasks/{id}/attachments`, `/activity`, `/notifications`, `/notifications/read-all`, `/dashboard/summary`, `/webhooks/trigger`. Full shapes in `backend/project-kit/context/api-surface.md`.
 
 ## GraphQL surface (owned by backend spec 05)
 
-Queries: `me`, `workspace(id)`, `projects`, `board(id)`, `tasks(filter, sort)`, `notifications`, `dashboardSummary`. Mutations mirror REST. Fields/entities named exactly per ERD.
+Queries: `me`, `workspace(id)`, `projects`, `board(id)`, `tasks(filter, sort)`, `notifications`, `dashboardSummary`, `workspaceReports`. (Includes Report entity from System Reports). Mutations mirror REST. Fields/entities named exactly per ERD.
 
 ## Entities & enums (owned by the approved ERD)
 
-`Users`, `Workspaces`, `WorkspaceMembers`, `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`. Enums: `TaskStatus`, `Priority`, `WorkspaceRole`, `NotificationType`. These names are used verbatim by web TS types, mobile Dart models, GraphQL SDL, and MCP tool schemas.
+`Users`, `Workspaces`, `WorkspaceMembers`, `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`, `OtpChallenges`, `Reports`. Enums: `TaskStatus`, `Priority`, `WorkspaceRole`, `NotificationType`, `TwoFactorMethod`. These names are used verbatim by web TS types, mobile Dart models, GraphQL SDL, and MCP tool schemas.
 
 ## AI/MCP tool contract
 
-Tools (ids): `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`. All write via GraphQL with `GRIOT_SERVICE_TOKEN`; no deletes/invites.
+Tools (ids): `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`. Agent operates as a Level 4 planning loop requiring human approval gates for multi-step execution. All write via GraphQL with `GRIOT_SERVICE_TOKEN`; no deletes/invites.
 
 ## CI/CD contract
 

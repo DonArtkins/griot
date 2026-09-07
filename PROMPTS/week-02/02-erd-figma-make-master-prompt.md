@@ -27,14 +27,15 @@ Design a complete, production-grade entity-relationship diagram (ERD) for **Grio
 - Priority: Low · Medium · High · Urgent
 - WorkspaceRole: Owner · Admin · Member
 - NotificationType: Mention · Assignment · DueDate · System
-- ErrorFixStatus: Open · Investigating · Fixed · Verified · WonTFix
+- ErrorFixStatus: Open · Investigating · Fixed · Verified · WontFix
+- TwoFactorMethod: None · EmailOtp · Totp
 - InviteStatus: Pending · Accepted · Declined · Expired  *(inline on Invites.Status — not a separate EF Core enum)*
 - ProjectStatus: Active · Archived  *(inline on Projects.Status — not a separate EF Core enum)*
 
-## TABLES — 16 total (exact columns)
+## TABLES — 18 total (exact columns)
 
 ### Users (Identity)
-Id GUID PK | Email nvarchar(320) UQ | DisplayName nvarchar(100) | AvatarUrl nvarchar(500) ? | PasswordHash nvarchar(512) | CreatedAt datetime2 | UpdatedAt datetime2
+Id GUID PK | Email nvarchar(320) UQ | DisplayName nvarchar(100) | AvatarUrl nvarchar(500) ? | PasswordHash nvarchar(512) | TwoFactorMethod TwoFactorMethod | CreatedAt datetime2 | UpdatedAt datetime2
 
 ### Workspaces (Core)
 Id GUID PK | Name nvarchar(100) | Slug nvarchar(100) UQ | OwnerId FK→Users | CreatedAt datetime2 | UpdatedAt datetime2
@@ -62,6 +63,11 @@ Id GUID PK | TaskId FK→TaskItems | AuthorId FK→Users | Body nvarchar(max) | 
 
 ### Attachments (Social)
 Id GUID PK | TaskId FK→TaskItems | UploaderId FK→Users | FileName nvarchar(255) | MimeType nvarchar(100) | SizeBytes bigint | StorageUrl nvarchar(500) | CreatedAt datetime2
+### OtpChallenges (Identity)
+Id GUID PK | UserId FK→Users | CodeHash nvarchar(128) | Purpose nvarchar(50) | ExpiresAt datetime2 | AttemptCount int | Consumed bit | CreatedAt datetime2 | RequestIp nvarchar(45) ?
+
+### Reports (Core)
+Id GUID PK | WorkspaceId FK→Workspaces | Type nvarchar(50) | GeneratedBy nvarchar(100) | ContentJson nvarchar(max) JSON | GeneratedAt datetime2 | PromptContext nvarchar(max) ?
 ```
 
 ### ⚡ PROMPT (continue — observability tables)
@@ -150,7 +156,7 @@ Paste the full prompt once. If the canvas omits any table (named above), **do no
 
 ## Definition of Done (this ERD)
 
-- [ ] 16 tables + 5 enums + 21 labelled crow's-foot edges + 19 index stickies + legend + conventions note, all on one canvas
+- [ ] 18 tables + 6 enums + 21 labelled crow's-foot edges + 19 index stickies + legend + conventions note, all on one canvas
 - [ ] Names/values match `backend/project-kit/context/data-layer.md` + `docs/database/DATABASE-DESIGN.md` exactly
 - [ ] Module color-coding (purple/blue/teal/amber) applied
 - [ ] Approved → PNG → `diagrams/erd/griot-erd-v1.0.0.png` → ledger updated

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -347,7 +347,7 @@ namespace Griot.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    BoardId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+
                     ColumnId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -363,12 +363,7 @@ namespace Griot.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_TaskItems", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_TaskItems_Boards_BoardId",
-                        column: x => x.BoardId,
-                        principalTable: "Boards",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+
                     table.ForeignKey(
                         name: "FK_TaskItems_Columns_ColumnId",
                         column: x => x.ColumnId,
@@ -577,10 +572,7 @@ namespace Griot.Infrastructure.Migrations
                 table: "TaskItems",
                 column: "AssigneeId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_TaskItems_BoardId",
-                table: "TaskItems",
-                column: "BoardId");
+
 
             migrationBuilder.CreateIndex(
                 name: "IX_TaskItems_ColumnId_Position",

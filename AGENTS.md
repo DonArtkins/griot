@@ -66,6 +66,6 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Stack at a Glance
 
-Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. AI [own-stack]: Trigger.dev v3, MCP.
+Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. + Resend Email OTP 2FA. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v3 Level-4 Autonomous Agents, MCP.
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**

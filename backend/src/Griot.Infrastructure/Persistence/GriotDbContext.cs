@@ -24,6 +24,8 @@ public class GriotDbContext : DbContext
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<OtpChallenge> OtpChallenges => Set<OtpChallenge>();
+    public DbSet<Report> Reports => Set<Report>();
     public DbSet<ApiLog> ApiLogs => Set<ApiLog>();
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -40,6 +42,7 @@ public class GriotDbContext : DbContext
             b.Property(u => u.DisplayName).HasMaxLength(100);
             b.Property(u => u.AvatarUrl).HasMaxLength(500);
             b.Property(u => u.PasswordHash).HasMaxLength(512);
+            b.Property(u => u.TwoFactorMethod).HasConversion<string>();
         });
 
         // Workspaces
@@ -140,11 +143,6 @@ public class GriotDbContext : DbContext
             b.Property(t => t.Status).HasConversion<string>();
             b.Property(t => t.Priority).HasConversion<string>();
             b.Property(t => t.Position).HasColumnType("decimal(18,4)");
-
-            b.HasOne(t => t.Board)
-                .WithMany()
-                .HasForeignKey(t => t.BoardId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             b.HasOne(t => t.Column)
                 .WithMany(c => c.TaskItems)
@@ -301,6 +299,33 @@ public class GriotDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(a => a.ActivityId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // OtpChallenges
+        modelBuilder.Entity<OtpChallenge>(b =>
+        {
+            b.HasIndex(o => o.UserId);
+            b.Property(o => o.CodeHash).HasMaxLength(128);
+            b.Property(o => o.Purpose).HasMaxLength(50);
+            b.Property(o => o.RequestIp).HasMaxLength(45);
+
+            b.HasOne(o => o.User)
+                .WithMany(u => u.OtpChallenges)
+                .HasForeignKey(o => o.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Reports
+        modelBuilder.Entity<Report>(b =>
+        {
+            b.HasIndex(r => r.WorkspaceId);
+            b.Property(r => r.Type).HasMaxLength(50);
+            b.Property(r => r.GeneratedBy).HasMaxLength(100);
+
+            b.HasOne(r => r.Workspace)
+                .WithMany(w => w.Reports)
+                .HasForeignKey(r => r.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 
