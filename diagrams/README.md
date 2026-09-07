@@ -19,7 +19,7 @@ Everything generated in Figma Make / FigJam that governs or documents Griot's im
 
 | File | Source spec (PROMPTS/) | Status | Notes |
 |---|---|---|---|
-| `erd/griot-erd-v1.0.0.png` | `week-02/01-…` + `02-…-sequence` | Awaiting generation | **16 tables / 5 enums**; contract for backend spec 02 |
+| `erd/griot-erd-v1.0.0.png` | `week-02/01-…` + `02-…-sequence` | ✅ Approved | **16 tables / 5 enums**; contract for backend spec 02 |
 | `architecture/c4-system-context.png` | `week-02/04-…c4-system-context` | ✅ Approved | Level 1 |
 | `architecture/c4-container.png` | `week-02/05-…c4-container` | ✅ Approved | Level 2 — maps to compose/Railway |
 | `architecture/api-component.png` | `week-02/06-…api-component` | ✅ Approved | L3 API internals |

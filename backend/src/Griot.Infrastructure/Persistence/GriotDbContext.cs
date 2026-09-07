@@ -1,0 +1,344 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Griot.Domain.Entities;
+using Griot.Domain.Enums;
+
+namespace Griot.Infrastructure.Persistence;
+
+public class GriotDbContext : DbContext
+{
+    public GriotDbContext(DbContextOptions<GriotDbContext> options) : base(options) { }
+
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Workspace> Workspaces => Set<Workspace>();
+    public DbSet<WorkspaceMember> WorkspaceMembers => Set<WorkspaceMember>();
+    public DbSet<Invite> Invites => Set<Invite>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Board> Boards => Set<Board>();
+    public DbSet<Column> Columns => Set<Column>();
+    public DbSet<TaskItem> TaskItems => Set<TaskItem>();
+    public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<ApiLog> ApiLogs => Set<ApiLog>();
+    public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Users
+        modelBuilder.Entity<User>(b =>
+        {
+            b.HasIndex(u => u.Email).IsUnique();
+            b.Property(u => u.Email).HasMaxLength(320);
+            b.Property(u => u.DisplayName).HasMaxLength(100);
+            b.Property(u => u.AvatarUrl).HasMaxLength(500);
+            b.Property(u => u.PasswordHash).HasMaxLength(512);
+        });
+
+        // Workspaces
+        modelBuilder.Entity<Workspace>(b =>
+        {
+            b.HasIndex(w => w.Slug).IsUnique();
+            b.Property(w => w.Name).HasMaxLength(100);
+            b.Property(w => w.Slug).HasMaxLength(100);
+            
+            b.HasOne(w => w.Owner)
+                .WithMany()
+                .HasForeignKey(w => w.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // WorkspaceMembers
+        modelBuilder.Entity<WorkspaceMember>(b =>
+        {
+            b.HasKey(wm => new { wm.WorkspaceId, wm.UserId });
+            b.Property(wm => wm.Role).HasConversion<string>();
+
+            b.HasOne(wm => wm.Workspace)
+                .WithMany(w => w.Members)
+                .HasForeignKey(wm => wm.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(wm => wm.User)
+                .WithMany(u => u.WorkspaceMembers)
+                .HasForeignKey(wm => wm.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Invites
+        modelBuilder.Entity<Invite>(b =>
+        {
+            b.HasIndex(i => i.Token).IsUnique();
+            b.HasIndex(i => new { i.WorkspaceId, i.Email });
+            
+            b.Property(i => i.Role).HasConversion<string>();
+            b.Property(i => i.Status).HasConversion<string>();
+            b.Property(i => i.Email).HasMaxLength(320);
+            b.Property(i => i.Token).HasMaxLength(128);
+
+            b.HasOne(i => i.Workspace)
+                .WithMany(w => w.Invites)
+                .HasForeignKey(i => i.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(i => i.InvitedBy)
+                .WithMany(u => u.SentInvites)
+                .HasForeignKey(i => i.InvitedById)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Projects
+        modelBuilder.Entity<Project>(b =>
+        {
+            b.Property(p => p.Name).HasMaxLength(150);
+            b.Property(p => p.Key).HasMaxLength(10);
+            b.Property(p => p.Status).HasConversion<string>();
+
+            b.HasOne(p => p.Workspace)
+                .WithMany(w => w.Projects)
+                .HasForeignKey(p => p.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Boards
+        modelBuilder.Entity<Board>(b =>
+        {
+            b.Property(b => b.Name).HasMaxLength(100);
+
+            b.HasOne(b => b.Project)
+                .WithMany(p => p.Boards)
+                .HasForeignKey(b => b.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Columns
+        modelBuilder.Entity<Column>(b =>
+        {
+            b.Property(c => c.Name).HasMaxLength(100);
+
+            b.HasOne(c => c.Board)
+                .WithMany(b => b.Columns)
+                .HasForeignKey(c => c.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // TaskItems
+        modelBuilder.Entity<TaskItem>(b =>
+        {
+            b.HasIndex(t => new { t.ColumnId, t.Position });
+            b.HasIndex(t => t.AssigneeId);
+            b.HasIndex(t => t.DueDate);
+
+            b.Property(t => t.Title).HasMaxLength(200);
+            b.Property(t => t.Status).HasConversion<string>();
+            b.Property(t => t.Priority).HasConversion<string>();
+            b.Property(t => t.Position).HasColumnType("decimal(18,4)");
+
+            b.HasOne(t => t.Board)
+                .WithMany()
+                .HasForeignKey(t => t.BoardId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(t => t.Column)
+                .WithMany(c => c.TaskItems)
+                .HasForeignKey(t => t.ColumnId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(t => t.Assignee)
+                .WithMany(u => u.AssignedTasks)
+                .HasForeignKey(t => t.AssigneeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(t => t.Creator)
+                .WithMany(u => u.CreatedTasks)
+                .HasForeignKey(t => t.CreatorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Comments
+        modelBuilder.Entity<Comment>(b =>
+        {
+            b.HasOne(c => c.TaskItem)
+                .WithMany(t => t.Comments)
+                .HasForeignKey(c => c.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(c => c.Author)
+                .WithMany(u => u.Comments)
+                .HasForeignKey(c => c.AuthorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Attachments
+        modelBuilder.Entity<Attachment>(b =>
+        {
+            b.Property(a => a.FileName).HasMaxLength(255);
+            b.Property(a => a.MimeType).HasMaxLength(100);
+            b.Property(a => a.StorageUrl).HasMaxLength(500);
+
+            b.HasOne(a => a.TaskItem)
+                .WithMany(t => t.Attachments)
+                .HasForeignKey(a => a.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(a => a.Uploader)
+                .WithMany(u => u.Attachments)
+                .HasForeignKey(a => a.UploaderId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ActivityLogs
+        modelBuilder.Entity<ActivityLog>(b =>
+        {
+            b.HasIndex(a => new { a.WorkspaceId, a.CreatedAt }).IsDescending(false, true);
+
+            b.Property(a => a.EntityType).HasMaxLength(50);
+            b.Property(a => a.Action).HasMaxLength(50);
+
+            b.HasOne(a => a.Workspace)
+                .WithMany(w => w.ActivityLogs)
+                .HasForeignKey(a => a.WorkspaceId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            b.HasOne(a => a.Actor)
+                .WithMany(u => u.ActivityLogs)
+                .HasForeignKey(a => a.ActorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Notifications
+        modelBuilder.Entity<Notification>(b =>
+        {
+            b.HasIndex(n => new { n.UserId, n.ReadAt });
+            
+            b.Property(n => n.Type).HasConversion<string>();
+            b.Property(n => n.Title).HasMaxLength(200);
+            b.Property(n => n.Body).HasMaxLength(500);
+            b.Property(n => n.TargetRef).HasMaxLength(200);
+
+            b.HasOne(n => n.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RefreshTokens
+        modelBuilder.Entity<RefreshToken>(b =>
+        {
+            b.HasIndex(r => r.UserId);
+            b.HasIndex(r => r.TokenHash).IsUnique();
+
+            b.Property(r => r.TokenHash).HasMaxLength(128);
+
+            b.HasOne(r => r.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ApiLogs
+        modelBuilder.Entity<ApiLog>(b =>
+        {
+            b.HasIndex(a => a.RequestId).IsUnique();
+            b.HasIndex(a => new { a.UserId, a.CreatedAt });
+            b.HasIndex(a => a.Path);
+
+            b.Property(a => a.Method).HasMaxLength(8);
+            b.Property(a => a.Path).HasMaxLength(300);
+            b.Property(a => a.QueryString).HasMaxLength(500);
+            b.Property(a => a.UserAgent).HasMaxLength(300);
+            b.Property(a => a.IpAddress).HasMaxLength(45);
+
+            b.HasOne(a => a.User)
+                .WithMany(u => u.ApiLogs)
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ErrorLogs
+        modelBuilder.Entity<ErrorLog>(b =>
+        {
+            b.HasIndex(e => e.FixStatus).HasFilter("[FixStatus] IN ('Open', 'Investigating')");
+            b.HasIndex(e => e.FixedAt);
+
+            b.Property(e => e.FixStatus).HasConversion<string>();
+            b.Property(e => e.ExceptionType).HasMaxLength(200);
+            b.Property(e => e.Source).HasMaxLength(100);
+
+            b.HasOne(e => e.User)
+                .WithMany(u => u.ErrorLogs)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(e => e.SolvedByUser)
+                .WithMany(u => u.SolvedErrors)
+                .HasForeignKey(e => e.SolvedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // AuditLogs
+        modelBuilder.Entity<AuditLog>(b =>
+        {
+            b.HasIndex(a => a.ActorId);
+            b.HasIndex(a => a.ActivityId);
+
+            b.Property(a => a.Action).HasMaxLength(50);
+            b.Property(a => a.EntityType).HasMaxLength(50);
+
+            b.HasOne(a => a.Actor)
+                .WithMany(u => u.AuditLogs)
+                .HasForeignKey(a => a.ActorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(a => a.ActivityLog)
+                .WithMany()
+                .HasForeignKey(a => a.ActivityId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    public override int SaveChanges()
+    {
+        UpdateTimestamps();
+        return base.SaveChanges();
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        UpdateTimestamps();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void UpdateTimestamps()
+    {
+        var entries = ChangeTracker.Entries();
+        foreach (var entry in entries)
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Properties.Any(p => p.Metadata.Name == "CreatedAt"))
+                {
+                    entry.Property("CreatedAt").CurrentValue = DateTime.UtcNow;
+                }
+                if (entry.Properties.Any(p => p.Metadata.Name == "UpdatedAt"))
+                {
+                    entry.Property("UpdatedAt").CurrentValue = DateTime.UtcNow;
+                }
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                if (entry.Properties.Any(p => p.Metadata.Name == "UpdatedAt"))
+                {
+                    entry.Property("UpdatedAt").CurrentValue = DateTime.UtcNow;
+                }
+            }
+        }
+    }
+}

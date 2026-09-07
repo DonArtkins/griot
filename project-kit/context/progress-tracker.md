@@ -6,7 +6,7 @@ Bootcamp Week 2 — **Planning / system-design phase** (no code yet). Diagrams +
 
 | System | Kit | Status |
 |---|---|---|
-| backend | backend/project-kit | 10 feature specs; awaiting approved ERD |
+| backend | backend/project-kit | Spec 02 done; Spec 03 next |
 | web | web/project-kit | 10 feature specs; awaiting backend |
 | mobile | mobile/project-kit | 7 feature specs; waiting |
 | infra | infra/project-kit | 6 feature specs; waiting |

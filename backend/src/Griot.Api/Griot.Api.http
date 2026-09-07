@@ -1,0 +1,6 @@
+@Griot.Api_HostAddress = http://localhost:5064
+
+GET {{Griot.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
