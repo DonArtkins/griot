@@ -50,3 +50,7 @@ SSO, MFA (v2).
 - [ ] Auth flow end-to-end vs the backend; silent refresh works; session cleared on refresh failure
 - [ ] No `localStorage` tokens anywhere
 - [ ] `RequireAuth` redirects unauthenticated users
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

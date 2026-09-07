@@ -16,3 +16,7 @@ Cross-system/runtime specs for the monorepo live **inside the owning system's ki
 | mcp | 01 MCP setup → 05 contract testing |
 
 Keep this file; it is the index agents use to find a system's specs.
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

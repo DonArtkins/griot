@@ -72,3 +72,7 @@ OAuth/SSO, 2FA, session revocation UI (v2).
 - [ ] register/login/refresh/logout work; replay of a rotated refresh returns 401 and revokes the family
 - [ ] Rate limit returns 429 under hammering
 - [ ] JWT claims `sub`/`wid` correct; CORS restricts to allow-list
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

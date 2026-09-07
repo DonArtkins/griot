@@ -71,3 +71,7 @@ More procs, query tuning beyond the dashboard, EF-to-Dapper parity tooling.
 - [ ] Both procs exist and run with sample data
 - [ ] Bulk update is atomic (all-or-nothing)
 - [ ] Dashboard returns within one round-trip
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

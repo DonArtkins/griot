@@ -35,3 +35,7 @@ CREATE: widget tests (login screen, status picker, board/task screens with mocke
 ## Acceptance Criteria
 
 - [ ] `flutter test` + integration_test green
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

@@ -45,3 +45,7 @@ CREATE: agent definition; tools `get_board`, `get_task`, `list_boards`, `list_pr
 
 - [ ] Copilot answers from real board data and streams to the web panel
 - [ ] Every read tool call audited
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

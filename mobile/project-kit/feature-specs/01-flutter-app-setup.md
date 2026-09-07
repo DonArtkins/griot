@@ -51,3 +51,7 @@ Auth flows (feature 02), data wiring (03/04).
 
 - [ ] `flutter analyze` clean; app runs on the emulator
 - [ ] Feature-first folders in place
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

@@ -39,3 +39,7 @@ CREATE: `web/cypress/e2e/core-loop.cy.ts`, `copilot.cy.ts` (MSW stub), support c
 
 - [ ] Cypress core loop green in CI
 - [ ] Copilot flow green with MSW stub (no LLM)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

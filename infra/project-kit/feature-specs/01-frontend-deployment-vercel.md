@@ -54,3 +54,7 @@ Backend containers (02), compose (03), CI (05).
 
 - [ ] Live URL serves the Vite build; env points at the deployed API
 - [ ] Assets load; Lighthouse captured
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

@@ -23,3 +23,7 @@ Week 6-7 kit written (13 specs). Waits for backend/web/mobile/infra to deploy.
 ## Session Notes
 
 - **2026-09-03** - QA kit created.
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

@@ -45,3 +45,7 @@ CREATE: 4 scheduled tasks with cron schedules; deterministic paths skip human ap
 
 - [ ] All four run on schedule in dev and produce expected outputs
 - [ ] Idempotent (no duplicate notifications on retry)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

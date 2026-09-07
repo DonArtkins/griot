@@ -33,3 +33,7 @@ CREATE: `docs/EXPLORATORY-CHARTERS.md` - time-boxed charters per area.
 
 - [ ] Test cases cover both shells + mobile + AI surfaces
 - [ ] Severity/priority taxonomy defined
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

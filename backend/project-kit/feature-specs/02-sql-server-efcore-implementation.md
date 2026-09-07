@@ -73,3 +73,7 @@ REST/GraphQL/auth (specs 04–05, 08); stored procs (spec 03); Postgres schema.
 - [ ] `dotnet build` clean; `InitialCreate` applied; table list matches the ERD
 - [ ] Enums/entities names match the approved ERD exactly
 - [ ] Indexes match the ERD annotations
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

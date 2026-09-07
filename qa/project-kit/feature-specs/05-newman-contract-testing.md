@@ -40,3 +40,7 @@ MODIFY: CI - newman job `newman run ... --reporters junit` parallel to Cypress.
 
 - [ ] Newman green in CI; JUnit artifact uploaded
 - [ ] Core contracts schema-asserted
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.
