@@ -37,3 +37,7 @@ MODIFY: collection - add pre-request/assertion scripts, negative cases (401/403/
 
 - [ ] Negative + positive API cases present; env chaining works
 - [ ] Collection green for REST + GraphQL
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

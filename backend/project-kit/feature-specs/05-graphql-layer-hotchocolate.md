@@ -67,3 +67,7 @@ SDL-first schema, subscriptions (v2), persisted-queries cache.
 - [ ] Schema live at `/graphql?sdl`; queries/mutations match `api-surface.md`
 - [ ] Dashboard/board queries show no N+1
 - [ ] Query-cost guard active
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

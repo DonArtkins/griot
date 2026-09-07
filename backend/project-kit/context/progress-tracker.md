@@ -25,3 +25,7 @@ Week 2. Spec 02 is complete (EF Core entities, DbContext, and initial migration 
 
 - **2026-09-03** — Kit restructured to one spec per bootcamp deliverable; 9 specs created.
 - **2026-09-07** — Spec 02 completed: EF Core entities mapped to approved ERD, GriotDbContext configured, and initial migration generated.
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

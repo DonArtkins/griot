@@ -34,3 +34,7 @@ CREATE: k6 regression run (3 scripts vs Week-6 baseline) + report; UAT script + 
 - [ ] k6 regression recorded vs baseline
 - [ ] UAT executed with >=1 outsider; friction logged as findings
 - [ ] Executive summary + final test strategy produced
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

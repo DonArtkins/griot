@@ -33,3 +33,7 @@ CREATE: `docs/TRACEABILITY-MATRIX.md` - template mapping requirement <-> test ca
 
 - [ ] Jira workflow documented and usable
 - [ ] Traceability matrix template in place
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

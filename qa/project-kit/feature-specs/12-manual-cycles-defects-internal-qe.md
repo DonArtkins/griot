@@ -34,3 +34,7 @@ CREATE: `docs/MANUAL-CYCLE-REPORT.md` - per-cycle summary, defect list with seve
 
 - [ ] Manual cycles executed and reported; all defects in Jira with evidence
 - [ ] Traceability matrix maintained
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

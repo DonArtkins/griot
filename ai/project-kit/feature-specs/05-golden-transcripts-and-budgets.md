@@ -41,3 +41,7 @@ CREATE: golden-transcript fixtures (`(conversation, mocked LLM outputs) -> expec
 
 - [ ] Golden transcripts green in CI with a mocked LLM
 - [ ] Budget enforced per workspace; alarms fire on over-budget
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

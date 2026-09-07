@@ -51,3 +51,7 @@ App-shell screens (feature 07).
 
 - [ ] `/` `/pricing` `/login` `/signup` render from Figma; auth works
 - [ ] GSAP only in this subtree; `npm run build` green; axe + Lighthouse pass
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

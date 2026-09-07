@@ -46,3 +46,7 @@ Drag-drop (web-only).
 
 - [ ] Status picker updates a task and persists via REST
 - [ ] Providers keep UI state + session state; no server-state duplication
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

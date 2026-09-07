@@ -42,3 +42,7 @@ CREATE: per-tool contract tests (zod schemas + mocked graphql client + expected 
 
 - [ ] `npm test` green (no network); schemas match the integration contract
 - [ ] Inspector smoke passes; verified in at least one external client (Claude Desktop or Cursor)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

@@ -41,3 +41,7 @@ CREATE: `docs/QE-FUNDAMENTALS.md` - map each testing type to a Griot surface/sui
 
 - [ ] Each testing type maps to a named Griot suite
 - [ ] KPI definitions + targets recorded
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

@@ -58,3 +58,7 @@ Theme (feature 02), data wiring (03/04), auth (05), shells (06/07).
 
 - [ ] `npm run build` passes; dev server proxies `/api` + `/graphql`
 - [ ] Jest test harness configured (`npm test` runs a sample test green)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

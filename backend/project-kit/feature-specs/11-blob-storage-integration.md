@@ -688,3 +688,7 @@ Add to `Postman/Griot.postman_collection.json`:
 ---
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

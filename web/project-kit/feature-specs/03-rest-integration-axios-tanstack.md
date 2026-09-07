@@ -48,3 +48,7 @@ GraphQL (feature 04), auth store UI flows (feature 05).
 
 - [ ] Axios interceptors work against the backend; refresh-then-retry verified
 - [ ] Feature hooks typed; mutation invalidations correct; tests for the interceptor
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

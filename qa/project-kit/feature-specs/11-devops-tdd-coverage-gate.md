@@ -34,3 +34,7 @@ CREATE: `docs/COVERAGE-GATE.md` - thresholds, weighting rule, and how to read th
 
 - [ ] CI blocks merges below threshold
 - [ ] Coverage report artifact uploaded each run
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

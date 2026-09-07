@@ -70,3 +70,7 @@ Load testing (k6, qa spec 09); E2E UI (Cypress, qa spec 07).
 - [ ] Collection runs green locally; env chaining works (tokens auto-fill)
 - [ ] Both REST + GraphQL folders exist and match `api-surface.md`
 - [ ] Key contract responses have JSON schema assertions
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.
