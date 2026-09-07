@@ -17,4 +17,5 @@ public class Workspace
     public ICollection<Project> Projects { get; set; } = new List<Project>();
     public ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
     public ICollection<Invite> Invites { get; set; } = new List<Invite>();
+    public ICollection<Report> Reports { get; set; } = new List<Report>();
 }

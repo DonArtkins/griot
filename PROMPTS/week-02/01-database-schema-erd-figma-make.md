@@ -14,13 +14,14 @@ Griot is a project-management web app (workspaces → projects → boards → co
 
 **Guarding rule:** every entity below traces to either a **Week-1 screen** (e.g. Dashboard → ActivityLog, Board → Column/TaskItem, Task detail → Comment/Attachment, Team settings → WorkspaceMember/Invite, Notifications → Notification) **or an explicit observability/audit requirement** (ApiLogs, ErrorLogs, AuditLogs — added in planning so the schema never changes later). An entity with neither justification is not in this ERD.
 
-## 2. The entity roster (16 tables + 5 enums)
+## 2. The entity roster (18 tables + 6 enums)
 
 Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-tracking conventions. Use **exactly** these names, types, and relationships. These names ARE the contract for `Griot.Domain` entities, GraphQL types, TS/Dart models, and MCP tool schemas. Adding `ApiLogs`/`ErrorLogs`/`AuditLogs` now (before code) means we never come back to redesign the schema later.
 
 ### Enums (draw as a legend panel, v1 values fixed)
 | Enum | Values |
 |---|---|
+| `TwoFactorMethod` | EmailOtp · Totp · None |
 | `TaskStatus` | Backlog · Todo · InProgress · InReview · Done |
 | `Priority` | Low · Medium · High · Urgent |
 | `WorkspaceRole` | Owner · Admin · Member |
@@ -28,6 +29,12 @@ Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-t
 | `ErrorFixStatus` | Open · Investigating · Fixed · Verified · WontFix (for ErrorLogs) |
 
 ### Tables
+
+**OtpChallenges**
+`Id` (PK), `UserId` (FK), `CodeHash`, `Purpose`, `ExpiresAt`, `AttemptCount`, `Consumed`, `CreatedAt`, `RequestIp`
+
+**Reports**
+`Id` (PK), `WorkspaceId` (FK), `Type`, `GeneratedBy`, `ContentJson`, `GeneratedAt`, `PromptContext`
 **Users** — `Id` (GUID, PK) · `Email` (nvarchar(320), UQ) · `DisplayName` (nvarchar(100)) · `AvatarUrl` (nvarchar(500), nullable) · `PasswordHash` (nvarchar(512), Argon2) · `CreatedAt` (datetime2, SYSUTCDATETIME) · `UpdatedAt`
 
 **Workspaces** — `Id` (GUID, PK) · `Name` (nvarchar(100)) · `Slug` (nvarchar(100), UQ) · `OwnerId` (FK → Users) · `CreatedAt` · `UpdatedAt`
@@ -103,23 +110,23 @@ Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-t
 - `ErrorLogs(FixStatus)` partial (Open/Investigating); `ErrorLogs(FixedAt)` — pruning.
 - `AuditLogs(ActorId)`; `AuditLogs(ActivityId)`.
 
-> Use the **master prompt file** (`02-erd-figma-make-master-prompt.md`) for building in Figma Make — one extensive prompt covering all 16 tables, 5 enums, 21 relationships, and 19 indexes (including FK index coverage). If the canvas truncates, add any missing table with a short add-on prompt (name the table + "as in my first prompt").
+> Use the **master prompt file** (`02-erd-figma-make-master-prompt.md`) for building in Figma Make — one extensive prompt covering all 18 tables, 6 enums, 21 relationships, and 19 indexes (including FK index coverage). If the canvas truncates, add any missing table with a short add-on prompt (name the table + "as in my first prompt").
 
 ---
 
 ## 5. The prompt (paste into Figma Make — no length limit)
 
-Open your Figma Make project **Griot** (`https://www.figma.com/make/bTB7eE6s39O6yvtYfq0DeR/Griot`), then paste the full **master prompt** from `02-erd-figma-make-master-prompt.md` — one extensive prompt covering all 16 tables, 5 enums, 21 labelled crow's-foot relationships, 19 index stickies, and the SQL Server conventions note. Use **Plan mode** to steer before generating. If the canvas truncates, add any missing table via a short add-on prompt (name the table + "as in my first prompt") — never omit columns.
+Open your Figma Make project **Griot** (`https://www.figma.com/make/bTB7eE6s39O6yvtYfq0DeR/Griot`), then paste the full **master prompt** from `02-erd-figma-make-master-prompt.md` — one extensive prompt covering all 18 tables, 6 enums, 21 labelled crow's-foot relationships, 19 index stickies, and the SQL Server conventions note. Use **Plan mode** to steer before generating. If the canvas truncates, add any missing table via a short add-on prompt (name the table + "as in my first prompt") — never omit columns.
 
 **Same authoritative content lives in `02-erd-figma-make-master-prompt.md`; that is the file agents/you paste from.** The shortened version below is the **quick sanity check** of the contract:
 
-> **Entities (16):** `Users`, `Workspaces`, `WorkspaceMembers` (M:N join with `Role`), `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`, `ApiLogs`, `ErrorLogs`, `AuditLogs` — exact field lists in §2 (GUID PKs, `nvarchar` types, FK labels, nullable `?`, unique `UQ`).
+> **Entities (18):** `Users`, `Workspaces`, `WorkspaceMembers` (M:N join with `Role`), `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`, `OtpChallenges`, `Reports`, `ApiLogs`, `ErrorLogs`, `AuditLogs` — exact field lists in §2 (GUID PKs, `nvarchar` types, FK labels, nullable `?`, unique `UQ`).
 >
-> **Enums (5):** `TaskStatus` Backlog·Todo·InProgress·InReview·Done · `Priority` Low·Medium·High·Urgent · `WorkspaceRole` Owner·Admin·Member · `NotificationType` Mention·Assignment·DueDate·System · `ErrorFixStatus` Open·Investigating·Fixed·Verified·WontFix. Legend panel.
+> **Enums (6):** `TaskStatus` Backlog·Todo·InProgress·InReview·Done · `Priority` Low·Medium·High·Urgent · `WorkspaceRole` Owner·Admin·Member · `NotificationType` Mention·Assignment·DueDate·System · `ErrorFixStatus` Open·Investigating·Fixed·Verified·WontFix · `TwoFactorMethod` None·EmailOtp·Totp. Legend panel.
 >
 > **Enums (inline, not separate tables):** `InviteStatus` Pending·Accepted·Declined·Expired (on `Invites.Status`) · `ProjectStatus` Active·Archived (on `Projects.Status`). These are single-table enums rendered inline on the ERD, not top-level legend entries.
 >
-> **Relationships (21):** WorkspaceMembers joins Users↔Workspaces (Role on association); Workspaces→Projects→Boards→Columns→TaskItems; TaskItems TWO FKs to Users (`AssigneeId?`, `CreatorId`); Comments/Attachments→TaskItems; Workspaces→ActivityLogs+Invites; Users→RefreshTokens (rotation chain)+Notifications+ApiLogs+ErrorLogs; `ErrorLogs.SolvedByUserId→Users` (nullable); `AuditLogs.ActorId→Users` (required); `Invites.InvitedById→Users`; ActivityLogs→(optional)AuditLogs.
+> **Relationships (21):** WorkspaceMembers joins Users↔Workspaces (Role on association); Workspaces→Projects→Boards→Columns→TaskItems; Workspaces→Reports; TaskItems TWO FKs to Users (`AssigneeId?`, `CreatorId`); Comments/Attachments→TaskItems; Workspaces→ActivityLogs+Invites; Users→RefreshTokens (rotation chain)+Notifications+ApiLogs+ErrorLogs+OtpChallenges; `ErrorLogs.SolvedByUserId→Users` (nullable); `AuditLogs.ActorId→Users` (required); `Invites.InvitedById→Users`; ActivityLogs→(optional)AuditLogs.
 >
 > **Indexes (19 stickies):** every FK non-clustered (1 rule sticky); `TaskItems(ColumnId, Position)`; `TaskItems(AssigneeId)`; `TaskItems(DueDate)`; `ActivityLogs(WorkspaceId, CreatedAt DESC)`; `Notifications(UserId, ReadAt)`; `RefreshTokens(UserId)`, `RefreshTokens(TokenHash)` UQ; `Invites(Token)` UQ, `Invites(WorkspaceId, Email)`; `ApiLogs(RequestId)` UQ, `ApiLogs(UserId, CreatedAt)`, `ApiLogs(Path)`; `ErrorLogs(FixStatus)` partial, `ErrorLogs(FixedAt)`; `AuditLogs(ActorId)`, `AuditLogs(ActivityId)`; `Users.Email` UQ, `Workspaces.Slug` UQ.
 >
@@ -168,7 +175,7 @@ When prompting the backend agent (Cline/Claude), say: *"Build backend features 0
 
 ## 7. Definition of Done — today's ERD deliverable
 
-- [ ] Figma Make project **Griot** contains the ERD: all **16 tables** (13 core + ApiLogs/ErrorLogs/AuditLogs), **5 enums**, **21 labelled crow's-foot relationships**, legend, index notes
+- [ ] Figma Make project **Griot** contains the ERD: all **18 tables** (13 core + ApiLogs/ErrorLogs/AuditLogs), **6 enums**, **21 labelled crow's-foot relationships**, legend, index notes
 - [ ] Module color-coding applied (Identity/Auth, Core Board, Social, Observability, Audit)
 - [ ] No entity without a Week-1 screen or observability requirement; names/values match §2 + `data-layer.md` exactly
 - [ ] Refined ≥1 round; approved; PNG exported to `diagrams/erd/griot-erd-v1.0.0.png`
