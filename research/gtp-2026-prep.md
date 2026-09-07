@@ -147,6 +147,7 @@ Figma Make (the AI prototyping surface in the research screenshot) takes a struc
 ---
 
 ## 6. Environment Setup — Parrot OS, Everything Needed, Zero Collision with the Personal Stack
+> See §7A for the optional Windows 10 VM (VirtualBox) fallback surface — not required for any bootcamp-mandated tool.
 
 > Goal: one reproducible instructions file for a fresh Parrot machine with **both** stacks live:
 > the GTP/bootcamp stack (this project) and the personal stack (unrelated work). Nothing below is a singleton global install that could break personal projects.
@@ -280,7 +281,64 @@ flutter doctor
 nvm ls                                           # 20 present; personal default untouched
 npx trigger.dev@latest --version                # AI layer CLI (per-project)
 npx @modelcontextprotocol/inspector --version   # MCP Inspector (per-project)
+vboxmanage --version && vboxmanage list extpacks # Windows 10 VM fallback surface (§7A) — optional, not a Griot dependency
 ```
+
+---
+
+## 7A. Windows 10 VM (VirtualBox) — for the pieces Linux can't cover cleanly `[own-stack]`
+
+Nothing in the PDF's 2026 stack requires Windows — .NET 8, SQL Server, Visual Studio's *functional* equivalent (VS Code + C# Dev Kit), Docker, React, Flutter all run natively on Parrot. This VM exists purely as a **fallback surface** for anything cohort-specific that assumes native Windows behavior (e.g. actual Visual Studio 2022 if a grader/pairing session needs it screen-shared, Windows-only utilities, or testing a deliverable the way a Windows-only teammate will see it). Treat it the same as the rest of the isolation contract below: **separate, not a dependency of the core Griot toolchain.**
+
+**Status on this machine:** VirtualBox and the Oracle Extension Pack are already installed at the latest version (confirmed via Oracle's downloads page + local install). Steps 1–3 below are done — starting from VM creation.
+
+### 7A.1 Confirm the install (skip reinstalling)
+```bash
+vboxmanage --version                     # confirm VirtualBox version
+vboxmanage list extpacks                 # confirm Oracle Extension Pack is registered
+groups $USER | grep -o vboxusers         # confirm you're in the vboxusers group; re-login if empty
+lsmod | grep vboxdrv                     # confirm the kernel module is loaded
+```
+If `vboxdrv` doesn't show up, rebuild the DKMS module against the current kernel (this is the one step worth re-running after any Parrot kernel upgrade, since `linux-image-*` bumps break out-of-tree modules):
+```bash
+sudo apt install -y dkms linux-headers-$(uname -r)
+sudo /sbin/vboxconfig
+```
+
+### 7A.2 Get a Windows 10 ISO
+Download directly from Microsoft's official media creation page — no third-party ISO sources. A product key is only needed for activation; Windows 10 installs and runs fine unactivated for dev/testing use.
+
+### 7A.3 Create the VM
+```bash
+VBoxManage createvm --name "GTP-Win10" --ostype Windows10_64 --register
+VBoxManage modifyvm "GTP-Win10" --memory 4096 --cpus 2 --vram 128 --graphicscontroller vmsvga
+VBoxManage createhd --filename ~/VirtualBox\ VMs/GTP-Win10/GTP-Win10.vdi --size 65536
+VBoxManage storagectl "GTP-Win10" --name "SATA Controller" --add sata --controller IntelAhci
+VBoxManage storageattach "GTP-Win10" --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium ~/VirtualBox\ VMs/GTP-Win10/GTP-Win10.vdi
+VBoxManage storagectl "GTP-Win10" --name "IDE Controller" --add ide
+VBoxManage storageattach "GTP-Win10" --storagectl "IDE Controller" --port 0 --device 0 --type dvddrive --medium /path/to/Win10.iso
+VBoxManage modifyvm "GTP-Win10" --boot1 dvd --boot2 disk
+VBoxManage modifyvm "GTP-Win10" --nic1 nat
+```
+Named `GTP-Win10` (not just `Win10`) to keep it identifiable if other VMs get added later — consistent with the `gtp-*` prefixing convention used for the Docker containers in §6.4.
+
+With 15GB host RAM, 4GB to the guest is a reasonable ceiling — leave the rest for Parrot + the `gtp-*` containers running concurrently, since the whole point of Griot's local dev stack (SQL Server + Postgres + Redis in Docker) is to keep running while this VM is up.
+
+### 7A.4 Enable virtualization (check first — usually already on)
+```bash
+egrep -c '(vmx|svd)' /proc/cpuinfo
+```
+Non-zero means VT-x is available. If VirtualBox complains about VT-x being unavailable despite this, it needs enabling in the HP BIOS.
+
+### 7A.5 Install + Guest Additions
+Launch VirtualBox (`virtualbox` or the KDE menu), start `GTP-Win10`, and run through the Windows installer. Once booted, `Devices > Insert Guest Additions CD` gets you shared folders, display scaling, and clipboard sharing — useful for pulling build artifacts or screenshots back into the Linux-side Griot repo without a network share.
+
+### 7A.6 Isolation note (extends §8's table)
+| Question | Rule |
+|---|---|
+| Does the Windows VM touch the GTP toolchain? | No. `.NET`, Docker, Node, Flutter all stay on the Parrot host per §6. The VM is a leaf node, not a dependency — nothing in `week-01` through `week-07` requires booting it. |
+| What lives only in the VM? | Anything explicitly Windows-only that comes up ad hoc (e.g. a grader session in actual Visual Studio 2022, a Windows-specific bug repro). Not tracked as a numbered week deliverable. |
+| Shared state with the host? | Only via Guest Additions shared folders/clipboard — opt-in per session, not a standing mount. |
 
 ---
 
