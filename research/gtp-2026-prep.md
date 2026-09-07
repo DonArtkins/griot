@@ -10,8 +10,6 @@
 The previous version of this research swapped the bootcamp's stack for a personal Node/Express/Prisma/Next.js stack.
 That is reversed here: **the bootcamp roadmap defines the company/cohort stack, everyone on the programme uses it, and "Griot" now runs exactly on it.** No capstone-specific substitutions for backend/frontend/mobile/devops.
 
-**This revision also removes the Windows 10 VM entirely from this document.** It never touched the GTP toolchain and was cluttering the setup story — it now lives in its own file, `windows-vm-setup.md`, kept for later reference but no longer part of the Griot onboarding path.
-
 The only intentional differences from the PDF are two kinds, both explicit and small:
 
 1. **Machine-level (Parrot OS) adjustments** — because the host is Parrot (Debian-based), not Windows:
@@ -153,8 +151,6 @@ Figma Make (the AI prototyping surface in the research screenshot) takes a struc
 > **Scope correction (superseding the original per-GTP-only version of this section):** this setup is no longer GTP-only. It is **Sababisha-organization-wide** — one shared Docker Engine, one shared SQL Server/Postgres/Redis backing-services stack, used by **every** Sababisha project, GTP-derived or not. Griot (this GTP capstone) is one *consumer* of this infrastructure, not its owner. A future non-GTP Sababisha project reuses the exact same running containers — see §6.4b for how.
 >
 > Directory convention: `~/sababisha/infra/` (the shared compose file + backing services) and `~/sababisha/projects/<area>/<project-name>/` (every project's own code — GTP projects nest under `~/sababisha/projects/gtp/<project-name>`, e.g. `~/sababisha/projects/gtp/griot`). Personal, non-Sababisha work stays fully outside `~/sababisha/` — nothing below is a singleton global install that could break it.
->
-> **The optional Windows 10 VM (VirtualBox) fallback surface has moved out of this document** — see `windows-vm-setup.md`. It is not required for, and does not touch, anything below.
 
 ### 6.1 The Parrot-specific gotchas that still apply (updated with real incidents from this machine)
 

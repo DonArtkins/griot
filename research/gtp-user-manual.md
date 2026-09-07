@@ -200,7 +200,6 @@ This means `CREATE DATABASE Griot` already succeeded earlier — you're just try
 
 | Tool | How to open it | Notes |
 |---|---|---|
-| **VirtualBox** | Type `virtualbox` in a terminal, or find it in the KDE application menu | Only needed for the Windows 10 VM — unrelated to daily Griot work |
 | **VSCodium** | `codium <path>` from a terminal (e.g. `codium ~/sababisha/projects/gtp/griot`), or the KDE menu | This is where you'll spend most of your time |
 | **Docker containers** | No GUI installed by default — you're using `docker` CLI commands (`docker ps`, `docker compose ps`, `docker logs <name>`) | Docker Desktop has a GUI but isn't installed here; not required |
 | **MCP Inspector** | `npx @modelcontextprotocol/inspector` (bare, no flags — see prep doc gotcha 9), then open the printed `http://127.0.0.1:6274/...` link in a browser | Only needed when working on the `mcp/` folder |
@@ -264,7 +263,7 @@ git push
 ```
 
 ### 8.5 End of day
-You don't need to stop the Docker containers — they're lightweight and meant to stay running in the background across projects (that's the whole point of the shared `sababisha-infra` setup). Just close your terminals/editor normally. If you ever do want to stop them (e.g. freeing RAM before a long VM session):
+You don't need to stop the Docker containers — they're lightweight and meant to stay running in the background across projects (that's the whole point of the shared `sababisha-infra` setup). Just close your terminals/editor normally. If you ever do want to stop them (e.g. before a resource-intensive task):
 ```bash
 docker compose -f ~/sababisha/infra/docker-compose.yml stop
 ```
