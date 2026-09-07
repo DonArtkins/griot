@@ -51,4 +51,4 @@ Argon2 hashing · JWT access (15-min, `sub`/`wid`) · opaque rotated refresh (ha
 
 - One process serves `/api`, `/graphql`, and `/health`; `ASPNETCORE_URLS=http://+:8080` in containers.
 - Structured logging via `ILogger<T>`; every request gets a request id; no `Console.WriteLine`.
-- Connection string from `ConnectionStrings__Default` (compose: `Server=gtp-sqlserver,1433;Database=griot;…`).
+- Connection string from `ConnectionStrings__Default` (compose: `Server=sababisha-sqlserver,1433;Database=griot;…`).

@@ -37,23 +37,23 @@ services:
     build: .
     ports: ["8080:8080"]
     environment:
-      ConnectionStrings__Default: "Server=gtp-sqlserver,1433;Database=griot;User Id=sa;Password=${GTP_SA_PASSWORD};TrustServerCertificate=True"
-    depends_on: [sqlserver, redis]
-  sqlserver:
+      ConnectionStrings__Default: "Server=sababisha-sqlserver,1433;Database=griot;User Id=sa;Password=${SABABISHA_SA_PASSWORD};TrustServerCertificate=True"
+    depends_on: [sabahisha-sqlserver, sabahisha-redis]
+  sabahisha-sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    environment: { ACCEPT_EULA: "Y", MSSQL_SA_PASSWORD: "${GTP_SA_PASSWORD}" }
+    environment: { ACCEPT_EULA: "Y", MSSQL_SA_PASSWORD: "${SABABISHA_SA_PASSWORD}" }
     ports: ["14333:1433"]
-    volumes: [mssql_data:/var/opt/mssql]
-  postgres:
+    volumes: [sababisha_mssql:/var/opt/mssql]
+  sabahisha-postgres:
     image: postgres:16-alpine
     ports: ["5433:5432"]
-    volumes: [pg_data:/var/lib/postgresql/data]
-  redis:
+    volumes: [sababisha_pg:/var/lib/postgresql/data]
+  sabahisha-redis:
     image: redis:7-alpine
     ports: ["6380:6379"]
 volumes:
-  mssql_data:
-  pg_data:
+  sababisha_mssql:
+  sababisha_pg:
 ```
 
 ## 4. GitHub Actions (test gate → deploy)
@@ -67,7 +67,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     services:
-      sqlserver:
+      sabahisha-sqlserver:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env: { ACCEPT_EULA: "Y", MSSQL_SA_PASSWORD: "Griot_Test_2026!" }
         ports: ["1433:1433"]

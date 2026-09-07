@@ -6,9 +6,9 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 
 | Service | Container | Host:Container | Notes |
 |---|---|---|---|
-| gtp-sqlserver | SQL Server 2022 | 14333:1433 | primary; `gtp_*` volumes |
-| gtp-postgres | PostgreSQL 16 | 5433:5432 | secondary/test |
-| gtp-redis | Redis 7 | 6380:6379 | auth support |
+| sababisha-sqlserver | SQL Server 2022 | 14333:1433 | primary; `sababisha_*` volumes |
+| sababisha-postgres | PostgreSQL 16 | 5433:5432 | secondary/test |
+| sababisha-redis | Redis 7 | 6380:6379 | auth support |
 | api | Griot.Api | 8080:8080 | `ASPNETCORE_URLS=http://+:8080` |
 | mcp | Griot MCP | 3001:3001 | Streamable HTTP |
 
@@ -16,15 +16,15 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 
 | Scope | Var | Purpose |
 |---|---|---|
-| backend | `ConnectionStrings__Default` | SQL Server (compose: `Server=gtp-sqlserver,1433;Database=griot;User Id=sa;Password=…`) |
+| backend | `ConnectionStrings__Default` | SQL Server (compose: `Server=sababisha-sqlserver,1433;Database=griot;User Id=sa;Password=…`) |
 | backend | `JWT__SigningKey` `JWT__Issuer` `JWT__Audience` | Token sign/validate |
-| backend | `Redis__Connection` | `gtp-redis:6379` |
+| backend | `Redis__Connection` | `sababisha-redis:6379` |
 | backend | `GRIOT_SERVICE_TOKEN` | AI/MCP service calls (Bearer) |
 | backend | `Cors__AllowedOrigins` | Vercel origin prod; localhost dev |
 | web | `VITE_API_URL` | deployed API base |
 | ai/mcp | `GRIOT_API_URL` `GRIOT_SERVICE_TOKEN` | API access |
 | ai | `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` | LLM keys ONLY in `ai/.env` |
-| infra | `GTP_SA_PASSWORD` `GTP_PG_PASSWORD` | local compose dev DB passwords |
+| infra | `SABABISHA_SA_PASSWORD` `SABABISHA_PG_PASSWORD` | local compose dev DB passwords |
 
 ## REST route contract (owned by backend spec 04)
 

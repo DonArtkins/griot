@@ -10,6 +10,8 @@
 The previous version of this research swapped the bootcamp's stack for a personal Node/Express/Prisma/Next.js stack.
 That is reversed here: **the bootcamp roadmap defines the company/cohort stack, everyone on the programme uses it, and "Griot" now runs exactly on it.** No capstone-specific substitutions for backend/frontend/mobile/devops.
 
+**This revision also removes the Windows 10 VM entirely from this document.** It never touched the GTP toolchain and was cluttering the setup story — it now lives in its own file, `windows-vm-setup.md`, kept for later reference but no longer part of the Griot onboarding path.
+
 The only intentional differences from the PDF are two kinds, both explicit and small:
 
 1. **Machine-level (Parrot OS) adjustments** — because the host is Parrot (Debian-based), not Windows:
@@ -151,6 +153,8 @@ Figma Make (the AI prototyping surface in the research screenshot) takes a struc
 > **Scope correction (superseding the original per-GTP-only version of this section):** this setup is no longer GTP-only. It is **Sababisha-organization-wide** — one shared Docker Engine, one shared SQL Server/Postgres/Redis backing-services stack, used by **every** Sababisha project, GTP-derived or not. Griot (this GTP capstone) is one *consumer* of this infrastructure, not its owner. A future non-GTP Sababisha project reuses the exact same running containers — see §6.4b for how.
 >
 > Directory convention: `~/sababisha/infra/` (the shared compose file + backing services) and `~/sababisha/projects/<area>/<project-name>/` (every project's own code — GTP projects nest under `~/sababisha/projects/gtp/<project-name>`, e.g. `~/sababisha/projects/gtp/griot`). Personal, non-Sababisha work stays fully outside `~/sababisha/` — nothing below is a singleton global install that could break it.
+>
+> **The optional Windows 10 VM (VirtualBox) fallback surface has moved out of this document** — see `windows-vm-setup.md`. It is not required for, and does not touch, anything below.
 
 ### 6.1 The Parrot-specific gotchas that still apply (updated with real incidents from this machine)
 
@@ -165,8 +169,11 @@ Figma Make (the AI prototyping surface in the research screenshot) takes a struc
 9. **MCP Inspector v1 (`@modelcontextprotocol/inspector@0.15.0`) has a broken CLI arg parser on Node 20** — `npx @modelcontextprotocol/inspector node src/server.ts` throws `ERR_PARSE_ARGS_INVALID_OPTION_VALUE` on `--env` before it even reaches your server. The GUI mode (bare `npx @modelcontextprotocol/inspector`) works fine and was confirmed running on `http://127.0.0.1:6274` with a session token. Prefer the bare GUI invocation, or upgrade to v2 (`npm i @modelcontextprotocol/inspector@latest`) if the CLI form is actually needed — v1 only gets security fixes.
 10. **A stray semicolon-prefixed command (`;s`) is a bash syntax error, not a typo worth chasing** — `bash: syntax error near unexpected token ';'` just means the previous line's terminal wrapping merged into the next; retype the intended command.
 11. **The old standalone `docker-compose` package conflicts with `docker-compose-plugin` and will fail the install with a dpkg overwrite error** — both ship the same file at `/usr/libexec/docker/cli-plugins/docker-compose`. Confirmed on this machine: `docker-compose-plugin`'s unpack step failed with `trying to overwrite '.../docker-compose', which is also in package docker-compose`. Fix: `sudo apt remove -y docker-compose` first, then `sudo apt install -y docker-compose-plugin`. The §6.3 block below now removes `docker-compose` up front for this reason.
-12. **`docker` commands can still hit `podman.sock` even after the daemon is enabled and running, if something in the shell is redirecting them** — this showed up *after* `systemctl enable --now docker` had already succeeded (`Active: active (running)` confirmed) and `hello-world` had already run cleanly, which ruled out a daemon problem. Check, in order: `echo $DOCKER_HOST` (a stale var pointing at podman's socket overrides the real daemon — `unset` it and remove any export line from `~/.bashrc`), and `type docker` (should resolve to `/usr/bin/docker`; an alias or shell function shadowing it is the other cause). On this machine `type docker` confirmed the real binary, so the podman-socket line was leftover terminal scrollback from before the fix, not a new failure.
+12. **`docker` commands can still hit `podman.sock` even after the daemon is enabled and running, if `DOCKER_HOST` is set system-wide.** This showed up *after* `systemctl enable --now docker` had already succeeded (`Active: active (running)` confirmed) and `hello-world` had already run cleanly, which ruled out a daemon problem. Root cause, confirmed on this machine: `/etc/profile.d/podman-docker.sh` — a script installed by the `podman-docker` package — auto-exports `DOCKER_HOST=unix:///run/user/1000/podman/podman.sock` for every login shell whenever it isn't already set, and it isn't limited to any one dotfile, so `grep`ing `~/.bashrc`/`~/.zshrc`/`~/.profile` alone won't find it. `unset DOCKER_HOST` and `systemctl --user unset-environment DOCKER_HOST` both look like fixes but don't stick, since the script re-exports it on every new login shell. **Permanent fix:** `sudo mv /etc/profile.d/podman-docker.sh /etc/profile.d/podman-docker.sh.disabled`, then open a completely fresh terminal (not a new tab) and confirm `echo $DOCKER_HOST` prints nothing. If it's ever unclear where a stray `DOCKER_HOST` is coming from again, check `/etc/profile.d/*.sh` and `systemctl --user show-environment`, not just personal dotfiles.
 13. **A first `docker compose up -d` pull looks stalled but usually isn't.** `mssql/server:2022-latest` is a large image (well over 1GB); watching "Pulling" with no progress bar movement for a while is normal on the first run, especially over a slower connection — it is not the same failure mode as gotchas 1–2 above. Give it time before assuming something is broken; `docker compose ps` in a second terminal shows real status if in doubt.
+14. **Compose auto-prefixes container names with the project folder name — plain `docker exec sababisha-sqlserver ...` will fail with "No such container".** Running `docker compose up -d` from `~/sababisha/infra/` (folder name `infra`) produced containers named `infra-sababisha-sqlserver-1`, `infra-sababisha-postgres-1`, `infra-sababisha-redis-1` — not the bare `sababisha-*` names used throughout this doc's example commands. Confirm actual names with `docker compose ps` before running any `docker exec ...`, or add an explicit `container_name:` field per service in `docker-compose.yml` (e.g. `container_name: sababisha-sqlserver`) so the short names always match — the latter is the more permanent fix and avoids retyping the `infra-`-prefixed name everywhere.
+15. **`dotnet tool install dotnet-ef` with no version pin grabs the newest release, not one matching the SDK.** On this machine that meant `dotnet-ef 10.0.11` installed alongside a `.NET 8.0.424` SDK / EF Core 8 packages — a major-version gap that risks migration failures later even though `dotnet ef --version` reports success. Since this project's stated contract is exact bootcamp-stack parity, always pin explicitly: `dotnet tool install dotnet-ef --version 8.0.*` (confirmed resolving to `8.0.30` on this machine). Re-run `dotnet tool uninstall dotnet-ef` first if it's already installed unpinned.
+16. **A single `.nvmrc` at a repo's root does not cover its subdirectories.** `nvm use` (manual or auto-triggered) only checks the *current* directory for `.nvmrc` — `cd`ing straight into `backend/`, `web/`, `mcp/`, etc. (the normal daily flow) silently misses a root-level `.nvmrc` and falls back to whatever Node version was already active, with no warning. Confirmed on this machine: `node -v` inside `backend/` kept reporting the personal default (`v24.20.0`) instead of the project's pinned `20`. See the fix — a `.nvmrc` seeded into every subdirectory, plus an optional parent-walking `cd()` shell override — in §6.6.
 
 ### 6.2 Phase 0 — System prep (one-time, non-destructive)
 ```bash
@@ -343,10 +350,46 @@ codium --install-extension ms-dotnettools.csharp
 ### 6.6 Phase 4 — Node 20 LTS for the Vite/mobile tooling (nvm, no global change)
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-nvm install 20 && nvm use 20 && echo "20" > .nvmrc   # .nvmrc keeps GTP repos on 20
+nvm install 20 && nvm use 20 && echo "20" > backend/.nvmrc   # sabahisha-*.nvmrc in every dir
 node -v && npm -v
 ```
-> Personal `nvm` default can stay at 24/whatever — GTP repos switch to 20 via `.nvmrc`. Confirmed on this machine: personal default sits on Node 24 (`lts/krypton`), and `nvm use` inside the repo correctly picks up 20 via `.nvmrc` without touching the default.
+> Personal `nvm` default can stay at 24/whatever — GTP repos switch to 20 via `.nvmrc` seeded in every subdirectory (see the gotcha above), or automatically via the parent-walking `cd()` shell override.
+
+**Confirmed gotcha on this machine — a single root `.nvmrc` is not enough.** `nvm use` (and any manual `.nvmrc` check) only looks in the *current* directory. `cd`ing straight into a subfolder like `backend/`, `web/`, or `mcp/` — which is the normal daily flow — silently misses a `.nvmrc` that only exists at the repo root and falls back to the personal default (24), with no error or warning. This bit real work on this machine: `node -v` inside `backend/` kept reporting `v24.20.0` even though the root `.nvmrc` said 20.
+
+**Fix (two layers, both applied on this machine):**
+
+1. **A `.nvmrc` in every directory that gets `cd`'d into directly** — not just the repo root. Seeded across all of `~/sababisha/projects/gtp/griot/` (backend/, web/, mobile/, ai/, mcp/, infra/, qa/, docs/, research/, scripts/, and further nested subfolders — 123 files total on this machine, content: `20`). This means even a bare `cd` + `nvm use` in any subfolder works correctly with zero shell customization, and it's what actually lands in the repo/git history for any teammate.
+
+2. **A parent-walking `cd` override in `~/.bashrc`**, so Node switches automatically on every `cd` — no need to remember to run `nvm use` by hand:
+   ```bash
+   autoload_nvmrc() {
+     local dir="$PWD"
+     while [ "$dir" != "/" ]; do
+       if [ -f "$dir/.nvmrc" ]; then
+         nvm use --silent
+         return
+       fi
+       dir="$(dirname "$dir")"
+     done
+     nvm use default --silent
+   }
+   cd() {
+     builtin cd "$@" && autoload_nvmrc
+   }
+   autoload_nvmrc
+   ```
+   This walks upward from the current directory looking for the nearest `.nvmrc` (so it works correctly even for a stray subfolder that doesn't have its own `.nvmrc`), and falls back to `nvm use default` — requires `nvm alias default 24` (or whatever the personal default is) to be set once — when nothing is found anywhere up the tree. Purely a local shell convenience; it is **not** committed to the repo and has no effect on teammates or CI.
+
+**Verified on this machine, fresh interactive shell, both layers active:**
+```
+cd ~/sababisha/projects/gtp/griot/backend → v20.20.2
+cd ~/sababisha/projects/gtp/griot/web     → v20.20.2
+cd ~/sababisha/projects/gtp/griot/mcp     → v20.20.2
+cd ~                                      → v24.20.0 (personal default, untouched)
+```
+
+> If the project's required Node version ever changes, remember both layers need updating: every seeded `.nvmrc` file (bulk `find ... -name .nvmrc -exec` is faster than editing 123 files by hand) — the `cd()` function itself needs no change, since it just reads whatever `.nvmrc` says.
 
 ### 6.7 Phase 5 — Frontend/mobile/test tooling
 ```bash
@@ -358,7 +401,8 @@ flutter                           # NOT YET INSTALLED on this machine — see go
 ### 6.8 Phase 6 — AI layer tooling (own-stack, per-project, isolated)
 
 ```bash
-cd ~/sababisha/projects/gtp/griot/ai && nvm use     # .nvmrc → 20 (pinned)
+cd ~/sababisha/projects/gtp/griot/ai
+# Node 20 auto-switches via .nvmrc (no manual nvm use needed)
 npx trigger.dev@latest login                 # connect to the Trigger.dev cloud project
 npx trigger.dev@latest init --project-ref <PROJECT_REF>
 npm install @trigger.dev/sdk @trigger.dev/react-hooks
@@ -400,7 +444,7 @@ There are now **two** boundaries in play, not one: Sababisha-wide vs. personal (
 | Where does Sababisha work live? | `~/sababisha/` — `infra/` for the one shared compose file, `projects/<area>/<name>/` for every project's own code (GTP projects nest under `projects/gtp/`). Personal work lives *outside* `~/sababisha/` entirely. |
 | Global OS installs | Only Docker Engine (§6.3) + standard CLI tooling (§6.2). Installed **once**, used by every current and future Sababisha project. Everything else is per-user/per-repo. |
 | Databases — shared or per-project? | **Shared engine, isolated by database.** One `sababisha-sqlserver`, one `sababisha-postgres`, one `sababisha-redis` container (§6.4) on fixed non-default host ports (14333, 5433, 6380) — chosen so they never collide with a personal Postgres/Redis/SQL Server on the OS defaults (5432, 6379, 1433). Every project gets its **own database** on the shared SQL Server (`CREATE DATABASE Griot`, `CREATE DATABASE <NextProject>`, ...) rather than its own container. Data lives in `sababisha_mssql`/`sababisha_pg` Docker volumes — shared volumes, project-separated by database name inside them. |
-| Node versions | `nvm` per project: each Sababisha repo carries its own `.nvmrc` (GTP repos → `20`); personal projects keep their own `.nvmrc`/engine. `nvm use` is per-shell, never a global default change. |
+| Node versions | `nvm` per project: each Sababisha repo carries a `.nvmrc` in every subdirectory (GTP repos → `20`, not just the root — see §6.6 gotcha), plus a local parent-walking `cd()` shell override so the correct version loads automatically; personal projects keep their own `.nvmrc`/engine. Never a global default change — confirmed the personal default (24) stays untouched outside Sababisha folders. |
 | .NET | Per-user SDK in `~/.dotnet` (installed once, §6.5) + **per-repo `global.json`** pinning a version per project — this stays per-project on purpose, since different Sababisha projects may need different .NET/EF versions over time even though they share the same database engine. `.NET tools` scoped via `dotnet new tool-manifest` per repo. |
 | Package versions | Every project pins its own lockfiles (`package-lock.json`, `.NET` `Directory.Packages.props`). No project's installs affect another's, or the personal stack's. |
 | CI/cloud | Vercel/Railway/Azure projects are separate per Sababisha project; secrets are per-project. No shared credentials between Griot, any other Sababisha project, and personal apps. |
@@ -409,7 +453,7 @@ There are now **two** boundaries in play, not one: Sababisha-wide vs. personal (
 
 **Onboarding a brand-new Sababisha project** (GTP or otherwise) is §6.4b, in full — in short: make its folder, confirm `sababisha-infra` is already up (it usually is), create its one database, point its connection string at it, done. No new containers, no new Docker install, no new `sudo`.
 
-**How to work daily:** open a terminal → `docker compose -f ~/sababisha/infra/docker-compose.yml up -d` (no-op if already running) → `cd ~/sababisha/projects/gtp/griot` → `nvm use` (reads `.nvmrc` → 20) → `dotnet run` or `npm run dev`. Switching to a different Sababisha project is just `cd ~/sababisha/projects/<other>` — the same running `sababisha-*` containers serve it too, no restart needed. Closing out and moving to personal work: `cd ~/work/mypersonalproject` → `nvm use` → personal versions. Nothing about the Sababisha toolchain is visible to the personal one and vice versa.
+**How to work daily:** open a terminal → `docker compose -f ~/sababisha/infra/docker-compose.yml up -d` (no-op if already running) → `cd ~/sababisha/projects/gtp/griot` (or straight into any subfolder like `backend/`) → Node switches to 20 automatically on `cd` (parent-walking shell override + seeded `.nvmrc` in every subfolder — see §6.6) → `dotnet run` or `npm run dev`. Switching to a different Sababisha project is just `cd ~/sababisha/projects/<other>` — the same running `sababisha-*` containers serve it too, no restart needed. Closing out and moving to personal work: `cd ~/work/mypersonalproject` → Node reverts to the personal default automatically (no `.nvmrc` found anywhere up the tree). Nothing about the Sababisha toolchain is visible to the personal one and vice versa.
 
 ---
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**

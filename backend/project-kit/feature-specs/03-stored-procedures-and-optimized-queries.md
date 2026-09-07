@@ -31,7 +31,7 @@ The bootcamp deliverable **"Stored procedures & optimized queries"**: `usp_BulkU
 
 CREATE: the two proc SQL files (idempotent creation).
 CREATE: Dapper repository methods (parameterized, `CommandType.StoredProcedure`).
-RUN: apply procs to `gtp-sqlserver`; smoke-test both.
+RUN: apply procs to `sababisha-sqlserver`; smoke-test both.
 
 ## Setup / Initialization
 
@@ -40,7 +40,7 @@ cd backend
 # ensure Dapper is referenced:
 dotnet add src/Griot.Infrastructure package Dapper
 # apply procs (idempotent):
-docker exec -i gtp-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$GTP_SA_PASSWORD" -C < src/Griot.Infrastructure/Sql/usp_BulkUpdateTaskStatus.sql
+docker exec -i sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C < src/Griot.Infrastructure/Sql/usp_BulkUpdateTaskStatus.sql
 ```
 
 ## Implementation Notes
