@@ -183,23 +183,63 @@ Common things to run here:
 
 Type `EXIT` (no `GO` needed) or press `Ctrl+D` to leave.
 
-### 6.3 A GUI, when you want one (optional, not required to keep working)
+### 6.3 DBeaver — the GUI, now installed
 
-Command-line `sqlcmd` is fine for quick checks, but a GUI is much nicer for browsing tables and writing longer queries. Two solid free options that work on Linux:
+Command-line `sqlcmd` is fine for quick checks, but DBeaver is much nicer for browsing tables and writing longer queries. It's already installed on this machine (`dbeaver-ce-26.2.0-linux-x86_64.deb` via `sudo apt install ./dbeaver-ce-*.deb`) and it handles both the SQL Server and Postgres connections in the same app, so it's the only GUI needed here — no reason to also install Azure Data Studio (Microsoft retired it in Feb 2026 anyway).
 
-- **Azure Data Studio** — Microsoft's own tool, built specifically for SQL Server. Download the `.deb` from Microsoft's site, or `sudo apt install ./azuredatastudio-linux-*.deb` after downloading.
-- **DBeaver Community** — already listed in the bootcamp's Week 1 tooling (`DBeaver 24+`), and it also handles your Postgres connection in the same app, so it's the better pick here since you need both databases anyway.
+**Launching it:** search "DBeaver Community" in the app menu (not the raw `dbeaver-ce` entry that also shows up in search — that's just the package name, not the actual launcher), or from a terminal:
+```bash
+dbeaver &
+```
 
-Either way, the connection details are the same:
+#### 6.3a Connecting to SQL Server (first time)
+
+1. Open DBeaver → **Database → New Database Connection** (or the plug-with-a-`+` icon in the top-left toolbar).
+2. Pick **SQL Server** from the list, click **Next**.
+3. Fill in:
+
+   | Field | Value |
+   |---|---|
+   | Host | `localhost` |
+   | Port | `14333` (not 1433 — see §6.4 in the prep doc on why the port is remapped) |
+   | Database | `Griot` (or leave blank to connect at the server level and see every database) |
+   | Authentication | SQL Server Authentication |
+   | Username | `sa` |
+   | Password | `SababishaDev2026!` |
+
+4. Click the **Driver properties** or **SSL** tab and enable **Trust server certificate** (it's self-signed, dev-only — without this the connection will fail with a certificate error).
+5. Click **Test Connection**. First time only, DBeaver will say the SQL Server driver isn't downloaded yet and offer to download it — click **Download**. Takes a few seconds.
+6. Once the test passes, click **Finish**.
+
+#### 6.3b Connecting to Postgres (same steps, different values)
+
+Repeat the same **New Database Connection** flow, choose **PostgreSQL** instead, and use:
+
 | Field | Value |
 |---|---|
 | Host | `localhost` |
-| Port | `14333` (not 1433 — see §6.4 in the prep doc on why the port is remapped) |
-| Username | `sa` |
-| Password | `SababishaDev2026!` |
-| Encrypt/Trust certificate | Yes / Trust server certificate (self-signed, dev only) |
+| Port | `5433` |
+| Database | `postgres` (or your project's database name) |
+| Username | `postgres` |
+| Password | `sababisha-pg` |
 
-For Postgres in the same GUI: host `localhost`, port `5433`, user `postgres`, password `sababisha-pg`.
+Same deal — DBeaver offers to download the Postgres driver on first connect. Click **Download**, then **Finish**.
+
+Both connections now sit permanently in the left-hand **Database Navigator** tree — you don't repeat this setup; you just click into them going forward.
+
+#### 6.3c Browsing and creating tables
+
+- In the Database Navigator, expand your SQL Server connection → **Databases → Griot → Tables** (or **Schemas → public → Tables** for Postgres) to see what already exists.
+- Double-click any table to open it in a grid view — you can see rows, edit cells directly (double-click a cell, type, then the checkmark/`Ctrl+S` icon to save), and sort/filter columns from the header.
+- **To create a table via the GUI:** right-click **Tables** → **Create New Table**, name it, then use the **Columns** tab to add fields (name, type, nullable, primary key checkbox) and save (`Ctrl+S` or the save icon) to actually run the `CREATE TABLE`.
+- **For Griot specifically, this GUI-created-table path is mostly for poking around and one-off checks** — the real schema is driven by EF Core migrations (`dotnet ef migrations add` / `dotnet ef database update`, per §8.2 below). Don't hand-create or hand-edit tables that EF Core owns, or the migration history and the actual database will drift out of sync. Using DBeaver's table editor for a scratch/test table outside EF's models is fine.
+- To run a query instead of clicking through the UI: right-click the connection → **SQL Editor → New SQL Script**, type your query, then `Ctrl+Enter` to run just the statement the cursor is in (or `Alt+X` to run the whole script).
+
+#### 6.3d Disconnecting
+
+- Right-click the connection in the Database Navigator → **Disconnect**. This closes the live connection but keeps the saved connection profile for next time.
+- To remove the saved connection entirely (rarely needed): right-click → **Delete**.
+- Closing the DBeaver window entirely also drops the connection — nothing needs to be "cleaned up" on the SQL Server/Postgres side; the containers themselves keep running regardless (per §8.5 in this manual).
 
 ### 6.4 "Database already exists" is not an error to worry about
 
@@ -215,9 +255,9 @@ This means `CREATE DATABASE Griot` already succeeded earlier — you're just try
 
 | Tool | How to open it | Notes |
 |---|---|---|
-| **VirtualBox** | Type `virtualbox` in a terminal, or find it in the KDE application menu | Only needed for the Windows 10 VM — unrelated to daily Griot work |
 | **VSCodium** | `codium <path>` from a terminal (e.g. `codium ~/sababisha/projects/gtp/griot`), or the KDE menu | This is where you'll spend most of your time |
 | **Docker containers** | No GUI installed by default — you're using `docker` CLI commands (`docker ps`, `docker compose ps`, `docker logs <name>`) | Docker Desktop has a GUI but isn't installed here; not required |
+| **DBeaver (SQL Server / Postgres)** | `dbeaver &` from a terminal, or "DBeaver Community" in the app menu | Browsing tables, running queries, checking migrations landed — see §6.3 for connect/disconnect steps |
 | **MCP Inspector** | `npx @modelcontextprotocol/inspector` (bare, no flags — see prep doc gotcha 9), then open the printed `http://127.0.0.1:6274/...` link in a browser | Only needed when working on the `mcp/` folder |
 | **Trigger.dev dashboard** | `https://cloud.trigger.dev` in a browser, log in with the account from `npx trigger.dev@latest login` | For monitoring the AI/agent layer's background jobs |
 | **Jira** | Wherever Sababisha's Jira workspace URL is — bookmark it | Test/project management, per the bootcamp guide |
@@ -263,7 +303,7 @@ dotnet ef database update
 ```
 The `update` step is what actually applies the change to the `Griot` database running inside `infra-sababisha-sqlserver-1` — you don't touch SQL Server directly for this.
 
-**Checking the data landed correctly** — either drop into `sqlcmd` (§6.2 above) or open your GUI (§6.3) and browse the `Griot` database's tables.
+**Checking the data landed correctly** — either drop into `sqlcmd` (§6.2 above) or open DBeaver (§6.3, already connected from setup) and browse the `Griot` database's tables under **Databases → Griot → Tables** — right-click **Tables** → **Refresh** if a just-added table from a migration doesn't show up immediately.
 
 ### 8.3 Testing an endpoint
 Use Postman (per the bootcamp's Week 2 tooling) against whatever URL `dotnet watch run` printed, e.g. `http://localhost:5001/api/...`.
@@ -308,4 +348,5 @@ Same running database containers serve it — nothing to restart, per §8 (Isola
 - **env var (environment variable)** — a named value your shell keeps around (like `DOCKER_HOST`); some tools check these to decide how to behave, which is why a leftover one can cause confusing failures.
 - **`sqlcmd`** — SQL Server's own command-line client; how you talk to the database when there's no GUI open. Needs a `GO` on its own line after a query to actually run it.
 - **`sa`** — SQL Server's built-in admin username ("system administrator"), not a person's initials.
+- **DBeaver** — a free desktop GUI for browsing and querying databases; connects to both SQL Server and Postgres in the same app, so it's the one database GUI installed here instead of needing a separate tool per database.
 - **`/etc/profile.d/`** — a folder of scripts Linux runs automatically for every user's login shell; this is where the stray `DOCKER_HOST` export was eventually found (`podman-docker.sh`), which is why it kept coming back even after `unset` in individual terminals.
