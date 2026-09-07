@@ -29,6 +29,7 @@ Week 2. Spec 04 is complete (REST APIs). Spec 05 is next.
 - **2026-09-07** — Spec 02 completed: EF Core entities mapped to approved ERD, GriotDbContext configured, and initial migration generated.
 - **2026-09-07** — Spec 03 completed: Added `usp_BulkUpdateTaskStatus` and `usp_GetDashboardSummary` stored procedures in `Griot.Infrastructure/Sql/`, added Dapper dependency, and created `TaskRepository` and `DashboardRepository` along with corresponding interfaces and DTOs in `Griot.Application`.
 - **2026-09-07** — Spec 04 completed: Scaffolded REST API controllers corresponding to all routes in `api-surface.md`. Stubbed corresponding application services and DTOs. Updated `Program.cs` to wire up DI, DbContext, generic CORS policy, rate limiting, and JWT authentication.
+- **2026-09-07** — ⚠️ **Spec-04 `Program.cs` wiring gap (stash must be kept)**. The `Program.cs` wiring described above (DI,, DbContext,, CORS,, rate limiting,, JWT auth) currently lives **only in the stale WIP stash** `stash@{0}` (commit `c21befc` — WIP on feature/backend/02) — it is **NOT committed** on `feature/backend/04-rest-apis-dotnet8`. **Do not drop the stash**: fold its content into branch 04 (commit the wiring there) **before merging**; then the stale stash can be dropped.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

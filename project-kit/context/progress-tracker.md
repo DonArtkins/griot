@@ -6,7 +6,7 @@ Bootcamp Week 2 — **Implementation phase**. Backend implementation is underway
 
 | System | Kit | Status |
 |---|---|---|
-| backend | backend/project-kit | Spec 02 done; Spec 03 next |
+| backend | backend/project-kit | Spec 04 done; Spec 05 next |
 | web | web/project-kit | 10 feature specs; awaiting backend |
 | mobile | mobile/project-kit | 7 feature specs; waiting |
 | infra | infra/project-kit | 6 feature specs; waiting |
@@ -19,9 +19,10 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 ## Next Steps
 
 1. Fill `inspo/` with desired UI screenshots (web + mobile visual contract).
-2. Continue backend implementation (backend spec 03 → 10).
+2. Continue backend implementation (backend spec 05 →  ǀ 11).
 
 ## Session Notes
+- **2026-09-07 (3)** — **Features 3–4 completed; Feature  ǀ 5 marked Next (backend)**. Spec 03 (stored procedures `usp_BulkUpdateTaskStatus` / `usp_GetDashboardSummary` + Dapper repositories) and Spec 04 (REST controllers / services / DTOs scaffolded) are implemented on `feature/backend/03-stored-procedures-and-optimized-queries` and `feature/backend/04-rest-apis-dotnet8` (merged into `main` via PRs #10–#11;. Backend tracker marks specs 01–04 ✅ Done and **spec 05 (GraphQL layer — HotChocolate) as Next — not started, awaiting explicit go-ahead**.
 - **2026-09-07 (2)** — Integrated new features from `@research/ai-features-research.md`: OTP 2FA (Resend email), System Reports (SQL Server stored procs + AI scheduled/ad-hoc), and AI Copilot upgrade to Level 4 Autonomous Agent (reasoning loop + human gate). Updated all planning files, contracts, and AGENTS.md across the monorepo.
 
 - **2026-09-03** — Rebuilt repo as seven-system monorepo per the PDF + Foundrie pattern: per-app AGENTS.md, `.agents/skills/`, per-app project kits, one feature spec per bootcamp deliverable. Root kit consolidated to system-map / stack-contract / integration-contracts.
