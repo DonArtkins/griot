@@ -45,3 +45,7 @@ Push notifications (v2).
 - [ ] Notifications render + read/unread persists
 - [ ] Verified on emulator + physical device; `flutter doctor` Android green
 - [ ] APK artifact produced in CI
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

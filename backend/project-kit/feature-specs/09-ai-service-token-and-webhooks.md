@@ -71,3 +71,7 @@ AI scheduling, tool execution, LLM calls (all in `ai/`/`mcp/` systems).
 - [ ] Service token resolves to the restricted ai-agent principal; deletes/invites rejected
 - [ ] Webhook HMAC verified; bad signatures 401
 - [ ] All AI tool calls are traceable to an ActivityLog row
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

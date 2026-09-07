@@ -51,3 +51,7 @@ Compose orchestration (03), registry push (06).
 
 - [ ] Image builds; container runs; `/health` 200
 - [ ] No secrets in the image layers
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

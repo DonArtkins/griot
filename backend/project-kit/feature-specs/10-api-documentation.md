@@ -64,3 +64,6 @@ MODIFY: `docs/api/README.md` — index + how to render (Stoplight/Postman publis
 - [ ] `docs/api/` complete; matches `api-surface.md` + Postman + diagram
 - [ ] REST + GraphQL + auth + errors + hot-path examples all documented
 - [ ] A route change updates docs + collection + api-surface in the same branch
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

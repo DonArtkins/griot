@@ -50,3 +50,7 @@ Agent scheduling, tool definitions (ai/mcp systems).
 - [ ] Panel streams Copilot answers from the ai agent
 - [ ] Proposed mutations require approval; approved mutations write via REST and update caches
 - [ ] Stubbed copilot E2E test green in CI
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

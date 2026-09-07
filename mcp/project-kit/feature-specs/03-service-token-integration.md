@@ -41,3 +41,7 @@ CREATE: typed GraphQL client with Bearer `GRIOT_SERVICE_TOKEN`, query/mutation h
 
 - [ ] Tools execute against the backend with the service token; write tools respect ai-agent scope
 - [ ] Failed auth surfaces clean MCP errors
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

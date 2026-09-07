@@ -54,3 +54,7 @@ RUN: `docker compose up -d`; verify all healthy.
 
 - [ ] `docker compose up -d` brings all services healthy
 - [ ] SQL Server reachable (DBeaver 14333); Redis PONG (6380)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

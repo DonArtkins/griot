@@ -59,3 +59,7 @@ Kubernetes, autoscaling (v2).
 - [ ] Backend live on Railway; REST + GraphQL + health responding; migrations by release command
 - [ ] MCP live on Railway (Streamable HTTP)
 - [ ] Runbooks complete (Railway primary, Render fallback, Azure variant)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

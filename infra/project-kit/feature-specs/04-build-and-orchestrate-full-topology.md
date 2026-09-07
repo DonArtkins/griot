@@ -51,3 +51,7 @@ CI (05), cloud hosts (06).
 
 - [ ] Full stack up + healthy in one command
 - [ ] End-to-end smoke passes (web -> api -> SQL Server)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

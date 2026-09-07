@@ -44,3 +44,7 @@ Mobile drag-drop (mobile uses a picker), multi-board drag.
 
 - [ ] Cards drag between columns with optimistic UI; failure rolls back cleanly
 - [ ] Position/order persists via the API; tests cover reorder merging (no cache corruption)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

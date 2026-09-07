@@ -75,3 +75,7 @@ GraphQL (feature 05), auth flows (feature 08), Postman collection (feature 07).
 - [ ] All routes in `api-surface.md` respond correctly against the compose stack
 - [ ] Controllers contain no business logic
 - [ ] `dotnet build` + smoke tests green; contracts synced in `api-surface.md`
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.
