@@ -20,3 +20,4 @@ Week 3 kit written (10 feature specs). No implementation until the backend (feat
 ## Session Notes
 
 - **2026-09-03** — Web kit created (AGENTS, skills, contexts, 10 specs).
+- **2026-09-07** — Design system landed: `src/theme.ts` implemented from the inspo-synthesized master tokens (`docs/design/MASTER-DESIGN-SYSTEM.md` → root `ui-tokens.md`); design-system.md + MUI skill 0.2.0 + spec 02 synced (light canvas, chrome-ink CTA, severity maps incl. Todo/Backlog). Theme is implementation-ready ahead of spec 01 scaffold; zero hardcoded colors outside the token module is now enforced by `theme.griot`.

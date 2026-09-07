@@ -28,8 +28,8 @@ The bootcamp's Week-2 deliverable **"Database schema design in Figma"**: an appr
 
 ## Files Owned
 
-- `project-kit/diagrams/erd/griot-erd-v1.0.0.png` (exported, approved)
-- `project-kit/diagrams/README.md` (ledger row)
+- `diagrams/erd/griot-erd-v1.0.0.png` (exported, approved)
+- `diagrams/README.md` (ledger row)
 
 ## Setup / Initialization
 
@@ -63,5 +63,5 @@ Any SQL, migrations, or entity code (feature 02).
 
 - [ ] Figma Make project contains all 16 tables (13 core + ApiLogs/ErrorLogs/AuditLogs), 5 enums, 19 relationships, legend, and 13 index notes
 - [ ] Names/values match `data-layer.md` exactly
-- [ ] Human-approved; PNG exported to `project-kit/diagrams/erd/griot-erd-v1.0.0.png`
+- [ ] Human-approved; PNG exported to `diagrams/erd/griot-erd-v1.0.0.png`
 - [ ] Ledger updated

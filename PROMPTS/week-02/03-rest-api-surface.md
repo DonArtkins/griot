@@ -9,7 +9,7 @@
 
 ## 1. Master contract (from the approved ERD — never invented independently)
 
-- Every route and GraphQL type names entities/fields **exactly** as in `project-kit/diagrams/erd/`.
+- Every route and GraphQL type names entities/fields **exactly** as in `diagrams/erd/`.
 - REST + GraphQL share the **same service layer** (`Griot.Application`); controllers/resolvers are thin.
 - Auth: JWT bearer; `GRIOT_SERVICE_TOKEN` → `ai-agent` principal for AI/MCP; HMAC webhooks.
 - Errors: **404 for not-found/not-owned** (never disclose existence), 400 validation, 401 auth, 403 role, 409 conflict/state, 429 rate limit.
@@ -67,7 +67,7 @@
 ## 4. THE PROMPT — paste into the agent (no length limit)
 
 ```text
-Build the backend API exactly per `backend/project-kit/context/api-surface.md` and this list. Verify every route/type against the approved ERD at `project-kit/diagrams/erd/`; update the spec if the ERD differs. Enforce:
+Build the backend API exactly per `backend/project-kit/context/api-surface.md` and this list. Verify every route/type against the approved ERD at `diagrams/erd/`; update the spec if the ERD differs. Enforce:
 - Separation of concerns: thin controllers/resolvers to `Griot.Application` services to repos (EF 95% + Dapper for `usp_BulkUpdateTaskStatus` + `usp_GetDashboardSummary` only). Zero business logic in controllers.
 - Auth: Argon2, 15-min JWT (claims sub/wid), rotated opaque refresh (SHA-256 at rest, FamilyId for scoped family-revoke on replay), Redis sliding-window rate limit on login + query-cost guard on /graphql, CORS allow-list. Refresh-token transport: web via `Set-Cookie: HttpOnly; Secure; SameSite=Strict` (never in JSON body); mobile via JSON body + secure storage; Postman via JSON body. The `/api/auth/refresh` endpoint accepts Cookie (web) or JSON body (mobile/Postman). Single-transaction rotation: `WHERE RevokedAt IS NULL` is the sole gate; any miss is a replay → revoke `WHERE FamilyId = @familyId`.
 - Service-token principal: GRIOT_SERVICE_TOKEN to restricted ai-agent (no deletes/invites). HMAC on /api/webhooks/trigger.

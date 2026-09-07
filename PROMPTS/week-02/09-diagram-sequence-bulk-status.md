@@ -2,6 +2,8 @@
 
 **Master spec + Figma Make paste prompts.** The `PATCH /api/tasks/bulk-status` path — the stored-proc TVP transaction boundary from Week-2 §4. Drawn so the web drag-drop and the API validation agree on atomicity.
 
+> **Contract:** route + payloads + 409 shape = `backend/project-kit/context/api-surface.md` (mirrored in diagram 13, DFD 15 process P3). TVP type `dbo.TaskIdListType` (`TABLE (value uniqueidentifier)`); proc `dbo.usp_BulkUpdateTaskStatus(@WorkspaceId, @TaskIds READONLY, @Status, @ActorId, @PayloadJson)`. Any invalid id → entire batch rolls back.
+
 ---
 
 ## 1. Lifelines
@@ -13,6 +15,7 @@
 
 ## 2. The flow
 
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 Client → TaskController: PATCH /api/tasks/bulk-status { workspaceId, taskIds[], status }
 TaskController → TaskService: BulkUpdateStatusAsync(workspaceId, ids, status)
@@ -54,7 +57,9 @@ CREATE PROCEDURE dbo.usp_BulkUpdateTaskStatus
     @PayloadJson nvarchar(max)  -- JSON with taskIds and new status for ActivityLogs
 AS
 -- (body as shown above with proper parameter usage)
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ## 3. The prompt (single, extensive — no length limit)
@@ -90,6 +95,7 @@ Draw a labeled BRACKET around BEGIN TRAN to COMMIT: "atomic unit: status update 
 
 ANNOTATION box:
 "Atomicity contract: usp_BulkUpdateTaskStatus is a single transaction; if ANY id in the TVP is invalid, the ENTIRE batch rolls back. The service returns 409 { error: 'Invalid task ID in batch' }. Web drag-drop + mobile picker both rely on this — never a half-applied status."
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -103,4 +109,4 @@ ANNOTATION box:
 - [ ] TVP proc call + transaction boundary drawn
 - [ ] Validation + rollback alt (409) explicit
 - [ ] ActivityLog + AuditLog writes included
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/sequence-bulk-status.png`
+- [ ] Approved → PNG → `diagrams/architecture/sequence-bulk-status.png`

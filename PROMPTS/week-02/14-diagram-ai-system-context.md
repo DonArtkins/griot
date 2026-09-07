@@ -52,6 +52,7 @@ ANNOTATION 2 (dashed blue note near ActivityLogs/AuditLogs):
 
 ANNOTATION 3 (under scheduled agents):
 "Deterministic paths (digest/reminders) skip approval; generative mutations require human approval."
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -66,4 +67,4 @@ ANNOTATION 3 (under scheduled agents):
 - [ ] Copilot chat, scheduled agents, MCP, backend, SQL Server all visible
 - [ ] Service-token + ai-agent scope + HMAC drawn; SQL Server has "no direct AI write" mark
 - [ ] Propose-before-write + audit annotations present
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/ai-system-context.png`
+- [ ] Approved → PNG → `diagrams/architecture/ai-system-context.png`

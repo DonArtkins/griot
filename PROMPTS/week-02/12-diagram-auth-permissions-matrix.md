@@ -58,6 +58,7 @@ FOOTER (must be present):
 "Denied = 404 not 403 (never disclose existence). Admin ≠ Owner for destructive ops (remove member, role changes, delete workspace, delete task). ai-agent is the restricted service principal via GRIOT_SERVICE_TOKEN — no deletes, no invites, workspace-scoped. MCP-tool path: external client → MCP server → API (GRIOT_SERVICE_TOKEN). In-app Copilot path: proposal-only — web app executes on user approval."
 
 Style: green Y cells, red N cells, yellow P cells (propose-only), clear column headers, ai-agent column with dashed border, one page.
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -75,4 +76,4 @@ Style: green Y cells, red N cells, yellow P cells (propose-only), clear column h
 - [ ] MCP external tool access row: ai-agent = ❌ (executor, not caller) — no conflict with other rows
 - [ ] Two-path annotation present: MCP-tool path (executor route + token) vs in-app Copilot path (propose-only, user executes)
 - [ ] 404-not-403 + propose-only + GRIOT_SERVICE_TOKEN scope notes in footer
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/auth-permissions-matrix.png`
+- [ ] Approved → PNG → `diagrams/architecture/auth-permissions-matrix.png`

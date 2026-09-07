@@ -14,6 +14,7 @@
 
 ## 2. The flow (happy)
 
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 Client → TaskController/GriotMutation: createTask { title, columnId, assigneeId?, priority?, dueDate? }
 → TaskService: CreateTaskAsync(dto)
@@ -28,6 +29,7 @@ TaskService → NotificationHub: PushNotification(userId=assignee, payload)
 TaskService → Client: 201 { task }
 NotificationHub → assignee client (if subscribed): realtime event
 Assignee client (if not subscribed): next board load / notification poll fetches it
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ## 3. The fan-out decision (draw as a note)
@@ -41,7 +43,7 @@ Assignee client (if not subscribed): next board load / notification poll fetches
 Paste the full prompt below into Figma Make. It draws the full flow + fan-out decision in one pass.
 
 ```text
-UML sequence diagram: Griot create-task fan-out. Lifelines left→right: Client (web/mobile), TaskController/GriotMutation, TaskService (Griot.Application), SQL Server (TaskItems + ActivityLogs + Notifications + AuditLogs), NotificationHub (web realtime).
+UML sequence diagram: Griot create-task fan-out. Lifelines left→right: Client (web/mobile), TaskController/GriotMutation, TaskService (Griot.Application), SQL Server (TaskItems + ActivityLogs + Notifications + AuditLogs), NotificationHub (Trigger realtime channel — web; mobile has NO always-on socket, it polls).
 
 FLOW:
 Client → TaskController/GriotMutation: createTask { title, columnId, assigneeId?, priority?, dueDate? }
@@ -60,9 +62,10 @@ NotificationHub → assignee client (if subscribed): realtime event (instant bad
 Note: mobile + unsubscribed clients see it on NEXT board load / notification poll.
 
 ANNOTATION (fan-out decision box, connected dashed to NotificationHub):
-"Fan-out decision: web app shell = realtime push over NotificationHub; mobile = refresh on focus + pull-to-refresh (no always-on socket, battery); fallback = next board load pulls unread counts; NO email in v1 (the AI digest does that)."
+"Fan-out decision: web app shell = realtime push over NotificationHub (Trigger realtime/WebSocket channel); mobile = refresh on focus + pull-to-refresh (no always-on socket, battery); fallback = next board load pulls unread counts; NO email in v1 (the AI digest does that). UI: badge + notification item follow the master design system (ui-tokens.md — chrome-ink toasts, canvas.soft badges)."
 
 Add an alt/else around delivery: subscribed → realtime event; not subscribed → next load/poll.
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -77,4 +80,4 @@ Add an alt/else around delivery: subscribed → realtime event; not subscribed �
 - [ ] Full create-task flow with atomic TX boundary
 - [ ] ActivityLog + Notification + AuditLog inserts drawn
 - [ ] Fan-out decision (realtime vs poll vs next-load) annotated
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/sequence-create-task-fanout.png`
+- [ ] Approved → PNG → `diagrams/architecture/sequence-create-task-fanout.png`

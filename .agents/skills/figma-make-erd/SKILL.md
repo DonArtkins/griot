@@ -25,8 +25,8 @@ The approved ERD in that project is the implementation contract for the backend'
 2. Open the Figma Make project URL above. Paste the master prompt into Make's AI prompt → generate (Plan mode first). One full generation; if the canvas truncates any table, use the short add-on snippet in that file (never re-paste everything).
 3. After generation, iterate with the fix snippets in that file (rename field, recolor module, redraw edge) — small targeted prompts, not a re-invite of the whole spec.
 4. Guard: every entity traces to a Week-1 screen or an observability requirement. Names/values must match `backend/project-kit/context/data-layer.md` and the master prompt exactly.
-5. Human approves. Export the ERD frame as PNG to `project-kit/diagrams/erd/griot-erd-v1.0.0.png`.
-6. Register in `project-kit/diagrams/README.md` ledger (name, version, date, status=approved).
+5. Human approves. Export the ERD frame as PNG to `diagrams/erd/griot-erd-v1.0.0.png`.
+6. Register in `diagrams/README.md` ledger (name, version, date, status=approved).
 7. Only now may `backend/project-kit/feature-specs/*` transcribe entities. Entity/enum names must match the diagram EXACTLY.
 
 ## Prompt hygiene (bounded capacity — not infinite)

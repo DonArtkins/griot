@@ -2,7 +2,7 @@
 
 > 📌 **Paste this entire prompt into Figma Make.** There is **NO character limit here** — it is written to be complete, exhaustive, and detailed so the AI produces the full 16-table / 5-enum / 21-relationship / 19-index ERD in **one generation** (or in as many follow-ups as needed if the canvas tool truncates — each follow-up repeats the missing table by name).
 > **Tool:** Figma Make, live project: `https://www.figma.com/make/bTB7eE6s39O6yvtYfq0DeR/Griot`
-> **Output:** `project-kit/diagrams/erd/griot-erd-v1.0.0.png`
+> **Output:** `diagrams/erd/griot-erd-v1.0.0.png`
 
 ---
 
@@ -153,4 +153,4 @@ Paste the full prompt once. If the canvas omits any table (named above), **do no
 - [ ] 16 tables + 5 enums + 21 labelled crow's-foot edges + 19 index stickies + legend + conventions note, all on one canvas
 - [ ] Names/values match `backend/project-kit/context/data-layer.md` + `docs/database/DATABASE-DESIGN.md` exactly
 - [ ] Module color-coding (purple/blue/teal/amber) applied
-- [ ] Approved → PNG → `project-kit/diagrams/erd/griot-erd-v1.0.0.png` → ledger updated
+- [ ] Approved → PNG → `diagrams/erd/griot-erd-v1.0.0.png` → ledger updated

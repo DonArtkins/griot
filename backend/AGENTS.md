@@ -27,7 +27,7 @@ backend/
 1. Root `AGENTS.md` + `project-kit/context/{system-map,stack-contract,integration-contracts}.md`.
 2. `research/week-02-backend-api-development.md` (+ `research/gtp-2026-prep.md` §6.5).
 3. `backend/project-kit/context/architecture.md` → `data-layer.md` → `api-surface.md` → `code-standards.md`.
-4. The approved ERD at `project-kit/diagrams/erd/` (entity/enum names are a contract).
+4. The approved ERD at `diagrams/erd/` (entity/enum names are a contract).
 5. The current feature spec (one at a time, numeric order).
 
 ## Required Skills
