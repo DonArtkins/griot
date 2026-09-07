@@ -319,6 +319,30 @@ This is the actual point of moving the setup to org level: **a new project never
 
 The only thing that ever needs `sudo` again on this machine, for any future project, is a Docker Engine version upgrade (§6.3's "Upgrade" path) — never a fresh install.
 
+### 6.4c DBeaver — the database GUI (per-user, one install, works for every project)
+
+Matches the guide's Week 1 tooling line (`DBeaver 24+`). Installed once per machine, like Docker — not per-project.
+
+```bash
+cd ~/Downloads   # or wherever the .deb was downloaded
+sudo apt install ./dbeaver-ce-*.deb
+```
+`apt install ./file.deb` (not bare `dpkg -i`) so dependency resolution happens automatically. If it still errors on missing deps:
+```bash
+sudo dpkg -i dbeaver-ce-*.deb
+sudo apt --fix-broken install
+```
+
+**Launching it:** the app-menu search surfaces two near-identical entries — the correct one is **"DBeaver Community"**, not the bare `dbeaver-ce` result (that's just the underlying package/binary name matched by the search index, not a proper desktop launcher). From a terminal, `dbeaver &` works either way.
+
+**Connecting to the shared SQL Server:** New Database Connection → **SQL Server** → host `localhost`, port `14333` (the remapped port from §6.4, not the default 1433), database `Griot`, SQL Server Authentication, user `sa`, password `SababishaDev2026!` (or `$SABABISHA_SA_PASSWORD` if overridden). Under the SSL/driver-properties tab, enable **Trust server certificate** — required since the container's cert is self-signed; the connection test fails without it. First connect prompts to download the SQL Server JDBC driver — accept it.
+
+**Connecting to the shared Postgres:** same flow, driver **PostgreSQL**, host `localhost`, port `5433`, user `postgres`, password `sababisha-pg` (or `$SABABISHA_PG_PASSWORD`).
+
+Both connections are saved once and reused for every Sababisha project on this machine — a new project (per §6.4b) just means expanding the existing SQL Server connection's tree to the newly created database, not creating a new DBeaver connection.
+
+**Schema-authority rule:** for Griot, DBeaver's own table-creation UI is for ad-hoc inspection and scratch tables only — the authoritative schema is EF Core migrations (§6.5, `dotnet ef migrations add` / `database update`). Hand-editing an EF-owned table's structure directly in DBeaver will desync the migration history from the live schema; use it to *read* and verify, not to *redefine* what EF already owns. Full connect/browse/create-table/disconnect walkthrough, with screenshots-equivalent step-by-step, lives in `gtp-user-manual.md` §6.3.
+
 ### 6.5 Phase 3 — .NET 8 SDK (per-user, version-pinned in the repo)
 ```bash
 wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh
@@ -350,7 +374,7 @@ codium --install-extension ms-dotnettools.csharp
 ### 6.6 Phase 4 — Node 20 LTS for the Vite/mobile tooling (nvm, no global change)
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-nvm install 20 && nvm use 20 && echo "20" > backend/.nvmrc   # sabahisha-*.nvmrc in every dir
+nvm install 20 && nvm use 20 && echo "20" > .nvmrc   # .nvmrc keeps GTP repos on 20
 node -v && npm -v
 ```
 > Personal `nvm` default can stay at 24/whatever — GTP repos switch to 20 via `.nvmrc` seeded in every subdirectory (see the gotcha above), or automatically via the parent-walking `cd()` shell override.
@@ -401,8 +425,7 @@ flutter                           # NOT YET INSTALLED on this machine — see go
 ### 6.8 Phase 6 — AI layer tooling (own-stack, per-project, isolated)
 
 ```bash
-cd ~/sababisha/projects/gtp/griot/ai
-# Node 20 auto-switches via .nvmrc (no manual nvm use needed)
+cd ~/sababisha/projects/gtp/griot/ai && nvm use     # .nvmrc → 20 (pinned)
 npx trigger.dev@latest login                 # connect to the Trigger.dev cloud project
 npx trigger.dev@latest init --project-ref <PROJECT_REF>
 npm install @trigger.dev/sdk @trigger.dev/react-hooks
@@ -427,6 +450,7 @@ docker exec sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa
 docker exec sababisha-redis redis-cli ping
 psql -h localhost -p 5433 -U postgres -c "SELECT version();"
 codium --version
+dbeaver --version 2>/dev/null || dpkg -l | grep dbeaver-ce   # confirm DBeaver is actually installed
 flutter doctor                                   # expect command-not-found until Flutter is installed — see §6.7
 nvm ls                                           # 20 present; personal default untouched
 npx trigger.dev@latest --version                # AI layer CLI (per-project)
