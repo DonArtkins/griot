@@ -1,6 +1,6 @@
 # Web Architecture
 
-## Two shells (from the Week-1 Figma design system)
+## Two shells (layout from the Week-1 design conversation; visual contract now `docs/design/MASTER-DESIGN-SYSTEM.md` + `project-kit/context/ui-tokens.md`)
 
 - **Public**: `/`, `/pricing`, `/login`, `/signup`. React Router `public.tsx`; GSAP/Lenis lazy-loaded. Real product UI in the hero; trust signals at decision points.
 - **App**: `/app/*` behind `RequireAuth`. `protected.tsx`. Sidebar nav (workspace → projects → boards → settings), top bar (search, notifications bell, user menu), collapsible Copilot rail (320px).

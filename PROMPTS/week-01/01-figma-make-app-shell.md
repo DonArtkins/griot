@@ -10,7 +10,7 @@
 ## 1. Master spec (what this must capture)
 
 ### Global system (applies to ALL 5 screens)
-- **Brand**: Griot — dark, high-contrast, calm workspace. Saturated accents ONLY for priority/status.
+- **Brand**: Griot — light, calm, high-contrast workspace (white cards on a cool-gray canvas). Saturated accents ONLY for priority/status. [synced to `docs/design/MASTER-DESIGN-SYSTEM.md`]
 - **Persistent chrome** (identical on every screen):
   - **Left sidebar (rail)**: Griot logo + workspace name/avatar at top; nav Dashboard · Boards · Projects · Team · Notifications; workspace switcher; **Invite** button pinned bottom.
   - **Top bar**: breadcrumb (Workspace / Project / Board), global search with ⌘K hint, notification bell with unread badge, user avatar menu (Profile, Settings, Sign out).

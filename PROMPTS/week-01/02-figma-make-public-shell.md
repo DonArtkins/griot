@@ -9,7 +9,7 @@
 ## 1. Master spec
 
 ### Design language (carries over from the App Shell)
-- Dark theme matching the product's app shell (same `ui-tokens.md` palette; raised surfaces; saturated accents only for priority/status).
+- Light card-based theme matching the product's app shell (same `ui-tokens.md` palette: `#F7F8FA` canvas, white raised cards, 1px hairlines; saturated accents only for state/data/status). [synced to `docs/design/MASTER-DESIGN-SYSTEM.md`]
 - Typography: large display type for hero/pricing; Inter; clean whitespace rhythm.
 - Motion (Week-3 build): GSAP/Lenis reveals; sub-2-second-clean visual weight.
 - A11y: WCAG AA contrast, keyboard navigable, axe-clean at the Week-6 gate.
@@ -70,7 +70,7 @@ PAGE 3 — LOGIN / SIGNUP (/login, /signup):
 - Security cue near submit: Secure sign-in — Argon2 hashing + rotated sessions.
 
 CROSS-CUTTING:
-- Dark theme matching app-shell tokens; large display typography; clean whitespace.
+- Light card-based theme matching app-shell tokens (`docs/design/MASTER-DESIGN-SYSTEM.md`); large display typography; clean whitespace.
 - No dashboards or kanban functionality beyond the hero + card screenshots (images only).
 - A11y: AA contrast, visible focus, 44px touch, keyboard-nav. Lighthouse LCP under 2.5s.
 ```
