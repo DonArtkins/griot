@@ -25,3 +25,6 @@ Filters, modal open/close, drag state, UI prefs, `accessToken`. Mirrored server 
 ## Auth
 
 Access token in memory (Zustand). Refresh token `httpOnly; Secure; SameSite=Lax` cookie. Silent refresh on boot; refresh failure → clear + redirect `/login`.
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.
