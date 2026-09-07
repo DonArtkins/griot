@@ -12,12 +12,12 @@
 - `Priority`: Low · Medium · High · Urgent
 - `WorkspaceRole`: Owner · Admin · Member
 - `NotificationType`: Mention · Assignment · DueDate · System
-- `ErrorFixStatus`: Open · Investigating · Fixed · Verified · WonTFix (for `ErrorLogs`)
+- `ErrorFixStatus`: Open · Investigating · Fixed · Verified · WontFix (for `ErrorLogs`)
 
 ## Observability/audit semantics (Lyncxs conventions)
 
 - **ApiLogs**: one row per API/GraphQL request; `RequestId` correlates to `ErrorLogs` and web/mobile client traces; `DurationMs` feeds the k6/performance baseline; IP masked per privacy.
-- **ErrorLogs**: every handled+unhandled exception row; lifecycle `Open → Investigating → Fixed → Verified` (`WonTFix` valid); `FixedAt` supports pruning/retention.
+- **ErrorLogs**: every handled+unhandled exception row; lifecycle `Open → Investigating → Fixed → Verified` (`WontFix` valid); `FixedAt` supports pruning/retention.
 - **AuditLogs**: before/after JSON snapshots on every state-changing write (task move, role change, delete); the Week-6/7 OWASP + compliance trail. Linked (optionally) to `ActivityLogs` for the human-readable feed.
 
 ## EF Core 8 mapping (`Griot.Infrastructure`)

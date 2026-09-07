@@ -71,10 +71,11 @@ _Rule that never changes: **AI (`ai/` + `mcp/`) only talks to the backend API** 
 2. Agent tool-calls → backend GraphQL with `GRIOT_SERVICE_TOKEN` → `ai-agent` principal.
 3. Trivial lookups short-circuit; LLM only where needed; cost cap checked (Redis).
 4. Writes: agent returns a **proposed action** → web renders approval card → user approves → **web app** calls REST → backend writes → caches update. The agent NEVER writes directly.
+5. Agent operates a **Level 4 reasoning loop**: observes state, plans multi-step actions (e.g. "close overdue tasks, notify owners"), and requires human approval before executing destructive or multi-step writes. Also generates System Reports.
 5. Every tool call → `ActivityLogs`; state-changing writes also → `AuditLogs` (traceable runId ↔ payloadHash ↔ audit row).
 
 ### 3.3 Scheduled AI (digest/reminders)
-Trigger cron → agent → GraphQL (service token) → backend creates notifications. Durable + idempotent.
+Trigger cron → agent → GraphQL (service token) → backend creates notifications. Durable + idempotent. Also triggers scheduled System Reports (digests) persisted to the database and accessible via the UI.
 
 ### 3.4 Mobile
 Flutter app → same REST + GraphQL endpoints; refresh token in `flutter_secure_storage`; 401→refresh→retry-once.
@@ -93,6 +94,7 @@ Flutter app → same REST + GraphQL endpoints; refresh token in `flutter_secure_
 | Layer | Control |
 |---|---|
 | Password | Argon2 (per-user salt) |
+| 2FA      | Resend Email OTP (hashed codes, 10-min expiry, rate-limited) |
 | Access | JWT 15-min (sub/wid), signed; rejected bad iss/aud |
 | Refresh | opaque 256-bit, SHA-256 at rest, **rotation + family-revoke on reuse** |
 | Rate limit | Redis sliding window `/auth/login` + GraphQL query-cost guard |

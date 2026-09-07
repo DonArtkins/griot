@@ -141,11 +141,6 @@ public class GriotDbContext : DbContext
             b.Property(t => t.Priority).HasConversion<string>();
             b.Property(t => t.Position).HasColumnType("decimal(18,4)");
 
-            b.HasOne(t => t.Board)
-                .WithMany()
-                .HasForeignKey(t => t.BoardId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             b.HasOne(t => t.Column)
                 .WithMany(c => c.TaskItems)
                 .HasForeignKey(t => t.ColumnId)

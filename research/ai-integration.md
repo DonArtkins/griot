@@ -1,6 +1,6 @@
 # AI Integration — Griot Copilot, AI Agents & MCP (Trigger.dev v3)
 
-> **Status: `[own-stack]` extension.** The bootcamp PDF defines no AI layer. This doc adds one that *wraps* the bootcamp stack and never replaces it: .NET 8 + SQL Server stays the single source of truth; AI services read/write it **only through the API**. Everyone on the programme builds the mandated stack — this is the differentiator bolted on top.
+> **Status: `[own-stack]` extension.** The bootcamp PDF defines no AI layer. This doc adds one that *wraps* the bootcamp stack and never replaces it (Now includes Level 4 Autonomous Reasoning, System Reports, and OTP 2FA per ai-features-research.md): .NET 8 + SQL Server stays the single source of truth; AI services read/write it **only through the API**. Everyone on the programme builds the mandated stack — this is the differentiator bolted on top.
 > **Why now:** 2025–26 is the era of AI agents, MCP (Model Context Protocol) and agent-powered UIs. Apps ship in-app copilots, chat-with-your-data, and connected "skills". Griot is a PM tool — a category where AI has *obvious* product value (sprint summaries, blocked-work detection, standups, task drafting). Adding it also makes the capstone portfolio-grade.
 
 ---
@@ -147,7 +147,7 @@ server.tool("create_task", { title: z.string(), columnId: z.string() }, async (i
 
 - **Service-to-service auth**: static long-lived `GRIOT_SERVICE_TOKEN` validated on the .NET side → resolved to a **dedicated "ai-agent" workspace member with restricted role** (`CanReadWorkspace`, `CanCreateTask`, `CanComment`, `CanNotify` — no deletes, no invites).
 - **Prompt-injection mitigation**: user text is treated as **data, not instructions**; tools apply their own project/workspace scoping; the agent system prompt bans tool-call modification of unrelated entities.
-- **Mutation confirmation**: the agent returns a *proposed* action; the Copilot UI renders it ("Create task *…* in column *…*?") for the human to approve. Deterministic paths (digest/reminders) skip this.
+- **Level 4 Reasoning & Mutation confirmation**: the agent operates a Level 4 reasoning loop, capable of planning multi-step actions. It returns a *proposed* action plan; the Copilot UI renders it ("Create task *…* in column *…*?") for the human to approve. Deterministic paths (digest/reminders) skip this.
 - **Token/cost caps**: daily token budget per workspace recorded in Redis; alarms on over-budget runs.
 - **Audit**: every tool call logged with `workspaceId`, `tool`, `payloadHash`, `runId` — traceable across Trigger run ↔ MCP call ↔ .NET audit log.
 
@@ -162,7 +162,8 @@ server.tool("create_task", { title: z.string(), columnId: z.string() }, async (i
 
 - [ ] `ai/` Trigger.dev project created, connected, and `griotCopilot` agent answering from board data
 - [ ] Scheduled: `dueReminders`, `sprintDigest`, `staleBoard` running on schedule in dev
-- [ ] Web Copilot panel streaming responses + approving mutations before write
+- [ ] Web Copilot panel streaming responses + approving multi-step plans before write
+- [ ] System Reports integrated into ad-hoc and scheduled workflows
 - [ ] `mcp/` server runnable in stdio + Streamable HTTP; `get_board`/`create_task` verified in Claude Desktop (or Cursor)
 - [ ] External skill: Slack digest path working (or GitHub PR linking)
 - [ ] OWASP review logged for the AI principal + tool-call surface

@@ -49,9 +49,10 @@ Status codes: **exact** = bootcamp-mandated, use as-is. **[own-stack]** = the gu
 
 | Area | Choice | Owner kit |
 |---|---|---|
-| Auth | Custom JWT (15-min access, rotated opaque refresh, Argon2, Redis sliding-window rate limit) | backend |
+| Auth | Custom JWT (15-min access, rotated opaque refresh, Argon2, Redis sliding-window rate limit, Resend Email OTP 2FA) | backend |
 | Perf/load testing | k6 | qa |
-| AI layer | Trigger.dev v3 agents + Griot MCP server + in-app Copilot | ai, mcp, web |
+| AI layer | Trigger.dev v3 Level-4 Autonomous Agents (reasoning loops, human-in-loop) + Griot MCP server + in-app Copilot | ai, mcp, web |
+| System Reports | SQL Server stored procedures + Trigger.dev scheduled digests + AI ad-hoc generation | backend, ai, web |
 | Contract testing | Postman collection → Newman | qa |
 
 **Rule:** no substitution of a bootcamp-mandated item without updating this table and the owning system's architecture context in the same branch.

@@ -27,7 +27,7 @@ Design a complete, production-grade entity-relationship diagram (ERD) for **Grio
 - Priority: Low · Medium · High · Urgent
 - WorkspaceRole: Owner · Admin · Member
 - NotificationType: Mention · Assignment · DueDate · System
-- ErrorFixStatus: Open · Investigating · Fixed · Verified · WonTFix
+- ErrorFixStatus: Open · Investigating · Fixed · Verified · WontFix
 - InviteStatus: Pending · Accepted · Declined · Expired  *(inline on Invites.Status — not a separate EF Core enum)*
 - ProjectStatus: Active · Archived  *(inline on Projects.Status — not a separate EF Core enum)*
 

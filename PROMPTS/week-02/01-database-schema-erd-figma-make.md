@@ -25,7 +25,7 @@ Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-t
 | `Priority` | Low · Medium · High · Urgent |
 | `WorkspaceRole` | Owner · Admin · Member |
 | `NotificationType` | Mention · Assignment · DueDate · System |
-| `ErrorFixStatus` | Open · Investigating · Fixed · Verified · WonTFix (for ErrorLogs) |
+| `ErrorFixStatus` | Open · Investigating · Fixed · Verified · WontFix (for ErrorLogs) |
 
 ### Tables
 **Users** — `Id` (GUID, PK) · `Email` (nvarchar(320), UQ) · `DisplayName` (nvarchar(100)) · `AvatarUrl` (nvarchar(500), nullable) · `PasswordHash` (nvarchar(512), Argon2) · `CreatedAt` (datetime2, SYSUTCDATETIME) · `UpdatedAt`
@@ -115,7 +115,7 @@ Open your Figma Make project **Griot** (`https://www.figma.com/make/bTB7eE6s39O6
 
 > **Entities (16):** `Users`, `Workspaces`, `WorkspaceMembers` (M:N join with `Role`), `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`, `ApiLogs`, `ErrorLogs`, `AuditLogs` — exact field lists in §2 (GUID PKs, `nvarchar` types, FK labels, nullable `?`, unique `UQ`).
 >
-> **Enums (5):** `TaskStatus` Backlog·Todo·InProgress·InReview·Done · `Priority` Low·Medium·High·Urgent · `WorkspaceRole` Owner·Admin·Member · `NotificationType` Mention·Assignment·DueDate·System · `ErrorFixStatus` Open·Investigating·Fixed·Verified·WonTFix. Legend panel.
+> **Enums (5):** `TaskStatus` Backlog·Todo·InProgress·InReview·Done · `Priority` Low·Medium·High·Urgent · `WorkspaceRole` Owner·Admin·Member · `NotificationType` Mention·Assignment·DueDate·System · `ErrorFixStatus` Open·Investigating·Fixed·Verified·WontFix. Legend panel.
 >
 > **Enums (inline, not separate tables):** `InviteStatus` Pending·Accepted·Declined·Expired (on `Invites.Status`) · `ProjectStatus` Active·Archived (on `Projects.Status`). These are single-table enums rendered inline on the ERD, not top-level legend entries.
 >

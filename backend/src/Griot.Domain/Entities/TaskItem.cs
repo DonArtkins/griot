@@ -7,8 +7,7 @@ namespace Griot.Domain.Entities;
 public class TaskItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid BoardId { get; set; }
-    public Board Board { get; set; } = null!;
+
     public Guid ColumnId { get; set; }
     public Column Column { get; set; } = null!;
     public string Title { get; set; } = string.Empty;
