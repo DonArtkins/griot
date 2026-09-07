@@ -9,7 +9,8 @@
     "deploy": "trigger deploy"
   },
   "dependencies": {
-    "@trigger.dev/sdk": "4.0.0"
+    "@trigger.dev/react-hooks": "^4.5.16",
+    "@trigger.dev/sdk": "^4.0.0"
   },
   "devDependencies": {
     "trigger.dev": "4.0.0",
