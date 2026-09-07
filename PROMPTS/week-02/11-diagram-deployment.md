@@ -78,6 +78,7 @@ ANNOTATION:
 3) Note near API: "health endpoint /health checked by Railway + uptime ping."
 4) Note near Vercel: "Vercel = static CDN only. Browser and Mobile call the Railway API DIRECTLY over HTTPS — Vercel does NOT proxy API calls. Draw the Browser→API and Mobile→API arrows bypassing the Vercel box entirely."
 5) Note near MCP container: "MCP public endpoint = HTTPS/TLS (Railway proxy terminates TLS). Internal MCP→API traffic is plain TCP on the Railway private network. GRIOT_SERVICE_TOKEN is NEVER sent over plaintext HTTP."
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -92,4 +93,4 @@ ANNOTATION:
 - [ ] 4 zones + external SaaS all visible; network boundaries explicit
 - [ ] Every deploy path (CI) + every runtime path (HTTPS/WS/internal TCP) drawn
 - [ ] "no public DB port" + release-command notes present
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/deployment-production.png`
+- [ ] Approved → PNG → `diagrams/architecture/deployment-production.png`

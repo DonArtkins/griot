@@ -45,7 +45,7 @@
 ## 2. THE PROMPT — paste into Figma Make (no length limit)
 
 ```text
-Design the Public marketing site for Griot, a project-management web app for small teams, in the same dark design language as its app shell. Spectacle is allowed (showcase face) but must remain clean, sub-2-second, and WCAG-AA accessible. Three pages, persistent sticky nav (logo to Features, Pricing, Sign in (secondary), Get started (primary)). All copy uses real product names (Boards, Tasks, Notifications, Copilot).
+Design the Public marketing site for Griot, a project-management web app for small teams, in the same light card-based design language as its app shell. Spectacle is allowed (showcase face) but must remain clean, sub-2-second, and WCAG-AA accessible. Three pages, persistent sticky nav (logo to Features, Pricing, Sign in (secondary), Get started (primary)). All copy uses real product names (Boards, Tasks, Notifications, Copilot).
 
 PAGE 1 — LANDING (/):
 - Hero: headline + subhead, primary Get started + secondary View demo. REAL screenshot of the Griot kanban board as the hero visual (product-first). Trust strip below the CTA.

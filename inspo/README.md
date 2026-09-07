@@ -6,7 +6,7 @@ Screenshots + references of UI/UX we **desire** — used when building the web f
 
 1. Drop reference screenshots/designs into this folder (`inspo/`), named `<topic>-<source>.png`.
 2. Reference them from feature specs / agent prompts: "match the aesthetic of `inspo/board-x.png`".
-3. The web/mobile agents read `inspo/` + `project-kit/diagrams/ui/` + `ui-tokens.md` before coding UI.
+3. The web/mobile agents read `inspo/` + `diagrams/ui/` + `ui-tokens.md` before coding UI.
 
 ## Categories you may fill
 

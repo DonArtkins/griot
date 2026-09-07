@@ -3,7 +3,7 @@
 > 📌 **This is today's deliverable — the first item of Week 2 in the GTP 2026 roadmap: "Database Schema Design in Figma."**
 > **Tool:** Figma Make (the AI prototyping surface), live project:
 > `https://www.figma.com/make/bTB7eE6s39O6yvtYfq0DeR/Griot?p=f&t=CrPqLvvqtlfVbwSx-0`
-> **Output lives at:** `project-kit/diagrams/erd/` (export a PNG frame into that folder — Feature 02 and every schema decision reads it).
+> **Output lives at:** `diagrams/erd/` (export a PNG frame into that folder — Feature 02 and every schema decision reads it).
 > **Research input:** `research/week-01-fundamentals-and-system-design.md` §4.4 (screen → entity table) + `research/week-02-backend-api-development.md` §3.
 
 ---
@@ -158,11 +158,11 @@ Read it like a reviewer: does every Week-1 screen's entity appear? (Dashboard �
 
 ### Step 8 — Approve + export
 1. Human approves the ERD in the Make project.
-2. Export the ERD frame as **PNG** → save as `griot-erd-v1.0.0.png` into `project-kit/diagrams/erd/`.
-3. Update `project-kit/diagrams/README.md` ledger (name, version, date, status=✅ approved, source=Figma Make project URL).
+2. Export the ERD frame as **PNG** → save as `griot-erd-v1.0.0.png` into `diagrams/erd/`.
+3. Update `diagrams/README.md` ledger (name, version, date, status=✅ approved, source=Figma Make project URL).
 
 ### Step 9 — Feed it to the code agent
-When prompting the backend agent (Cline/Claude), say: *"Build backend features 01–02 from the approved ERD `project-kit/diagrams/erd/griot-erd-v1.0.0.png` (produced in Figma Make). Entity names and enums must match exactly."*
+When prompting the backend agent (Cline/Claude), say: *"Build backend features 01–02 from the approved ERD `diagrams/erd/griot-erd-v1.0.0.png` (produced in Figma Make). Entity names and enums must match exactly."*
 
 ---
 
@@ -171,6 +171,6 @@ When prompting the backend agent (Cline/Claude), say: *"Build backend features 0
 - [ ] Figma Make project **Griot** contains the ERD: all **16 tables** (13 core + ApiLogs/ErrorLogs/AuditLogs), **5 enums**, **21 labelled crow's-foot relationships**, legend, index notes
 - [ ] Module color-coding applied (Identity/Auth, Core Board, Social, Observability, Audit)
 - [ ] No entity without a Week-1 screen or observability requirement; names/values match §2 + `data-layer.md` exactly
-- [ ] Refined ≥1 round; approved; PNG exported to `project-kit/diagrams/erd/griot-erd-v1.0.0.png`
+- [ ] Refined ≥1 round; approved; PNG exported to `diagrams/erd/griot-erd-v1.0.0.png`
 - [ ] Diagrams ledger updated (source = Figma Make project URL)
 - [ ] Backend feature 02 treats the ERD as its contract; no schema code before approval

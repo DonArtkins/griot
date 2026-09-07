@@ -24,7 +24,7 @@
 |---|---|
 | Bug/error fixed during implementation | feature spec + progress-tracker + CHANGELOG |
 | API route/GraphQL type changed | `api-surface.md` + dependent specs + Postman collection |
-| Schema/entity/enum changed | ERD (re-approve) + `data-layer.md` + **backend spec 02** (`02-sql-server-efcore-implementation.md`) + EF specs + web/mobile types + MCP schemas — see `project-kit/diagrams/README.md` (ERD governs spec 02; update ERD first, then spec 02, then all dependents) |
+| Schema/entity/enum changed | ERD (re-approve) + `data-layer.md` + **backend spec 02** (`02-sql-server-efcore-implementation.md`) + EF specs + web/mobile types + MCP schemas — see `diagrams/README.md` (ERD governs spec 02; update ERD first, then spec 02, then all dependents) |
 | Auth/security behavior changed | auth ADR + SECURITY.md + qa test suite |
 | Deployment/infra changed | infra context + DEPLOYMENT.md runbooks |
 | New design decision (options considered) | `docs/decisions/ADR-XXX-*.md` |

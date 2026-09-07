@@ -14,6 +14,7 @@
 
 ## 2. The happy path (login)
 
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 User → AuthController: POST /api/auth/login {email, password}
 AuthController → AuthService: LoginAsync(dto)
@@ -28,10 +29,12 @@ AuthService → AuthController: { accessToken, refreshToken, user }
 AuthController → User: 200 { accessToken, user }
     [web: refreshToken in Set-Cookie httpOnly Secure SameSite=Strict
      mobile/Postman: JSON body { refreshToken }]
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ## 3. The happy path (refresh rotation)
 
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 User → AuthController: POST /api/auth/refresh
     [web: httpOnly cookie | mobile: secure storage | Postman: JSON body { refreshToken }]
@@ -60,14 +63,18 @@ alt row found + RevokedAt IS NULL + ExpiresAt > SYSUTCDATETIME() (within transac
 else row not found OR RevokedAt already set
     AuthService: REVOKE ENTIRE FAMILY (same FamilyId) — replay detected
     AuthController → User: 401 (clear session)
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 > **Transport rule** (aligned with `SECURITY.md`): The refresh token is *never* returned in a `localStorage`-accessible field on web. Web clients receive it via `Set-Cookie: refreshToken=…; HttpOnly; Secure; SameSite=Strict`. Mobile clients receive it in the JSON response body and store it in platform secure storage (Android Keystore / iOS Secure Enclave). Postman / API testing uses the JSON body field `refreshToken` directly.
+
+> **Redis contract** (matches `integration-contracts.md`, `sababisha-redis`): keys `sess:{userId}` (session + refresh family metadata), `rtm:{tokenHash}` (rotation metadata), `rl:{ip}:{route}` (rate-limit windows), `budget:{workspaceId}` (AI token budgets). Metadata only — SQL Server `RefreshTokens` stays the source of truth. Mobile stores the refresh token in `flutter_secure_storage` (Android Keystore / iOS Secure Enclave).
 
 > **Transaction invariant**: The `WHERE RevokedAt IS NULL` predicate inside the transaction is the sole gate. Any path that does *not* match this predicate — whether the row is missing entirely or already has `RevokedAt` set — is treated identically as a replay attempt and triggers full family revocation. There is no "soft miss" case.
 
 ## 4. The failure branch (replay race — the Week-6 OWASP case)
 
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 Attacker → AuthController: POST /api/auth/refresh
     [presents stolenRefresh via cookie or body]
@@ -92,6 +99,7 @@ AuthService → RefreshTokens(DB): BEGIN TRANSACTION
 AuthController → Attacker: 401
 Note: the legitimate client's NEXT refresh also fails (same FamilyId revoked)
       → must re-login. This is DESIRED: FamilyId scopes the blast radius; rotation is one-time-use.
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 > **FamilyId invariant**: Every row in `RefreshTokens` carries the `FamilyId` of the issuance event. On replay the revocation `UPDATE` targets only `WHERE FamilyId = @familyId` — it does not revoke tokens in other families (other sessions) for the same user. This bounds the impact to the compromised session while still invalidating every token that traces back to the leaked root.
@@ -148,6 +156,7 @@ AuthController → Attacker: 401
 Annotation: "Miss on WHERE RevokedAt IS NULL = replay. FamilyId scopes revocation to the
     compromised session — other user sessions are unaffected. Legitimate client's next
     refresh also 401s → must re-login. Desired: rotation is one-time-use. (OWASP A07)"
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -168,4 +177,4 @@ Annotation: "Miss on WHERE RevokedAt IS NULL = replay. FamilyId scopes revocatio
 - [ ] 401 + family-revoke (`WHERE FamilyId = @familyId`) on replay; other user sessions unaffected
 - [ ] Transport documented on every auth response: web = httpOnly Secure cookie; mobile = JSON body + secure storage; Postman = JSON body
 - [ ] Labels match `jwt-argon2-auth` skill
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/sequence-login-refresh.png`
+- [ ] Approved → PNG → `diagrams/architecture/sequence-login-refresh.png`

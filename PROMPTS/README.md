@@ -5,9 +5,9 @@ Everything you paste into an AI tool so it does a week's deliverable for you: Fi
 ## How to use
 
 1. Open the folder for the week you're working on (`week-01/` … `week-07/`).
-2. Each file is self-contained: **Context** (what we're building), **Prompt** (paste-ready), **Refinement** (how to iterate), **Done** (what "finished" looks like), and where the output lands in `project-kit/diagrams/`.
+2. Each file is self-contained: **Context** (what we're building), **Prompt** (paste-ready), **Refinement** (how to iterate), **Done** (what "finished" looks like), and where the output lands in `diagrams/`.
 3. Prompts reference the research files and the project-kit context — read those first so the tool gets coherent input.
-4. After generation, export/archive outputs into `project-kit/diagrams/**` so the code agents use the same artifacts.
+4. After generation, export/archive outputs into `diagrams/**` so the code agents use the same artifacts.
 
 ## Index
 

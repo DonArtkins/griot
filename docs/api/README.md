@@ -8,7 +8,7 @@
 - **Rendered API reference** (choose at implementation):
   - Option A — **Stoplight / Postman published docs**: publish the collection → live docs URL.
   - Option B — **Redoc / Scalar** static page generated from the OpenAPI export of the REST controllers (via NSwag/Swashbuckle) + a GraphQL schema page (`/graphql?sdl`).
-- The full route/type surface is in `backend/project-kit/context/api-surface.md`, and the big **API surface diagram** is at `PROMPTS/week-02/13-diagram-api-surface.md` (→ `project-kit/diagrams/architecture/api-surface-map.png`).
+- The full route/type surface is in `backend/project-kit/context/api-surface.md`, and the big **API surface diagram** is at `PROMPTS/week-02/13-diagram-api-surface.md` (→ `diagrams/architecture/api-surface-map.png`).
 
 ## What Postman will test (backend feature 07 scope)
 

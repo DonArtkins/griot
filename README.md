@@ -46,7 +46,7 @@ This restores all research documents and screenshots (~15 MB, 14 files). See `do
 ## Quick links
 
 - **Docs**: `docs/README.md` · **Architecture**: `docs/ARCHITECTURE.md` · **Database**: `docs/database/DATABASE-DESIGN.md`
-- **Diagrams**: `project-kit/diagrams/README.md` · **Prompts**: `PROMPTS/README.md`
+- **Diagrams**: `diagrams/README.md` · **Prompts**: `PROMPTS/README.md`
 - **Contribute**: `CONTRIBUTING.md` · **Security**: `SECURITY.md` · **License**: `LICENSE` (MIT)
 
 ## Roadmap (bootcamp)

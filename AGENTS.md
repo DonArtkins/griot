@@ -30,7 +30,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 6. `project-kit/context/integration-contracts.md` — cross-system contracts (ports, env, API, GraphQL).
 7. The **system's own** `AGENTS.md`, then its `project-kit/context/*`, then its `project-kit/feature-specs/*`.
 8. `PROMPTS/` for the Figma Make / FigJam / agent prompts that produce each system's designs (ERD before schema, wireframes before UI).
-9. `project-kit/diagrams/**` for approved Figma Make/FigJam artifacts that govern implementation.
+9. `diagrams/**` for approved Figma Make/FigJam artifacts that govern implementation.
 
 ## Required Skills
 
@@ -47,7 +47,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 1. **Separation of concerns is physical.** `backend/` owns data + API; `web/` + `mobile/` own presentation; `ai/` + `mcp/` own intelligence; `infra/` owns containers + deployment; `qa/` owns test lifecycles. No system writes code into another system's folder.
 2. **AI never writes to SQL Server directly.** Every AI read/write goes through the .NET API via `GRIOT_SERVICE_TOKEN` (resolved to a restricted `ai-agent` principal).
 3. **The PDF stack is never substituted silently.** Every deviation must carry `[own-stack]` and a written rationale in `project-kit/context/stack-contract.md`.
-4. **ERD before schema, wireframes before UI.** The approved Figma Make ERD (`project-kit/diagrams/erd/`) is the only source for entity/enum names; no schema code may exist before it is approved.
+4. **ERD before schema, wireframes before UI.** The approved Figma Make ERD (`diagrams/erd/`) is the only source for entity/enum names; no schema code may exist before it is approved.
 5. **Planning before implementation.** Present a concrete plan and wait for explicit approval before schema migrations, API surface changes, Docker/Compose changes, deployment changes, or writing any production code. **The system-design docs + diagrams must be complete and approved before implementation starts.**
 6. **One feature spec at a time, one feature branch = one PR (group-aware).** Branches are `feature/<system>/<NN>-<slug>` (e.g. `feature/backend/02-sql-server-efcore`, `feature/web/05-secure-auth`). Never batch specs, never commit progress-tracker updates directly to `main`, never commit code to `main` directly.
 7. **Throttling prevention.** See `.agents/skills/throttling-prevention/SKILL.md`. Batch reads/writes, prefer shell for bulk ops, pause on throttling.

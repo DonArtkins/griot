@@ -15,11 +15,12 @@
 | External AI client (Claude Desktop / Cursor / Cline) | External system | connects via MCP tools (`get_board`, `create_task`, …) | → Griot (MCP) |
 | Email provider (SMTP / transactional) | External system | invite emails, due-date reminders, digest delivery | Griot → provider |
 | Vercel | External host | serves the web app (Public + App shells) on the public internet | hosts web |
-| Railway | External host | runs the API container, MCP container, SQL Server, Postgres, Redis; public API origin | hosts backend + MCP |
+| Railway | External host | runs the API + MCP containers + SQL Server + Postgres + Redis on a private network; public API origin | hosts backend + MCP |
 | Trigger.dev | External host | runs scheduled AI agents + Copilot background runs | hosts ai |
 | Postman / Newman | External tool | the contract-testing client for the API | → Griot API |
 | GitHub Actions | External CI | builds + tests everything, deploys on merge | triggers deploys |
 
+**Alignment with the 7-system map** (from `project-kit/context/system-map.md`): the center box is the whole product; its internals are exactly the seven systems — `backend/`, `web/`, `mobile/`, `infra/`, `qa/`, `ai/` [own-stack], `mcp/` [own-stack]. The hosts shown here match `project-kit/context/integration-contracts.md` (ports: api 8080, mcp 3001, DBs 14333/5433/6380; compose service keys `api`, `mcp`, `sababisha-sqlserver`, `sababisha-postgres`, `sababisha-redis`). The 16 ERD tables + 5 enums live behind the Griot box — never drawn at Level 1.
 **Rules for this level:** no internal boxes (that's Level 2), no database names, no protocols on every line (that's Level 2). One box labeled "Griot — Project Management & AI Copilot". Keep the human actors as stick figures, external systems as plain boxes on the outside ring.
 
 ## 2. The prompt (single, extensive — no length limit)
@@ -27,7 +28,7 @@
 Paste the full prompt below into Figma Make (Plan mode first). It intentionally includes every actor, every arrow, and every label — no abbreviation.
 
 ```text
-C4 System Context diagram Level 1 for Griot, a project-management web app + AI copilot. Center box labeled "Griot — Project Management & AI Copilot" (dark fill, white text). Around it place exactly these, no internals, one page:
+C4 System Context diagram Level 1 for Griot, a project-management web app + AI copilot. Center box labeled "Griot — Project Management & AI Copilot" (light fill, dark text). Around it place exactly these, no internals, one page:
 
 HUMANS (stick figures, left side):
 - Workspace Owner (creates workspace, invites team, full admin)
@@ -35,7 +36,7 @@ HUMANS (stick figures, left side):
 
 EXTERNAL SYSTEMS (plain boxes, right/bottom):
 - Vercel (hosts web app, public internet)
-- Railway (hosts API + MCP + SQL Server + Postgres + Redis)
+- Railway (hosts API + MCP + sababisha-sqlserver + sababisha-postgres + sababisha-redis)
 - Trigger.dev (scheduled AI agents + Copilot background runs)
 - GitHub Actions (CI/CD, builds + deploys on git push)
 - Postman/Newman (API contract testing)
@@ -53,7 +54,7 @@ ARROWS (label each):
 - Trigger.dev → Griot (scheduled agents, Copilot streaming)
 - GitHub Actions → Vercel / Railway / Trigger.dev (deploy trigger, dashed arrows)
 
-STYLE: humans as stick figures on the left, external systems around the right/bottom, one big Griot box center-top. Protocol labels on every arrow. Everything readable at 100% zoom. One page, no internals.
+STYLE: humans as stick figures on the left, external systems around the right/bottom, one big Griot box center-top. Protocol labels on every arrow. Everything readable at 100% zoom. One page, no internals. ANNOTATION (bottom-left): "Internals = the 7 systems (backend, web, mobile, infra, qa, ai [own-stack], mcp [own-stack]) — drawn in the full architecture diagram (16), never at Level 1. Data lives in sababisha-* services on Railway per integration-contracts.md."
 ```
 
 ### Refine
@@ -69,4 +70,4 @@ STYLE: humans as stick figures on the left, external systems around the right/bo
 - [ ] Exactly one internal box (Griot) with zero internals
 - [ ] All 7 external systems + 2 human actors present with correct labels
 - [ ] Arrows show interaction direction + protocol where meaningful
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/c4-system-context.png`
+- [ ] Approved → PNG → `diagrams/architecture/c4-system-context.png`

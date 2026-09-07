@@ -88,6 +88,7 @@ BELOW BOTH HALVES:
 - Below that: repositories (EF Core 95% + Dapper procs usp_BulkUpdateTaskStatus / usp_GetDashboardSummary) → SQL Server.
 
 ANNOTATION: "Postman collection mirrors this map 1:1 (backend feature 07); a route change updates api-surface.md + the collection + this diagram together."
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -104,4 +105,4 @@ ANNOTATION: "Postman collection mirrors this map 1:1 (backend feature 07); a rou
 - [ ] GraphQL queries/mutations/types all present (including `task(id)`, `comments(taskId)`, `unreadNotificationCount`, `activityFeed`, complete mutations list, all types); shared-service arrow explicit
 - [ ] DataLoader + proc calls (usp_BulkUpdateTaskStatus, usp_GetDashboardSummary) + webhook (HMAC) marked
 - [ ] `GET/POST /api/tasks/{id}/attachments` shown as two separate pills — no inconsistency with §1 or `api-surface.md`
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/api-surface-map.png`
+- [ ] Approved → PNG → `diagrams/architecture/api-surface-map.png`

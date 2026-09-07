@@ -40,6 +40,7 @@
 - Services arrow into repository interfaces; repositories arrow into DbContext (EF) and Sql/ (Dapper procs).
 - DataLoader sits between resolvers and repositories (N+1 prevention).
 - Redis + SQL Server are dashed-edge externals at the bottom.
+- Observability contract (ERD tables, added pre-code): every request → `ApiLogs`; AI tool calls + state-changes → `ActivityLogs` + `AuditLogs` (workspaceId · tool · payloadHash · runId) — 90-day hot retention, PII-redacted.
 
 ## 3. The prompt (single, extensive — no length limit)
 
@@ -75,7 +76,8 @@ ARROWS (this is the important part — draw exactly these):
 - GriotDbContext → external SQL Server (dashed); Dapper repos → external SQL Server (dashed)
 - WebhookRelayService → ActivityLogService / NotificationService (label "dispatches event")
 
-ANNOTATION (a callout box): "ONE service layer, TWO API surfaces (REST + GraphQL), ZERO business logic in controllers/resolvers — drift-proof by construction. CommentController + AttachmentController are separate thin wrappers (not folded into TaskController)."
+ANNOTATION (a callout box): "ONE service layer, TWO API surfaces (REST + GraphQL), ZERO business logic in controllers/resolvers — drift-proof by construction. CommentController + AttachmentController are separate thin wrappers (not folded into TaskController). Observability: ApiLogs on every request; ActivityLogs + AuditLogs on AI + state changes (payloadHash ↔ runId), 90-day retention."
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -95,4 +97,4 @@ ANNOTATION (a callout box): "ONE service layer, TWO API surfaces (REST + GraphQL
 - [ ] REST + GraphQL both arrow into the same services block
 - [ ] DataLoader, EF repos, Dapper procs (named), Redis client, auth middleware drawn
 - [ ] DashboardController + DashboardService present (covers `/api/logs/*` + `/api/dashboard/summary`)
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/api-component.png`
+- [ ] Approved → PNG → `diagrams/architecture/api-component.png`

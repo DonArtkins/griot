@@ -57,7 +57,7 @@
 ## 2. THE PROMPT — paste into Figma Make (no length limit)
 
 ```text
-Design the complete **App Shell** for **Griot**, a project-management web app for small teams. Dark, high-contrast, calm workspace; saturated accents ONLY for priority and status. Produce exactly 5 screens with identical chrome. Use Plan mode and iterate until all 5 match.
+Design the complete **App Shell** for **Griot**, a project-management web app for small teams. Light, calm, high-contrast workspace (white cards on a cool-gray canvas); saturated accents ONLY for priority and status. Produce exactly 5 screens with identical chrome. Use Plan mode and iterate until all 5 match.
 
 GLOBAL CHROME (identical on all screens):
 - Left sidebar rail: Griot logo + workspace name/avatar; nav Dashboard, Boards, Projects, Team, Notifications; workspace switcher; Invite button pinned bottom.
@@ -105,4 +105,4 @@ CROSS-CUTTING:
 - [ ] Export screens → turn TaskCard, BoardColumn, Sidebar, Modal, NotificationItem into Figma **components**
 - [ ] Extract tokens per `project-kit/context/ui-tokens.md`
 - [ ] Complete the screen→entity table in `research/week-01` §4.4 (Week-2 ERD input)
-- [ ] Archive screenshots → `project-kit/diagrams/ui/`
+- [ ] Archive screenshots → `diagrams/ui/`

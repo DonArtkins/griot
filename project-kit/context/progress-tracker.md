@@ -19,7 +19,7 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 ## Next Steps
 
 1. Generate + approve the **12 diagrams** in Figma Make from `PROMPTS/week-02/04…14` + the ERD (prompts A–H in `02-…-sequence`).
-2. Export PNGs → `project-kit/diagrams/{erd,architecture}/` → update the ledger.
+2. Export PNGs → `diagrams/{erd,architecture}/` → update the ledger.
 3. Fill `inspo/` with desired UI screenshots (web + mobile visual contract).
 4. Then implementation (backend spec 01 → 10) — planning must be complete + approved first.
 

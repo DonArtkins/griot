@@ -58,6 +58,7 @@ ANNOTATION (validation note, near the matrix):
 
 Also draw a small TRANSITION MATRIX table (rows FROM, columns TO):
 Backlog→Todo ✅; Backlog→InProgress ❌ (banned); Todo→Backlog/InProgress/Done ✅; InProgress→Todo/InReview ✅; InProgress→Done ❌ (banned, must via InReview); InReview→InProgress/Done ✅; Done→Todo ✅; all → Deleted ✅.
+STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 
 ### Refine
@@ -73,4 +74,4 @@ Backlog→Todo ✅; Backlog→InProgress ❌ (banned); Todo→Backlog/InProgress
 - [ ] All 5 active states + Deleted; every legal transition drawn + labeled
 - [ ] Does NOT show illegal direct transitions
 - [ ] Backend TaskService + web/mobile UIs all match this matrix
-- [ ] Approved → PNG → `project-kit/diagrams/architecture/task-state-machine.png`
+- [ ] Approved → PNG → `diagrams/architecture/task-state-machine.png`
