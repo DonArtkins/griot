@@ -33,6 +33,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET | `/api/logs/errors` | error log (Owner/Admin) | Owner/Admin |
 | GET | `/api/logs/audit?entityType=&entityId=` | audit log | Owner |
 | POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) | HMAC only |
+| GET | `/health` | liveness (health checks) | public |
 
 ## Attachment limits (Phase 1 — Vercel Blob)
 - **File size:** 25 MB per file (enforced via `[RequestSizeLimit(26_214_400)]`)
@@ -79,6 +80,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 - REST + GraphQL call the SAME services (`Griot.Application`) → drift-proof.
 - Responses are DTOs, never raw entities.
 - Errors: 404 for not found/not-owned (never disclose existence), 400 validation, 401 auth, 403 role, 409 conflict/illegal state, 429 rate limit.
+- Every response carries `X-Request-Id` (request-id middleware; logs correlated by it).
 - **`PATCH /api/tasks/bulk-status`**: 409 for any invalid task id in batch (not 404/400); full rollback via `usp_BulkUpdateTaskStatus`; 400 only for pre-validation failures (empty array, malformed body).
 - Pagination: fixed page size, stable order (tasks by `(ColumnId, Position)`); cursor or skip/take.
 - Latency budgets (p95): board read < 500 ms, dashboard < 500 ms, login < 300 ms, bulk-status < 800 ms.
