@@ -16,7 +16,7 @@ The bootcamp deliverable exactly as the PDF names it: "Create docker-compose.yml
 ## Context To Read First
 
 - `research/week-05-deployment-devops.md` sec 3
-- `research/gtp-2026-prep.md` sec 6.4 (gtp-* naming + ports)
+- `research/gtp-2026-prep.md` sec 6.4 (sababisha-* naming + ports)
 
 ## Agent Skills To Use
 
@@ -29,13 +29,13 @@ The bootcamp deliverable exactly as the PDF names it: "Create docker-compose.yml
 
 ## Files
 
-CREATE: `docker-compose.yml` - services `api`, `sqlserver` (2022-latest), `postgres` (16-alpine), `redis` (7-alpine); ports 14333:1433, 5433:5432, 6380:6379 host; `8080:8080` API; volumes `mssql_data`/`pg_data`; `depends_on`; health checks.
+CREATE: `docker-compose.yml` - services `api`, `sababisha-sqlserver` (2022-latest), `sababisha-postgres` (16-alpine), `sababisha-redis` (7-alpine); ports 14333:1433, 5433:5432, 6380:6379 host; `8080:8080` API; volumes `sababisha_mssql`/`sababisha_pg`; `depends_on`; health checks.
 
 RUN: `docker compose up -d`; verify all healthy.
 
 ## Implementation Notes
 
-- Connection string env-injected into `api` (`ConnectionStrings__Default` = `Server=gtp-sqlserver,1433;Database=griot;...`).
+- Connection string env-injected into `api` (`ConnectionStrings__Default` = `Server=sababisha-sqlserver,1433;Database=griot;...`).
 - Health checks for `api` + `sqlserver`.
 
 ## Separation of Concerns

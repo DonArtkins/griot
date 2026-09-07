@@ -6,7 +6,7 @@ NEW FEATURE
 
 ## What This Delivers
 
-The bootcamp deliverable **"Implementation in SQL Server"**: the approved ERD transcribed into SQL Server 2022 via EF Core 8 — `Griot.Domain` entities/enums, `GriotDbContext` mappings, and the `InitialCreate` migration applied to the `gtp-sqlserver` container.
+The bootcamp deliverable **"Implementation in SQL Server"**: the approved ERD transcribed into SQL Server 2022 via EF Core 8 — `Griot.Domain` entities/enums, `GriotDbContext` mappings, and the `InitialCreate` migration applied to the `sababisha-sqlserver` container.
 
 ## Dependencies
 
@@ -57,7 +57,7 @@ dotnet new classlib -n Griot.Domain -o src/Griot.Domain
 
 ## Docker & Deploy
 
-- Local: migration against `gtp-sqlserver` (compose).
+- Local: migration against `sababisha-sqlserver` (compose).
 - Production: migrations as the Railway release command (infra spec 05), never assumed local.
 
 ## Out of Scope

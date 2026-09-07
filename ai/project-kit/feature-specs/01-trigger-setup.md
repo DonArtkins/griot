@@ -25,7 +25,7 @@ The `ai/` npm package initialized and connected to a Trigger.dev project: toolbo
 ## Setup / Initialization
 
 ```bash
-mkdir -p ai && cd ai && nvm use
+mkdir -p ai && cd ai
 npx trigger.dev@3 login
 npx trigger.dev@3 init --project-ref <PROJECT_REF>
 npm i @trigger.dev/sdk @trigger.dev/react-hooks

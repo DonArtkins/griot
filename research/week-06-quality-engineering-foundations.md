@@ -48,7 +48,7 @@ Test cases & scenarios, exploratory sessions, defect severity/priority, traceabi
 
 ## 5. API testing with Newman
 ```bash
-newman run Griot.postman_collection.json -e gtpenv.json --reporters junit --reporter-junit-export newman.xml
+newman run Griot.postman_collection.json -e sabahisha-env.json --reporters junit --reporter-junit-export newman.xml
 ```
 Add as a **CI job parallel to the Cypress step** (same pattern as the old draft, now against the .NET API). Light contract checks (`pm.response.to.have.jsonSchema`) on the core endpoints.
 

@@ -15,7 +15,7 @@
 - backend: `ConnectionStrings__Default`, `JWT__SigningKey`, `JWT__Issuer`, `JWT__Audience`, `Redis__Connection`, `GRIOT_SERVICE_TOKEN`, `Cors__AllowedOrigins`
 - web: `VITE_API_URL`
 - ai/mcp: `GRIOT_API_URL`, `GRIOT_SERVICE_TOKEN` (+ ai: LLM keys, `TRIGGER_WEBHOOK_SECRET`)
-- compose (local): `GTP_SA_PASSWORD`, `GTP_PG_PASSWORD`
+- compose (local): `SABABISHA_SA_PASSWORD`, `SABABISHA_PG_PASSWORD`
 
 ## Local parity
 

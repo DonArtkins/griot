@@ -30,7 +30,7 @@ The bootcamp deliverable **"React app setup with Vite"**: a TypeScript Vite app 
 ```bash
 cd <repo-root>
 npm create vite@latest web -- --template react-ts
-cd web && nvm use
+cd web
 npm i @mui/material @emotion/react @emotion/styled @mui/icons-material \
         @apollo/client @tanstack/react-query axios zustand react-router-dom
 npm i -D @testing-library/react @testing-library/user-event @testing-library/jest-dom jest jest-environment-jsdom

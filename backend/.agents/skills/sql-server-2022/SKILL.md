@@ -9,10 +9,10 @@ metadata:
 
 ## Container
 
-`mcr.microsoft.com/mssql/server:2022-latest` on host port 14333; data in `mssql_data` volume (infra owns the compose file).
+`mcr.microsoft.com/mssql/server:2022-latest` on host port 14333; data in `sababisha_mssql` volume (infra owns the compose file).
 
 ```bash
-docker exec gtp-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$GTP_SA_PASSWORD" -C -Q "SELECT @@VERSION"
+docker exec sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "SELECT @@VERSION"
 ```
 
 ## Conventions

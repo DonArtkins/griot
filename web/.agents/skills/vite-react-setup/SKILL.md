@@ -11,7 +11,7 @@ metadata:
 
 ```bash
 npm create vite@latest web -- --template react-ts
-cd web && nvm use   # .nvmrc -> 20
+cd web   # .nvmrc -> 20 (auto-loaded)
 ```
 
 ## Env

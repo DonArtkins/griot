@@ -10,8 +10,7 @@ metadata:
 ## Setup
 
 ```bash
-cd ai && nvm use
-npx trigger.dev@latest login
+cd ai && npx trigger.dev@latest login
 npx trigger.dev@latest init --project-ref <PROJECT_REF>
 npm i @trigger.dev/sdk @trigger.dev/react-hooks
 ```

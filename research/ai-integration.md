@@ -68,14 +68,14 @@ Both new dirs are **type-checked, linted, and tested inside the same GitHub Acti
 ## 4. Setup (Parrot, non-invasive)
 
 ```bash
-cd ~/gtp/griot/ai
-nvm use          # .nvmrc → 20 (pinned for this project)
+cd ~/sababisha/projects/gtp/griot/ai
+# Node 20 auto-switches via .nvmrc (no manual nvm use needed)
 npx trigger.dev@latest init --project-ref <PROJECT_REF> --api-url https://api.trigger.dev
 # generates trigger.config.ts + .trigger/ registry + src/ sample task
 echo "ANTHROPIC_API_KEY=..." >> .env   # or OPENAI_API_KEY — both supported
 npm install @trigger.dev/sdk @trigger.dev/react-hooks
 
-cd ~/gtp/griot/mcp
+cd ~/sababisha/projects/gtp/griot/mcp
 npm init -y && npm i @modelcontextprotocol/sdk zod
 # optionally: npx @modelcontextprotocol/inspector node src/server.js   (MCP Inspector GUI)
 ```

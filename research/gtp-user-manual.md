@@ -80,13 +80,28 @@ dotnet --version
 ```
 
 ### Step 5 — Install Node via nvm
-Follow **§6.6**. This one is usually the smoothest step.
+Follow **§6.6**. Installing Node 20 itself is usually the smoothest step — the part to watch for is what happens *after*.
 
-**What success looks like:**
+**What success looks like right after install:**
 ```bash
 node -v   # → v20.x.x
 npm -v    # → 10.x.x
 ```
+
+**The gotcha that actually bit this machine:** a `.nvmrc` file at the root of a project only gets checked if you `cd` straight into that exact folder. The moment you `cd` into a *subfolder* — `backend/`, `web/`, `mcp/`, anything — Node silently falls back to your personal default version instead, with no warning at all. This looks fine until you notice `node -v` inside `backend/` reports the wrong version.
+
+**The fix used here has two parts, both already applied:**
+1. A `.nvmrc` file exists in *every* subfolder of the Griot project, not just the root — so a plain `nvm use` works correctly anywhere.
+2. A small shell function was added to `~/.bashrc` that automatically checks for the nearest `.nvmrc` (walking up through parent folders) every time you `cd`, and switches Node versions for you — no need to remember to type `nvm use` by hand.
+
+**What this means day to day:** you can just `cd` into any Griot folder and Node is already correct. Verify anytime with:
+```bash
+cd ~/sababisha/projects/gtp/griot/backend
+node -v   # → v20.20.2, automatically
+cd ~
+node -v   # → back to your personal default, automatically
+```
+If a fresh subfolder is ever added to the project and Node doesn't switch inside it, that's normal — it just means that new folder needs its own `.nvmrc` (or relies on the shell function walking up to a parent one, which also works).
 
 ### Step 6 — Everything else
 Follow **§6.7** and **§6.8** for the remaining frontend/mobile/AI tooling. Flutter is **known not to be installed yet** on this machine — that's expected right now, not a mistake on your part. It gets installed later, before Week 4.
@@ -200,6 +215,7 @@ This means `CREATE DATABASE Griot` already succeeded earlier — you're just try
 
 | Tool | How to open it | Notes |
 |---|---|---|
+| **VirtualBox** | Type `virtualbox` in a terminal, or find it in the KDE application menu | Only needed for the Windows 10 VM — unrelated to daily Griot work |
 | **VSCodium** | `codium <path>` from a terminal (e.g. `codium ~/sababisha/projects/gtp/griot`), or the KDE menu | This is where you'll spend most of your time |
 | **Docker containers** | No GUI installed by default — you're using `docker` CLI commands (`docker ps`, `docker compose ps`, `docker logs <name>`) | Docker Desktop has a GUI but isn't installed here; not required |
 | **MCP Inspector** | `npx @modelcontextprotocol/inspector` (bare, no flags — see prep doc gotcha 9), then open the printed `http://127.0.0.1:6274/...` link in a browser | Only needed when working on the `mcp/` folder |
@@ -222,15 +238,14 @@ This is the actual sequence for a normal day working in `~/sababisha/projects/gt
 # 1. Make sure the shared databases are up (safe to run even if already running)
 docker compose -f ~/sababisha/infra/docker-compose.yml up -d
 
-# 2. Go to the project
+# 2. Go to the project — Node switches to 20 automatically on cd, no manual step needed
 cd ~/sababisha/projects/gtp/griot
+node -v   # sanity check → v20.20.2
 
-# 3. Pin Node to the right version for this repo (reads .nvmrc → 20)
-nvm use
-
-# 4. Open the editor
+# 3. Open the editor
 codium .
 ```
+> Node version switching happens automatically now (see Step 5 above) — you don't need to run `nvm use` by hand anymore, whether you `cd` into the project root or straight into a subfolder like `backend/`.
 
 ### 8.2 Working in `backend/`
 ```bash
@@ -263,7 +278,7 @@ git push
 ```
 
 ### 8.5 End of day
-You don't need to stop the Docker containers — they're lightweight and meant to stay running in the background across projects (that's the whole point of the shared `sababisha-infra` setup). Just close your terminals/editor normally. If you ever do want to stop them (e.g. before a resource-intensive task):
+You don't need to stop the Docker containers — they're lightweight and meant to stay running in the background across projects (that's the whole point of the shared `sababisha-infra` setup). Just close your terminals/editor normally. If you ever do want to stop them (e.g. freeing RAM before a long VM session):
 ```bash
 docker compose -f ~/sababisha/infra/docker-compose.yml stop
 ```
@@ -272,7 +287,7 @@ docker compose -f ~/sababisha/infra/docker-compose.yml stop
 ### 8.6 Switching to a different Sababisha project later
 ```bash
 cd ~/sababisha/projects/<other-project>
-nvm use
+node -v   # switches automatically — sanity check only, no manual nvm use needed
 ```
 Same running database containers serve it — nothing to restart, per §8 (Isolation Contract) in the prep doc.
 
@@ -287,7 +302,8 @@ Same running database containers serve it — nothing to restart, per §8 (Isola
 - **PATH** — the list of folders your shell searches through when you type a command name; if a tool "isn't found" but is installed, it's often just not on this list yet.
 - **repo (apt context)** — a remote server `apt` downloads packages from; Docker's official repo is separate from Parrot's own.
 - **container vs. image** — an **image** is the packaged, unstarted version of a program (like a recipe); a **container** is a running instance of that image (like the dish made from the recipe). `docker compose up -d` turns images into running containers.
-- **`.nvmrc`** — a tiny file in a project folder that tells `nvm` which Node version that specific project wants, so `nvm use` picks it automatically.
+- **`.nvmrc`** — a tiny file in a project folder that tells `nvm` which Node version that specific project wants. Only checked in the *current* folder by default, which is why Griot has one seeded in every subfolder, not just the root.
+- **shell function override (the `cd()` trick)** — a small piece of code in `~/.bashrc` that redefines what happens when you type `cd`, so it does something extra (here: check for `.nvmrc` and switch Node versions) every time you change directories, without you having to run a separate command.
 - **`global.json`** — the .NET equivalent: pins which SDK version a specific repo uses.
 - **env var (environment variable)** — a named value your shell keeps around (like `DOCKER_HOST`); some tools check these to decide how to behave, which is why a leftover one can cause confusing failures.
 - **`sqlcmd`** — SQL Server's own command-line client; how you talk to the database when there's no GUI open. Needs a `GO` on its own line after a query to actually run it.

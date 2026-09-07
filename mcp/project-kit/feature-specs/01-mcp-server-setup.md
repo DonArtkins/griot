@@ -24,7 +24,7 @@ The `mcp/` package with a bootable `McpServer` (name `griot`) supporting both st
 ## Setup / Initialization
 
 ```bash
-mkdir -p mcp/src mcp/tests && cd mcp && nvm use
+mkdir -p mcp/src mcp/tests && cd mcp
 npm init -y
 npm i @modelcontextprotocol/sdk zod
 ```

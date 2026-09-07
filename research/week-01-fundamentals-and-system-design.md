@@ -18,7 +18,7 @@ Everything needed for Week 1 (the rest of the stack is in the master doc §6 and
 
 - [ ] .NET 8 SDK (`dotnet --version` → 8.0.x) 
 - [ ] VS Code with the **C# Dev Kit** extension (`.NET SDK` runs on Linux — no Visual Studio needed)
-- [ ] SQL Server 2022 container (`gtp-sqlserver`) accepting connections via DBeaver
+- [ ] SQL Server 2022 container (`sababisha-sqlserver`) accepting connections via DBeaver
 - [ ] Redis container running for the auth/rate-limiting store added in Week 2
 - [ ] Docker Engine (real; `docker --version` must NOT show "podman")
 - [ ] Node.js 20 LTS via `nvm` (personal 24.x unchanged — master doc §6 shows the non-conflicting setup)
@@ -97,7 +97,7 @@ This table is Week 2's input for the **EF Core schema** (`GriotDbContext`); noth
 ## 7. Definition of Done — Week 1
 
 - [ ] HackerRank: SQL (Basic & Intermediate) + Problem Solving in C# complete
-- [ ] Dev environment per master doc §6 verified: .NET 8, Node 20, VSCodium + C#, Docker Engine real, `gtp-sqlserver` container reachable (DBeaver), PostgreSQL 16 + Redis containers, Flutter doctor (Android row green)
+- [ ] Dev environment per master doc §6 verified: .NET 8, Node 20, VSCodium + C#, Docker Engine real, `sababisha-sqlserver` container reachable (DBeaver), PostgreSQL 16 + Redis containers, Flutter doctor (Android row green)
 - [ ] App Shell: 5 core screens generated in Figma Make, refined ≥2 rounds
 - [ ] Public Shell: landing/pricing/login generated, refined ≥1 round
 - [ ] Both surfaces formalized into one Figma file with components + color/type/spacing tokens
