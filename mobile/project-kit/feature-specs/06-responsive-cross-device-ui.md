@@ -43,3 +43,7 @@ Web parity pixel-matching.
 
 - [ ] UI adapts at all breakpoints without overflow errors
 - [ ] Board usable on phone + tablet; status picker accessible
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

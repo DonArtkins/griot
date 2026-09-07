@@ -48,3 +48,7 @@ Drag-drop interactions (feature 08), bell/feed polish (feature 09).
 - [ ] Five surfaces render the backend's real data
 - [ ] CRUD works end-to-end (create project, task, comment)
 - [ ] Empty/loading/error states present on all async surfaces
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

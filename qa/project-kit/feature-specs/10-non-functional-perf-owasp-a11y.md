@@ -40,3 +40,7 @@ CREATE: k6 scripts + baseline report; OWASP checklist entries per item; axe runs
 - [ ] k6 baseline recorded (p95 < 500ms targets)
 - [ ] OWASP review logged per item (finding or no-issue)
 - [ ] axe pass on both shells
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

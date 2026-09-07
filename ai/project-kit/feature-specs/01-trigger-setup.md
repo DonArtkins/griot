@@ -59,3 +59,7 @@ CREATE: `ai/agents.ts` stub, `ai/tasks/health.ts` (runnable scheduled task), `ai
 
 - [ ] `npx trigger.dev dev` runs the health task
 - [ ] `.env.example` matches the ai rows in root `integration-contracts.md`
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

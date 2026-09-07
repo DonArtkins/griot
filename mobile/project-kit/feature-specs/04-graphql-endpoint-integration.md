@@ -48,3 +48,7 @@ Mutations through GraphQL (use REST).
 
 - [ ] Dashboard + boards load via GraphQL from the backend
 - [ ] Task detail + comments load; refetch after any local write
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

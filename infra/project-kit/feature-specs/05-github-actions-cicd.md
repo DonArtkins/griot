@@ -55,3 +55,7 @@ Staging promotion (v2).
 
 - [ ] PRs blocked on any red job; main deploys all apps
 - [ ] Mobile APK artifact downloadable
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

@@ -68,3 +68,7 @@ Bulk moves across boards, multi-type bulk ops, soft-batch queueing.
 - [ ] `PATCH /api/tasks/bulk-status` works and is atomic
 - [ ] Dashboard summary endpoint returns single-round-trip data
 - [ ] Task/comment lists paginated with stable order
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

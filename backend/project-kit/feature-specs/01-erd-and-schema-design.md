@@ -65,3 +65,7 @@ Any SQL, migrations, or entity code (feature 02).
 - [ ] Names/values match `data-layer.md` exactly
 - [ ] Human-approved; PNG exported to `diagrams/erd/griot-erd-v1.0.0.png`
 - [ ] Ledger updated
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

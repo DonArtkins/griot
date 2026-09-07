@@ -54,3 +54,7 @@ CREATE: `src/server.ts` (McpServer), `src/transports.ts` (stdio + StreamableHTTP
 
 - [ ] `npm run dev` boots; MCP Inspector smoke passes for stdio
 - [ ] Streamable HTTP endpoint responds (health)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.

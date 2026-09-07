@@ -48,3 +48,7 @@ Mutations through Apollo (web uses REST for writes per architecture) except wher
 
 - [ ] Dashboard/board/task queries resolve from the backend; cache reorder-safe
 - [ ] No N+1 in feature reads (uses backend DataLoaders)
+
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly.
