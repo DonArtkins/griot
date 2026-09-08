@@ -9,6 +9,10 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Local dev secrets (DB connection string, JWT key) live in appsettings.Local.json — git-ignored.
+// The design-time factory reads the same file; runtime now loads it too so `dotnet run --project src/Griot.Api` works out of the box.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // Controllers (thin wrappers only; business logic lives in Griot.Application services).
 builder.Services.AddControllers();
 
