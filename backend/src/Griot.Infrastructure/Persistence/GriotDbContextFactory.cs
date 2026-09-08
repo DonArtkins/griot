@@ -17,7 +17,7 @@ public class GriotDbContextFactory : IDesignTimeDbContextFactory<GriotDbContext>
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration["ConnectionStrings:DefaultConnection"];
+        var connectionString = configuration["ConnectionStrings:Default"];
         if (string.IsNullOrEmpty(connectionString))
         {
             throw new System.InvalidOperationException("Connection string 'DefaultConnection' not found.");
