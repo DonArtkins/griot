@@ -8,7 +8,9 @@ public class PaginatedResult<T>
     public int TotalCount { get; set; }
     public int PageNumber { get; set; }
     public int PageSize { get; set; }
-    public int TotalPages => (TotalCount + PageSize - 1) / PageSize;
+    public int TotalPages => PageSize <= 0 || TotalCount <= 0
+        ? 0
+        : (int)(((long)TotalCount + PageSize - 1) / PageSize);
     public bool HasPreviousPage => PageNumber > 1;
     public bool HasNextPage => PageNumber < TotalPages;
 }

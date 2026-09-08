@@ -31,6 +31,9 @@ public class TaskService : ITaskService
             };
         }
 
+        // Deduplicate task IDs (handles duplicate IDs in request)
+        var distinctTaskIds = request.TaskIds.Distinct().ToList();
+
         // Validate status enum
         if (!Enum.TryParse<Griot.Domain.Enums.TaskStatus>(request.Status, true, out var statusEnum))
         {
@@ -54,8 +57,8 @@ public class TaskService : ITaskService
             };
         }
 
-        // Validate all task IDs belong to the workspace
-        var allTasksValid = await _taskRepository.ValidateTasksInWorkspaceAsync(request.WorkspaceId, request.TaskIds);
+        // Validate all task IDs belong to the workspace (uses deduplicated list)
+        var allTasksValid = await _taskRepository.ValidateTasksInWorkspaceAsync(request.WorkspaceId, distinctTaskIds);
         if (!allTasksValid)
         {
             // Return 409 for any invalid task id in batch (per api-surface.md)
@@ -67,30 +70,31 @@ public class TaskService : ITaskService
             };
         }
 
-        // All validations passed - execute bulk update via stored procedure
+        // All validations passed - execute bulk update via stored procedure (uses deduplicated list)
         try
         {
             await _taskRepository.BulkUpdateStatusAsync(
                 request.WorkspaceId,
-                request.TaskIds,
+                distinctTaskIds,
                 request.Status
             );
 
             return new BulkUpdateTaskStatusResponse
             {
                 Success = true,
-                UpdatedCount = request.TaskIds.Count,
-                Message = $"Successfully updated {request.TaskIds.Count} task(s)"
+                UpdatedCount = distinctTaskIds.Count,
+                Message = $"Successfully updated {distinctTaskIds.Count} task(s)"
             };
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Stored procedure failed (transaction rolled back)
+            // Don't expose internal details - return generic error
             return new BulkUpdateTaskStatusResponse
             {
                 Success = false,
                 UpdatedCount = 0,
-                Message = $"Bulk update failed: {ex.Message}"
+                Message = "Bulk update failed due to a server error"
             };
         }
     }

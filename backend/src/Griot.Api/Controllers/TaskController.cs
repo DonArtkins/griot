@@ -59,10 +59,11 @@ public class TaskController : ControllerBase
     [HttpPatch("bulk-status")]
     public async Task<IActionResult> BulkStatusUpdate([FromBody] BulkUpdateTaskStatusRequest request)
     {
-        // Pre-validation: empty array or malformed body
-        if (request == null || request.TaskIds == null || request.TaskIds.Count == 0)
+        // Pre-validation: empty array, malformed body, or missing workspace ID
+        if (request == null || request.WorkspaceId == Guid.Empty ||
+            request.TaskIds == null || request.TaskIds.Count == 0)
         {
-            return BadRequest(new { message = "Task IDs array cannot be empty" });
+            return BadRequest(new { message = "Request must include valid workspace ID and non-empty task IDs array" });
         }
 
         if (string.IsNullOrWhiteSpace(request.Status))
@@ -81,17 +82,29 @@ public class TaskController : ControllerBase
 
         if (!result.Success)
         {
-            // Check if it's a validation error (400) or conflict (409)
-            if (result.Message?.Contains("invalid", StringComparison.OrdinalIgnoreCase) == true ||
-                result.Message?.Contains("do not belong", StringComparison.OrdinalIgnoreCase) == true)
+            // Handle invalid status value separately (400 Bad Request)
+            if (result.Message?.Contains("Invalid status value", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return BadRequest(new { message = result.Message });
+            }
+
+            // Check if it's a conflict error (409)
+            if (result.Message?.Contains("do not belong", StringComparison.OrdinalIgnoreCase) == true)
             {
                 // 409 for any invalid task id in batch (per api-surface.md)
                 return Conflict(new { message = result.Message });
             }
 
+            // Check if it's a forbidden error (403)
             if (result.Message?.Contains("not a member", StringComparison.OrdinalIgnoreCase) == true)
             {
                 return Forbid();
+            }
+
+            // Server error (stored procedure failure) - return 500 without exposing details
+            if (result.Message?.Contains("server error", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return StatusCode(500, new { message = "An error occurred while processing the bulk update" });
             }
 
             // General bad request for other validation failures
