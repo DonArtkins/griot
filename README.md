@@ -20,7 +20,7 @@ Each system is self-contained (own `AGENTS.md`, `.agents/skills/`, `project-kit/
 
 ## Status
 
-**Planning / system-design phase** — no production code yet. See `docs/planning/`, `PROMPTS/`, and `project-kit/`.
+**Backend/API implemented through spec 04** (EF Core 8 data layer, stored procedures + Dapper, REST controllers wired in `src/Griot.Api`). Web (React) and Mobile (Flutter) are spec'd but **not yet scaffolded** — runbook commands for them below are the target conventions. See `docs/planning/`, `PROMPTS/`, and `project-kit/`.
 
 - Docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/planning/` (NFR, capacity, risk, runbook, change-management)
 - Diagrams: 12 design diagrams specified in `PROMPTS/week-02/` → to be generated in **Figma Make**
@@ -42,6 +42,143 @@ This restores all research documents and screenshots (~15 MB, 14 files). See `do
 - `research/GTP 2026 BOOTCAMP EDITION.pdf` — Official bootcamp spec
 - `research/Netdata_RD_Presentation.pptx` — Monitoring strategy
 - `research/screenshots/*.png` — Deployment evidence & UI references
+
+## How to run & build (command reference)
+
+> **Which folder:** every block says the exact directory to `cd` into first. Repo root = `~/sababisha/projects/gtp/griot`. Node auto-switches to v20 (`.nvmrc`) on `cd`. **Docker the container** is the real Docker Engine, not Podman (see `research/gtp-2026-prep.md` §6).
+
+### 0. Prerequisites
+
+| Tool | Version | Check |
+|---|---|---|
+| .NET SDK | 8.0.x (`global.json` pins `8.0.1xx`) | `dotnet --version` |
+| Node.js | 20 (`.nvmrc`) | `node --version` |
+| Flutter | 3.19+ (mobile only) | `flutter --version` |
+| Docker Engine + Compose v2 | 26+ | `docker --version && docker compose version` |
+
+### 1. Docker containers (SQL Server + Postgres + Redis) — from anywhere
+
+The compose file lives **outside this repo** (shared Sababisha org stack): `~/sababisha/infra/docker-compose.yml`.
+
+```bash
+# Start the full local data stack (no-op if already running)
+docker compose -f ~/sababisha/infra/docker-compose.yml up -d
+
+# Check status / logs / stop
+docker compose -f ~/sababisha/infra/docker-compose.yml ps
+docker compose -f ~/sababisha/infra/docker-compose.yml logs -f sababisha-sqlserver
+docker compose -f ~/sababisha/infra/docker-compose.yml down          # stop (keeps data volumes)
+docker compose -f ~/sababisha/infra/docker-compose.yml down -v      # ⚠️ stop AND delete data volumes
+```
+
+| Service | Container name (compose prefixes `infra-`) | Host port |
+|---|---|---|
+| SQL Server 2022 | `infra-sababisha-sqlserver-1` | `localhost:14333` |
+| PostgreSQL 16 | `infra-sababisha-postgres-1` | `localhost:5433` |
+| Redis 7 | `infra-sababisha-redis-1` | `localhost:6380` |
+
+Run SQL inside the container (password: `SababishaDev2026!` or `$SABABISHA_SA_PASSWORD`):
+
+```bash
+docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  -Q "SELECT name FROM sys.tables ORDER BY name"
+```
+
+### 2. Backend API (.NET 8) — from `backend/`
+
+```bash
+cd backend
+dotnet watch run --project src/Griot.Api   # dev server with hot reload
+dotnet run --project src/Griot.Api        # no hot reload
+dotnet build Griot.sln                    # compile everything
+dotnet test                               # xUnit suite (when tests exist)
+```
+
+- App starts on **http://localhost:5064** (https profile: `https://localhost:7198`).
+- **Swagger/OpenAPI:** http://localhost:5064/swagger · **Health:** http://localhost:5064/health
+- Local dev secrets (DB connection string, JWT dev key) live in the **git-ignored** `backend/src/Griot.Api/appsettings.Local.json` — it is loaded automatically; for other environments set env vars instead:
+  ```bash
+  export ConnectionStrings__Default='Server=localhost,14333;Database=Griot;User Id=sa;Password=SababishaDev2026!;TrustServerCertificate=True'
+  export JWT__Key='<dev key>' JWT__Issuer='Griot' JWT__Audience='GriotClients'
+  ```
+
+### 3. Database — EF Core migrations & stored procedures — from `backend/`
+
+`dotnet-ef` 8.0.30 is pinned in `backend/.config/dotnet-tools.json` (restore it with `dotnet tool restore` once if missing). The connection comes from `appsettings.Local.json` or `ConnectionStrings__Default`.
+
+```bash
+cd backend
+
+# Create a new migration after changing an entity (DbContext lives in Griot.Infrastructure)
+dotnet ef migrations add <Name> --project src/Griot.Infrastructure --startup-project src/Griot.Api
+
+# Apply pending migrations to the local DB (Griot@localhost:14333)
+dotnet ef database update --project src/Griot.Infrastructure --startup-project src/Griot.Api
+
+# See what's already applied / roll back to a specific migration
+dotnet ef migrations list --project src/Griot.Infrastructure --startup-project src/Griot.Api
+dotnet ef database update 0 --project src/Griot.Infrastructure --startup-project src/Griot.Api   # ⚠️ reverts ALL
+```
+
+Stored procedures are versioned as files under `backend/src/Griot.Infrastructure/Sql/` and applied directly to SQL Server (idempotent — safe to re-run):
+
+```bash
+cd backend
+docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  < src/Griot.Infrastructure/Sql/usp_BulkUpdateTaskStatus.sql
+docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  < src/Griot.Infrastructure/Sql/usp_GetDashboardSummary.sql
+```
+
+**DBeaver:** new connection → SQL Server → host `localhost`, port `14333`, database `Griot`, user `sa`, password `SababishaDev2026!` (or `$SABABISHA_SA_PASSWORD`), enable **Trust server certificate**. Right-click database → Refresh to see new tables/procs. Stored procedures appear under **Stored Procedures** — not as tables.
+
+### 4. Web app (React + Vite + MUI) — from `web/`
+
+> 🚧 **Not scaffolded yet** — `web/` currently holds the design kit (`src/theme.ts`) and specs. Once the app lands (web feature specs 01–05), the commands are:
+
+```bash
+cd web
+npm install                 # first time (or after pulling new deps)
+npm run dev                 # Vite dev server (default http://localhost:5173)
+npm run build               # production build → dist/
+npm run lint && npm run typecheck && npm test   # verification gates
+```
+
+### 5. Mobile app (Flutter) — from `mobile/`
+
+> 🚧 **Not scaffolded yet** — `mobile/` currently holds `lib/core/theme` and specs. Once built out (mobile/feature-specs 01–07), the commands are:
+
+```bash
+cd mobile
+flutter pub get                      # fetch Dart packages (first time / after pubspec change)
+flutter run                          # run on connected device/emulator (hot reload: r)
+flutter analyze && flutter test      # verification gates
+flutter build apk --release          # ⚠️ build installable APK
+# Output: build/app/outputs/flutter-apk/app-release.apk
+flutter build apk --debug            # faster debug APK for device testing
+```
+
+### 6. AI agents & MCP (Trigger.dev / MCP) — from `ai/` and `mcp/`
+
+```bash
+cd ai && npm install && npm run dev      # start local Trigger.dev dev server (agents/Copilot)
+cd ai && npm run deploy                  # trigger deploy (production)
+
+cd mcp && npm install && node index.js   # start the MCP server (contract tests via npm test)
+```
+
+### 7. End-to-end smoke check (backend)
+
+```bash
+cd backend
+dotnet watch run --project src/Griot.Api                 # terminal 1 — wait for "Now listening on http://localhost:5064"
+curl -s http://localhost:5064/health                      # → Healthy
+curl -s http://localhost:5064/api/workspaces              # → {"message":"Not implemented yet"} (scaffold stub)
+open http://localhost:5064/swagger                        # browse every route + Try it out
+```
 
 ## Quick links
 
