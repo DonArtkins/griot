@@ -47,6 +47,7 @@ public class GriotQuery
     public async Task<WorkspaceType?> GetWorkspace(
         Guid id,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var workspace = await dbContext.Workspaces
@@ -54,6 +55,10 @@ public class GriotQuery
         
         if (workspace == null)
             return null;
+
+        // [Authorize] proves the caller has a token; workspace access itself is
+        // enforced per-resolver (owner or member) before any data is returned.
+        await RequireWorkspaceAccessAsync(dbContext, workspace.Id, claimsPrincipal, cancellationToken);
 
         return new WorkspaceType
         {
@@ -74,8 +79,12 @@ public class GriotQuery
     [UseSorting]
     public IQueryable<ProjectType> GetProjects(
         Guid workspaceId,
-        [Service] GriotDbContext dbContext)
+        [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal)
     {
+        // Caller must be owner or member of the target workspace (CWE-862).
+        RequireWorkspaceAccessSync(dbContext, workspaceId, AuthenticatedUserId(claimsPrincipal));
+
         return dbContext.Projects
             .Where(p => p.WorkspaceId == workspaceId)
             .Select(p => new ProjectType
@@ -97,6 +106,7 @@ public class GriotQuery
     public async Task<BoardType?> GetBoard(
         Guid id,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var board = await dbContext.Boards
@@ -104,6 +114,14 @@ public class GriotQuery
 
         if (board == null)
             return null;
+
+        var project = await dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Id == board.ProjectId, cancellationToken);
+
+        if (project == null)
+            return null;
+
+        await RequireWorkspaceAccessAsync(dbContext, project.WorkspaceId, claimsPrincipal, cancellationToken);
 
         return new BoardType
         {
@@ -117,24 +135,27 @@ public class GriotQuery
     /// <summary>
     /// Get tasks with filtering and sorting
     /// </summary>
+    // Data-pipeline middleware must be declared in pipeline order:
+    // UseDbContext -> UsePaging -> UseProjection -> UseFiltering -> UseSorting.
     [Authorize]
+    [UsePaging(MaxPageSize = 1000, DefaultPageSize = 100)]
     [UseFiltering]
     [UseSorting]
-    [UsePaging(MaxPageSize = 1000, DefaultPageSize = 100)]
     public IQueryable<TaskItemType> GetTasks(
-        Guid? boardId,
-        [Service] GriotDbContext dbContext)
+        Guid boardId,
+        [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal)
     {
-        var query = dbContext.TaskItems.AsQueryable();
+        // boardId is required: an unscoped task query would expose tasks across
+        // every workspace. Access is enforced per board workspace (owner/member).
+        RequireBoardAccessSync(dbContext, boardId, AuthenticatedUserId(claimsPrincipal));
 
-        if (boardId.HasValue)
-        {
-            var columnIds = dbContext.Columns
-                .Where(c => c.BoardId == boardId.Value)
-                .Select(c => c.Id);
+        var columnIds = dbContext.Columns
+            .Where(c => c.BoardId == boardId)
+            .Select(c => c.Id);
 
-            query = query.Where(t => columnIds.Contains(t.ColumnId));
-        }
+        var query = dbContext.TaskItems
+            .Where(t => columnIds.Contains(t.ColumnId));
 
         return query.Select(t => new TaskItemType
         {
@@ -160,6 +181,7 @@ public class GriotQuery
     public async Task<TaskItemType?> GetTask(
         Guid id,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var task = await dbContext.TaskItems
@@ -167,6 +189,9 @@ public class GriotQuery
 
         if (task == null)
             return null;
+
+        var workspaceId = await ResolveTaskWorkspaceIdAsync(dbContext, task.ColumnId, cancellationToken);
+        await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
 
         return new TaskItemType
         {
@@ -192,8 +217,18 @@ public class GriotQuery
     public async Task<List<CommentType>> GetComments(
         Guid taskId,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        var task = await dbContext.TaskItems
+            .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+
+        if (task == null)
+            return new List<CommentType>();
+
+        var workspaceId = await ResolveTaskWorkspaceIdAsync(dbContext, task.ColumnId, cancellationToken);
+        await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
+
         var comments = await dbContext.Comments
             .Where(c => c.TaskId == taskId)
             .OrderBy(c => c.CreatedAt)
@@ -214,9 +249,9 @@ public class GriotQuery
     /// Get notifications for the current user
     /// </summary>
     [Authorize]
+    [UsePaging(MaxPageSize = 1000, DefaultPageSize = 100)]
     [UseFiltering]
     [UseSorting]
-    [UsePaging(MaxPageSize = 1000, DefaultPageSize = 100)]
     public IQueryable<NotificationGraphQLType> GetNotifications(
         [Service] GriotDbContext dbContext,
         ClaimsPrincipal claimsPrincipal)
@@ -268,8 +303,11 @@ public class GriotQuery
     [UsePaging(MaxPageSize = 1000, DefaultPageSize = 100)]
     public IQueryable<ActivityLogType> GetActivityFeed(
         Guid workspaceId,
-        [Service] GriotDbContext dbContext)
+        [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal)
     {
+        RequireWorkspaceAccessSync(dbContext, workspaceId, AuthenticatedUserId(claimsPrincipal));
+
         return dbContext.ActivityLogs
             .Where(a => a.WorkspaceId == workspaceId)
             .OrderByDescending(a => a.CreatedAt)
@@ -293,8 +331,11 @@ public class GriotQuery
     public async Task<DashboardSummaryType> GetDashboardSummary(
         Guid workspaceId,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
+
         // This will be enhanced with the stored procedure in a later phase
         var tasks = await dbContext.TaskItems
             .Join(
@@ -347,5 +388,127 @@ public class GriotQuery
             UrgentOpenCount = urgentOpenCount,
             RecentActivity = recentActivity
         };
+    }
+
+    // ------------------------------------------------------------------
+    // Workspace authorization helpers (caller-scoped ownership/membership)
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Resolve the authenticated user id from the JWT principal, or reject the
+    /// request when the token has no usable subject claim.
+    /// </summary>
+    private static Guid AuthenticatedUserId(ClaimsPrincipal claimsPrincipal)
+    {
+        var userId = claimsPrincipal.FindFirst("sub")?.Value;
+        if (userId == null || !Guid.TryParse(userId, out var userGuid))
+            throw new UnauthorizedAccessException();
+
+        return userGuid;
+    }
+
+    /// <summary>
+    /// Resolve a task's owning workspace id via TaskItem -&gt; Column -&gt; Board -&gt; Project.
+    /// Throws when the chain is broken so existence is never disclosed.
+    /// </summary>
+    private async Task<Guid> ResolveTaskWorkspaceIdAsync(
+        GriotDbContext dbContext,
+        Guid columnId,
+        CancellationToken cancellationToken)
+    {
+        var column = await dbContext.Columns
+            .FirstOrDefaultAsync(c => c.Id == columnId, cancellationToken);
+
+        if (column == null)
+            throw new UnauthorizedAccessException();
+
+        var board = await dbContext.Boards
+            .FirstOrDefaultAsync(b => b.Id == column.BoardId, cancellationToken);
+
+        if (board == null)
+            throw new UnauthorizedAccessException();
+
+        var project = await dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Id == board.ProjectId, cancellationToken);
+
+        if (project == null)
+            throw new UnauthorizedAccessException();
+
+        return project.WorkspaceId;
+    }
+
+    /// <summary>
+    /// Async workspace access check: the caller must be the workspace owner or a
+    /// workspace member. Missing workspaces are treated as unauthorized so
+    /// existence is never disclosed (CWE-862).
+    /// </summary>
+    private async Task RequireWorkspaceAccessAsync(
+        GriotDbContext dbContext,
+        Guid workspaceId,
+        ClaimsPrincipal claimsPrincipal,
+        CancellationToken cancellationToken)
+    {
+        var userGuid = AuthenticatedUserId(claimsPrincipal);
+
+        var workspace = await dbContext.Workspaces
+            .FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
+
+        if (workspace == null)
+            throw new UnauthorizedAccessException();
+
+        if (workspace.OwnerId == userGuid)
+            return;
+
+        var member = await dbContext.WorkspaceMembers
+            .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == userGuid, cancellationToken);
+
+        if (member == null)
+            throw new UnauthorizedAccessException();
+    }
+
+    /// <summary>
+    /// Synchronous twin of RequireWorkspaceAccessAsync for IQueryable resolvers
+    /// (the paging/filtering/sorting middleware requires a synchronous IQueryable
+    /// return). Uses scalar-existence queries only - no result-set loading.
+    /// </summary>
+    private static void RequireWorkspaceAccessSync(
+        GriotDbContext dbContext,
+        Guid workspaceId,
+        Guid userGuid)
+    {
+        var isOwner = dbContext.Workspaces
+            .Where(w => w.Id == workspaceId && w.OwnerId == userGuid)
+            .Any();
+
+        if (isOwner)
+            return;
+
+        var isMember = dbContext.WorkspaceMembers
+            .Where(m => m.WorkspaceId == workspaceId && m.UserId == userGuid)
+            .Any();
+
+        if (!isMember)
+            throw new UnauthorizedAccessException();
+    }
+
+    /// <summary>
+    /// Resolve a board's owning workspace id (Board -&gt; Project) and enforce
+    /// workspace access. Missing boards are treated as unauthorized.
+    /// </summary>
+    private static void RequireBoardAccessSync(
+        GriotDbContext dbContext,
+        Guid boardId,
+        Guid userGuid)
+    {
+        var workspaceId = dbContext.Boards
+            .Join(dbContext.Projects, b => b.ProjectId, p => p.Id, (b, p) => new { Board = b, Project = p })
+            .Where(x => x.Board.Id == boardId)
+            .Select(x => x.Project.WorkspaceId)
+            .FirstOrDefault();
+
+        if (workspaceId == null)
+            throw new UnauthorizedAccessException();
+
+        RequireWorkspaceAccessSync(dbContext, workspaceId, userGuid);
     }
 }

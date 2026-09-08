@@ -49,7 +49,8 @@ builder.Services.AddScoped(sp =>
     return factory.CreateDbContext();
 });
 
-// GraphQL server (HotChocolate 14+) — code-first schema, DataLoaders, filtering, sorting, auth, query cost guard
+// GraphQL server (HotChocolate 14+) — code-first schema, DataLoaders, filtering, sorting, auth,
+// query-cost guard (parser field/node caps + max execution depth + execution timeout).
 builder.Services
     .AddGraphQLServer()
     .AddQueryType<GriotQuery>()
@@ -64,7 +65,18 @@ builder.Services
     {
         // Execution timeout (abuse prevention)
         opt.ExecutionTimeout = TimeSpan.FromSeconds(30);
-    });
+    })
+    .ModifyParserOptions(opt =>
+    {
+        // Query-cost guard: cap document size/shape before parsing/validation runs
+        // (parse-time DoS protection; complements the execution timeout).
+        opt.MaxAllowedFields = 256;
+        opt.MaxAllowedNodes = 512;
+    })
+    .AddMaxExecutionDepthRule(
+        maxAllowedExecutionDepth: 10,
+        skipIntrospectionFields: true,
+        allowRequestOverrides: false);
 
 // Health checks (/health).
 builder.Services.AddHealthChecks();
