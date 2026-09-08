@@ -11,7 +11,7 @@ NEW FEATURE
 ## Dependencies
 
 - Web feature 07 (top bar + dashboard).
-- Backend features 04 + 07 (routes).
+- Backend features 04–06 (routes for notifications and activity endpoints).
 
 ## Context To Read First
 

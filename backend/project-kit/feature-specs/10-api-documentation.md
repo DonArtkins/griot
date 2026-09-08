@@ -12,7 +12,7 @@ The API documentation surface for Griot: the **Postman collection is the machine
 
 - Backend features 04–08 (routes + auth exist).
 - Backend feature 07 (Postman collection is the source).
-- Backend feature 13 (API surface map diagram).
+- API surface map diagram (`PROMPTS/week-02/13-diagram-api-surface.md` — a diagram *prompt* #13, not a backend feature spec).
 
 ## Context To Read First
 

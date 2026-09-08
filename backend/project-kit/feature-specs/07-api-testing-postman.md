@@ -55,15 +55,15 @@ cd backend && dotnet run --project src/Griot.Api &
 
 ## Docker & Deploy
 
-- Runs against local compose (dev) and deployed Railway (qa/week-7); Newman executes it in CI (qa spec 06).
+- Runs against local compose (dev) and deployed Railway (qa/week-7); Newman executes it in CI (qa spec 05).
 
 ## Out of Scope
 
-Load testing (k6, qa spec 09); E2E UI (Cypress, qa spec 07).
+Load testing (k6, qa spec 10); E2E UI (Cypress, qa spec 09).
 
 ## Future Modifications
 
-- qa spec 06 wires Newman into GitHub Actions; Week-7 manual cycles reuse the same collection.
+- qa spec 05 wires Newman into GitHub Actions; Week-7 manual cycles reuse the same collection.
 
 ## Acceptance Criteria
 

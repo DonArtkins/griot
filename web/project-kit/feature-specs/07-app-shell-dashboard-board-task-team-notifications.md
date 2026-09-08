@@ -11,7 +11,7 @@ The five core app-shell surfaces from the Week-1 Figma screens (the GRD's entity
 ## Dependencies
 
 - Web features 03, 04, 05 (data + auth).
-- Backend features 04–07 (routes).
+- Backend features 04–06, 08 (routes + auth).
 
 ## Context To Read First
 
