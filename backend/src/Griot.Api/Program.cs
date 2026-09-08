@@ -6,12 +6,14 @@ using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
 using Griot.Infrastructure.Persistence;
+using Griot.Infrastructure.Redis;
 using Griot.Infrastructure.Repositories;
 using HotChocolate.AspNetCore;
 using HotChocolate.Execution.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +36,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Repositories (Infrastructure layer — Dapper for hot paths, EF Core via DbContext for regular ops).
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -55,6 +58,16 @@ builder.Services.AddScoped(sp =>
     var factory = sp.GetRequiredService<IDbContextFactory<GriotDbContext>>();
     return factory.CreateDbContext();
 });
+
+// Redis (spec 07): sliding-window rate limiting on /api/auth/login.
+// Connection is config/env driven (Redis:Connection / Redis__Connection); localhost dev default below.
+var redisUri = builder.Configuration["Redis:Connection"];
+if (string.IsNullOrWhiteSpace(redisUri))
+    redisUri = "redis://localhost:6380"; // host port of the shared sababisha-redis container
+
+var redisConnection = ConnectionMultiplexer.Connect(redisUri, null);
+builder.Services.AddScoped<IConnectionMultiplexer>(_ => redisConnection);
+builder.Services.AddScoped<IRedisRateLimiter, RedisRateLimiter>();
 
 // GraphQL server (HotChocolate 14+) — code-first schema, DataLoaders, filtering, sorting, auth,
 // query-cost guard (parser field/node caps + max execution depth + execution timeout).

@@ -6,7 +6,7 @@ Bootcamp Week 2 — **Implementation phase**. Backend implementation is underway
 
 | System | Kit | Status |
 |---|---|---|
-| backend | backend/project-kit | Specs 01–06 done; **Spec 07 (Auth) next** — 08 (Postman) depends on it |
+| backend | backend/project-kit | Specs 01–07 done; **Spec 08 (Postman API testing) next** |
 | web | web/project-kit | 10 feature specs; awaiting backend |
 | mobile | mobile/project-kit | 7 feature specs; waiting |
 | infra | infra/project-kit | 6 feature specs; waiting |
@@ -19,11 +19,12 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 ## Next Steps
 
 1. Fill `inspo/` with desired UI screenshots (web + mobile visual contract).
-2. Continue backend implementation in **dependency order** (canonical list in `docs/DEPENDENCY-AUDIT.md`): 01 → 02 → 03 → 04 → 05 → 06 ✅ → **07 (Auth)** → **08 (Postman)** → 09 (AI service token) → 10 (API docs) → 11 (Blob storage — only needs 01/02/04, can run in parallel once 04 exists).
+2. Continue backend implementation in **dependency order** (canonical list in `docs/DEPENDENCY-AUDIT.md`): 01 → 02 → 03 → 04 → 05 → 06 → 07 ✅ → **08 (Postman)** → 09 (AI service token) → 10 (API docs) → 11 (Blob storage — only needs 01/02/04, can run in parallel once 04 exists).
 
 ## Session Notes
 - **2026-09-08** — Root README runbook added (`docs/runbook-commands` branch): "How to run & build (command reference)" with exact folder-per-command for Docker compose (shared `~/sababisha/infra/docker-compose.yml`, `infra-`-prefixed container names, ports 14333/5433/6380), backend run/build/watch (`dotnet watch run --project src/Griot.Api` → :5064), EF Core migrations + stored-proc apply commands, web + mobile target commands (marked 🚧 not scaffolded yet; includes `flutter build apk --release` output path), AI/MCP, and an end-to-end smoke check. Status section updated to reflect backend through spec 04.
 - **2026-09-08** — ✅ **System-wide dependency-order audit completed** (`docs/DEPENDENCY-AUDIT.md`). Audited all 58 feature specs across the 7 systems; the only ordering violation was **backend 07 (Postman) depending on backend 08 (Auth)**. Canonical backend order is now 06 → **07 → 08** → 09 → 10 → 11, fixed by physically swapping the file IDs (see next note). Also fixed: stale root status ("spec 04 / spec 05 next"), README status line, bogus "feature 13" reference in backend spec 10, wrong QA-spec numbers in backend spec 08, missing `## Dependencies` in backend 11 + infra 07. 
+- **2026-09-08** — ✅ **Backend Spec 07 completed** (branch `feature/backend/07-auth-jwt-argon2-redis`): Auth lifecycle fully implemented — `AuthService` (Argon2id hashing, 15-min JWT, opaque rotated refresh tokens, family revoke on replay), `AuthRepository` (EF Core), `RedisRateLimiter` (Lua sliding-window), `AuthController` (`/api/auth/register|login|refresh|logout`), all auth DTOs. `tests/Griot.Tests/` xUnit project created with 10 tests (8 AuthServiceTests + 2 RedisRateLimiterTests) — all green. `dotnet build` 0 errors/0 warnings. Root + backend progress trackers updated. **Spec 08 (Postman API testing) is next.**
 - **2026-09-08** — ✅ **Backend spec IDs 07↔08 swapped atomically** (branch `fix/backend/swap-specs-07-08`): Auth is now **07** (`07-auth-jwt-argon2-redis.md`), Postman is now **08** (`08-api-testing-postman.md`). File names now match natural implementation order. All ~65 references updated across all 7 systems — the CodeRabbit 🟠 Major (progress tracker dependency order) → ✅ Fixed.
 - **2026-09-07 (3)** — **Features 3–4 completed; Feature  ǀ 5 marked Next (backend)**. Spec 03 (stored procedures `usp_BulkUpdateTaskStatus` / `usp_GetDashboardSummary` + Dapper repositories) and Spec 04 (REST controllers / services / DTOs scaffolded) are implemented on `feature/backend/03-stored-procedures-and-optimized-queries` and `feature/backend/04-rest-apis-dotnet8` (merged into `main` via PRs #10–#11;. Backend tracker marks specs 01–04 ✅ Done and **spec 05 (GraphQL layer — HotChocolate) as Next — not started, awaiting explicit go-ahead**.
 - **2026-09-07 (2)** — Integrated new features from `@research/ai-features-research.md`: OTP 2FA (Resend email), System Reports (SQL Server stored procs + AI scheduled/ad-hoc), and AI Copilot upgrade to Level 4 Autonomous Agent (reasoning loop + human gate). Updated all planning files, contracts, and AGENTS.md across the monorepo.

@@ -2,7 +2,7 @@
 
 ## Current State
 
-Week 2. Spec 06 is complete (bulk operations & advanced data). Spec 07 (Auth: JWT + Argon2 + Redis) is next (Spec 08 depends on auth endpoints).
+Week 2. Spec 07 is complete (Auth: JWT + Argon2 + Redis). Spec 08 (API testing with Postman) is next.
 
 | Spec | Title | Status |
 |---|---|---|
@@ -12,17 +12,16 @@ Week 2. Spec 06 is complete (bulk operations & advanced data). Spec 07 (Auth: JW
 | 04 | REST APIs (.NET 8) | ✅ Done |
 | 05 | GraphQL layer (HotChocolate) | ✅ Done |
 | 06 | Bulk operations & advanced data | ✅ Done |
-| 07 | Auth: JWT + Argon2 + Redis [own-stack] | Next |
-| 08 | API testing (Postman) | Pending (depends on 07) |
+| 07 | Auth: JWT + Argon2 + Redis [own-stack] | ✅ Done |
+| 08 | API testing (Postman) | Next (depends on 07) |
 | 09 | AI service token + webhooks [own-stack] | Pending |
 | 10 | API documentation | Pending |
 | 11 | Blob storage integration | Pending |
 
 ## Next Steps
 
-1. Implement spec 07 (Auth: JWT + Argon2 + Redis) on branch `feature/backend/07-auth-jwt-argon2-redis`.
-2. Implement spec 08 (API testing with Postman) after spec 07 completes (dependency: auth endpoints).
-3. Then implement in dependency order: **09** (AI service token; needs 07) → **10** (API docs; needs 04–07 + 08) → **11** (Blob storage; needs 01/02/04 only — can run in parallel after 04, not gated behind 08–10). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
+1. Implement spec 08 (API testing with Postman) on branch `feature/backend/08-api-testing-postman` — depends on spec 07 auth endpoints now complete.
+2. Then implement in dependency order: **09** (AI service token; needs 07) → **10** (API docs; needs 04–07 + 08) → **11** (Blob storage; needs 01/02/04 only — can run in parallel after 04, not gated behind 08–10). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
 
 ## Session Notes
 
@@ -39,6 +38,7 @@ Week 2. Spec 06 is complete (bulk operations & advanced data). Spec 07 (Auth: JW
 - **2026-09-08** — ⚠️ **CodeRabbit review fixes applied** (same branch): **(1) Atomic enforcement:** Updated `usp_BulkUpdateTaskStatus` to count affected rows and roll back if count differs from requested count (prevents partial updates if tasks are deleted/moved between validation and update). **(2) Duplicate ID handling:** TaskService now deduplicates task IDs before validation and update (fixes 409 rejection when request contains duplicate IDs; dbo.IdList TVP has PRIMARY KEY so duplicates would fail). **(3) Request validation:** TaskController now rejects `request.WorkspaceId == Guid.Empty` with 400 (was allowing empty GUID and returning 403 from membership check). **(4) Error handling:** Invalid status enum now returns 400 (was incorrectly matching "invalid" substring and returning 409); stored procedure failures return generic 500 without exposing `ex.Message` (CWE-209 fix). **(5) Division by zero:** `PaginatedResult<T>.TotalPages` now guards against PageSize ≤ 0 and prevents overflow for large TotalCount (returns 0 for invalid sizes, uses long arithmetic). **(6) Progress tracker dependency ordering:** Corrected next-spec priority — Spec 08 (auth) is now next because Spec 07 (Postman collection) depends on auth endpoints per feature-specs/07 Dependencies section. **Verified:** `dotnet build` 0 errors/0 warnings.
 - **2026-09-08** — ✅ **System-wide dependency audit completed** (`docs/DEPENDENCY-AUDIT.md`): all 58 feature specs in the 7 systems verified against their own `## Dependencies` sections. Only ordering risk was backend **07↔08**, already fixed on this branch (session note above). Canonical order: 01→02→03→04→05→06→**07→08**→09→10→11. Secondary fixes: backend spec 08 QA-spec numbers corrected (Newman=qa 05, k6=qa 10, Cypress=qa 09), backend spec 10 "feature 13" → real diagram prompt ref, `## Dependencies` added to backend 11 + infra 07, qa spec 06 dep clarified to "04–06, 07".
 - **2026-09-08** — ✅ **Spec IDs swapped atomically** (branch `fix/backend/swap-specs-07-08`): Auth is now **07** (`07-auth-jwt-argon2-redis.md`), Postman is now **08** (`08-api-testing-postman.md`). All ~65 references updated system-wide across backend, web, mobile, qa, docs, README, progress trackers, DEPENDENCY-AUDIT.md, api-surface.md, architecture.md, AGENTS.md, GraphQL guides, Program.cs. File names now match natural implementation order — no more "implement 08 before 07" confusion.
+- **2026-09-08** — ✅ **Spec 07 completed** (branch `feature/backend/07-auth-jwt-argon2-redis`): Implemented full auth lifecycle — `AuthService` (Argon2id hashing t=3/m=64MB/p=4, JWT 15-min access token with `sub`/`email`/`jti` claims, opaque 256-bit refresh token hashed at rest with SHA-256, rotation-on-use, family revoke on reuse). `IAuthService` + `IAuthRepository` interfaces. `AuthRepository` (EF Core: user lookup, refresh token CRUD, rotation, family revoke). `RedisRateLimiter` (sliding-window Lua script, returns 429 + `Retry-After`). `AuthController` (`/api/auth/register`, `/login`, `/refresh`, `/logout`). All auth DTOs (`RegisterRequest`, `LoginRequest`, `RefreshRequest`, `LogoutRequest`, `AuthResponse`, `AuthUserDto`). Added packages: `Konscious.Security.Cryptography.Argon2 1.3.1` to `Griot.Application`, `StackExchange.Redis 2.8.16` to `Griot.Infrastructure`, `System.IdentityModel.Tokens.Jwt 7.1.2` + `Microsoft.Extensions.Configuration.Abstractions 8.0.0` + `Microsoft.Extensions.Logging.Abstractions 8.0.0` to `Griot.Application`. `Program.cs` wired Redis + `IRedisRateLimiter` + `IAuthRepository`/`AuthRepository`. Created `tests/Griot.Tests/` xUnit project with 10 tests (8 `AuthServiceTests` + 2 `RedisRateLimiterTests`) — all green. **Fix (contract-sync):** Added missing NuGet packages to `Griot.Application.csproj` (`System.IdentityModel.Tokens.Jwt`, `Microsoft.Extensions.Configuration.Abstractions`, `Microsoft.Extensions.Logging.Abstractions`) and fixed 2 nullable warnings in `RedisRateLimiter.cs` (null-safe cast + uniform `long` arithmetic). **Verified:** `dotnet build` 0 errors/0 warnings; `dotnet test` 10/10 passed. Acceptance criteria: register/login/refresh/logout ✅; replay revokes family ✅; rate limiter returns 429 ✅; JWT `sub`/`email`/`jti` claims ✅; CORS allow-list configured ✅.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

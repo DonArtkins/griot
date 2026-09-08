@@ -106,7 +106,7 @@ Press the **Play** button (▶️) or `Ctrl+Enter` to execute.
 
 ### Step 4: Try a Real Query (After Authentication)
 
-Once Feature 07 is implemented, you can query actual data:
+Once Feature 07 (auth) is live (✅ Done), you can query actual data:
 
 ```graphql
 query GetBoard {
@@ -275,16 +275,14 @@ Right now, most queries will return:
   ```
 
 ### "All my queries return AUTH_NOT_AUTHENTICATED"
-- **Status:** Expected until Feature 07 is implemented
-- **Timeline:** Feature 07 (JWT authentication) comes next
-- **Workaround:** Use introspection queries for now (they work without auth)
+- **Status:** Feature 07 (JWT auth) is ✅ **Done** — auth endpoints are live
+- **Solution:** Register via `POST /api/auth/register`, login via `POST /api/auth/login`, add the returned `accessToken` as `Authorization: Bearer <token>` in Banana Cake Pop headers
 
 ### "I want to test with real data"
-- **Step 1:** Wait for Feature 07 to be implemented (JWT auth)
-- **Step 2:** Register a user via `/api/auth/register`
-- **Step 3:** Login via `/api/auth/login` to get a JWT token
-- **Step 4:** Add the token to Banana Cake Pop headers
-- **Step 5:** Run your queries!
+- **Step 1:** Register a user via `POST /api/auth/register`
+- **Step 2:** Login via `POST /api/auth/login` to get a JWT access token
+- **Step 3:** Add the token to Banana Cake Pop headers
+- **Step 4:** Run your queries!
 
 ## 📚 Learning Resources
 

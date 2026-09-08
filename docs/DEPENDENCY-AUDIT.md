@@ -14,7 +14,7 @@
 - **08 = API testing (Postman)** ← implement AFTER 07 (file: `08-api-testing-postman.md`)
 - All ~65 references across all 7 systems updated atomically in this branch.
 
-**Canonical next-step rule:** implement **07 (Auth)** first. Next branch: `feature/backend/07-auth-jwt-argon2-redis`.
+**Canonical next-step rule:** Spec 07 (Auth) is ✅ **Done**. Implement **08 (Postman)** next. Next branch: `feature/backend/08-api-testing-postman`.
 
 ---
 
@@ -37,12 +37,11 @@
 | 11 | Blob storage | None listed | ✅ Yes (independent) |
 
 **Corrected Implementation Order (canonical):**
-1. 01 → 02 → 03 → 04 → 05 → 06 ✅ (done, unchanged)
-2. **07** (Auth) — next branch: `feature/backend/07-auth-jwt-argon2-redis`
-3. **08** (Postman) — after 07
-4. 09 (AI service token — needs 07)
-5. 10 (API docs — needs 04–07 + 08)
-6. 11 (Blob storage — needs only 01/02/04; may run in parallel once 04 exists, not gated behind 08–10)
+1. 01 → 02 → 03 → 04 → 05 → 06 → 07 ✅ (done, unchanged)
+2. **08** (Postman) — next branch: `feature/backend/08-api-testing-postman`
+3. 09 (AI service token — needs 07)
+4. 10 (API docs — needs 04–07 + 08)
+5. 11 (Blob storage — needs only 01/02/04; may run in parallel once 04 exists, not gated behind 08–10)
 
 ---
 
@@ -134,9 +133,9 @@
 - `backend/project-kit/feature-specs/07-api-testing-postman.md` → `08-api-testing-postman.md`
 
 ### 2. Ordering fixed in every state document
-- **Backend progress tracker:** Spec 07 = Auth `Next`; Spec 08 = `Pending (depends on 07)`; Next Steps list **07 → 08** explicitly.
-- **Root progress tracker:** backend row + Next Steps now name **07 (Auth) → 08 (Postman)** as the immediate sequence.
-- **README.md:** status line updated ("Next: spec 07 (Auth)" with the dependency rationale).
+- **Backend progress tracker:** Spec 07 = Auth ✅ `Done`; Spec 08 = `Next (depends on 07)`; Next Steps list **08 → 09 → 10 → 11** explicitly.
+- **Root progress tracker:** backend row + Next Steps now name **08 (Postman)** as immediate next.
+- **README.md:** status line updated ("Next: spec 08 (Postman)").
 - **This audit file** records the canonical order permanently (see Backend section above).
 
 ### 3. Spec-level cleanliness (contract sync, same pass)
@@ -148,7 +147,7 @@
 - `web/…/07` + `web/…/09`: backend deps clarified to routes + auth (04–06, 07) — applied.
 
 ### 4. Progress-tracker verification (post-fix)
-- ✅ Backend: Spec 07 (Auth) = Next; Spec 08 depends on 07; canonical order 07 → 08 → 09 → 10 → 11.
+- ✅ Backend: Spec 07 (Auth) = ✅ Done; Spec 08 (Postman) = Next; canonical order 08 → 09 → 10 → 11.
 - ✅ Web/Mobile/AI/MCP/Infra/QA: all cross-system spec numbers updated — every "Backend 07 (auth)" / "Backend 08 (Postman)" reference is now consistent.
 
 ---
