@@ -33,6 +33,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET | `/api/logs/errors` | error log (Owner/Admin) | Owner/Admin |
 | GET | `/api/logs/audit?entityType=&entityId=` | audit log | Owner |
 | POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) | HMAC only |
+| GET | `/health` | liveness (health checks) | public |
 
 ## Attachment limits (Phase 1 — Vercel Blob)
 - **File size:** 25 MB per file (enforced via `[RequestSizeLimit(26_214_400)]`)
@@ -79,7 +80,11 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 - REST + GraphQL call the SAME services (`Griot.Application`) → drift-proof.
 - Responses are DTOs, never raw entities.
 - Errors: 404 for not found/not-owned (never disclose existence), 400 validation, 401 auth, 403 role, 409 conflict/illegal state, 429 rate limit.
+- Every response carries `X-Request-Id` (request-id middleware; logs correlated by it).
 - **`PATCH /api/tasks/bulk-status`**: 409 for any invalid task id in batch (not 404/400); full rollback via `usp_BulkUpdateTaskStatus`; 400 only for pre-validation failures (empty array, malformed body).
 - Pagination: fixed page size, stable order (tasks by `(ColumnId, Position)`); cursor or skip/take.
 - Latency budgets (p95): board read < 500 ms, dashboard < 500 ms, login < 300 ms, bulk-status < 800 ms.
 - Postman collection (`Postman/Griot.postman_collection.json`) mirrors every route; Newman reuses it in CI (qa).
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.
