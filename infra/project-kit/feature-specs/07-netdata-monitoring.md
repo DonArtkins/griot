@@ -10,6 +10,19 @@
 
 ---
 
+## Dependencies
+
+- Feature 02 (backend API Docker image exists — the node Netdata instruments).
+- Feature 06 (Railway deployment exists — agents target deployed nodes).
+- Per `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md`, Netdata is a **Phase-1 production blocker** that ships before public launch, but it is **not** a gate for Infra features 01–06.
+
+## Context To Read First
+
+- `research/Netdata_RD_Presentation.pptx` (this spec is the written form)
+- `docs/observability/MONITORING.md`
+
+---
+
 ## 1. Problem Statement
 
 ### Current state (minimal monitoring — NOT production-ready)

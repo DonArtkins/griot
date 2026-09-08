@@ -10,6 +10,20 @@
 
 ---
 
+## Dependencies
+
+- Feature 01 (approved ERD: `Attachments` entity + `StorageUrl`).
+- Feature 02 (EF Core schema: `Attachments` table in the migration).
+- Feature 04 (REST routes + service layer to attach upload/download to).
+- **Not gated by Features 07–10** — blob storage needs only 01/02/04 and may be implemented in parallel with 08/07/09/10. Phase-1 production blocker per `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` (ships before public launch).
+
+## Context To Read First
+
+- `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` (blob storage = Phase 1)
+- `docs/planning/RISK-REGISTER.md` (attachment/Railway-ephemeral-storage risk)
+
+---
+
 ## 1. Problem Statement
 
 ### Current state (v1 local/disk — NOT production-ready)

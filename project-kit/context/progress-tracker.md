@@ -6,7 +6,7 @@ Bootcamp Week 2 — **Implementation phase**. Backend implementation is underway
 
 | System | Kit | Status |
 |---|---|---|
-| backend | backend/project-kit | Spec 04 done; Spec 05 next |
+| backend | backend/project-kit | Specs 01–06 done; **Spec 08 (Auth) next** — 07 (Postman) depends on it |
 | web | web/project-kit | 10 feature specs; awaiting backend |
 | mobile | mobile/project-kit | 7 feature specs; waiting |
 | infra | infra/project-kit | 6 feature specs; waiting |
@@ -19,10 +19,11 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 ## Next Steps
 
 1. Fill `inspo/` with desired UI screenshots (web + mobile visual contract).
-2. Continue backend implementation (backend spec 05 →  ǀ 11).
+2. Continue backend implementation in **dependency order** (canonical list in `docs/DEPENDENCY-AUDIT.md`): 01 → 02 → 03 → 04 → 05 → 06 ✅ → **08 (Auth)** → **07 (Postman)** → 09 (AI service token) → 10 (API docs) → 11 (Blob storage — only needs 01/02/04, can run in parallel once 04 exists).
 
 ## Session Notes
 - **2026-09-08** — Root README runbook added (`docs/runbook-commands` branch): "How to run & build (command reference)" with exact folder-per-command for Docker compose (shared `~/sababisha/infra/docker-compose.yml`, `infra-`-prefixed container names, ports 14333/5433/6380), backend run/build/watch (`dotnet watch run --project src/Griot.Api` → :5064), EF Core migrations + stored-proc apply commands, web + mobile target commands (marked 🚧 not scaffolded yet; includes `flutter build apk --release` output path), AI/MCP, and an end-to-end smoke check. Status section updated to reflect backend through spec 04.
+- **2026-09-08** — ✅ **System-wide dependency-order audit completed** (`docs/DEPENDENCY-AUDIT.md`). Audited all 58 feature specs across the 7 systems; the only ordering violation was **backend 07 (Postman) depending on backend 08 (Auth)**. Canonical backend order is now 06 → **08 → 07** → 09 → 10 → 11, fixed in every tracker + README + the audit file. Also fixed: stale root status ("spec 04 / spec 05 next"), README status line, bogus "feature 13" reference in backend spec 10, wrong QA-spec numbers in backend spec 07, missing `## Dependencies` in backend 11 + infra 07. **Spec IDs deliberately NOT renumbered** (07 = Postman, 08 = Auth): 30+ cross-system references resolve "08 = auth", so IDs stay stable and ordering is enforced via trackers — the CodeRabbit 🟠 Major (dependency order) → ✅ Fixed item.
 - **2026-09-07 (3)** — **Features 3–4 completed; Feature  ǀ 5 marked Next (backend)**. Spec 03 (stored procedures `usp_BulkUpdateTaskStatus` / `usp_GetDashboardSummary` + Dapper repositories) and Spec 04 (REST controllers / services / DTOs scaffolded) are implemented on `feature/backend/03-stored-procedures-and-optimized-queries` and `feature/backend/04-rest-apis-dotnet8` (merged into `main` via PRs #10–#11;. Backend tracker marks specs 01–04 ✅ Done and **spec 05 (GraphQL layer — HotChocolate) as Next — not started, awaiting explicit go-ahead**.
 - **2026-09-07 (2)** — Integrated new features from `@research/ai-features-research.md`: OTP 2FA (Resend email), System Reports (SQL Server stored procs + AI scheduled/ad-hoc), and AI Copilot upgrade to Level 4 Autonomous Agent (reasoning loop + human gate). Updated all planning files, contracts, and AGENTS.md across the monorepo.
 
