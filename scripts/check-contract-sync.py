@@ -92,7 +92,10 @@ def main():
                          "project-kit/context/progress-tracker.md", f"{system}/project-kit/context/progress-tracker.md", "CHANGELOG.md"):
             require(required in changed, f"{system}: missing branch contract/update evidence in {required}")
 
-    require((ROOT / "docs/planning/FEATURE-07-AUTH-REPAIR.md").exists(), "Missing auth repair evidence and contract review matrix.")
+    require((ROOT / "docs/decisions/ADR-003-auth-architecture-otp-security.md").exists() and
+            (ROOT / "docs/security/AUTHENTICATION-GUIDE.md").exists() and
+            (ROOT / "docs/api/auth-contract.md").exists(),
+            "Missing auth architecture/contract documentation (ADR-003, guide, or auth-contract).")
     for error in errors:
         print(f"FAIL: {error}", file=sys.stderr)
     if errors:

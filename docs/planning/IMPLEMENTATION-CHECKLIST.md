@@ -20,31 +20,31 @@ All specification/documentation issues are complete. See commit history for deta
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:299`  
 **FIXME:** Add extension + magic-byte validation  
 **Effort:** 1 day  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md §1.1
+**Details:** Implement extension + magic-byte validation on upload; block executable content types; enforce size limits per workspace quota.
 
 #### 2. Atomic Quota Enforcement  
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:308`  
 **FIXME:** Implement WorkspaceStorageReservations table + atomic reservation  
 **Effort:** 2 days  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md §1.2
+**Details:** Implement WorkspaceStorageReservations table with transactional blob upload → reservation commit; rollback blob upload if reservation fails.
 
 #### 3. Metadata Persistence Compensation
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:289-306`  
 **FIXME:** Delete uploaded blob if database persistence fails  
 **Effort:** 1 day  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md §1.3
+**Details:** If SaveChanges fails after successful blob storage upload, issue compensating blob DELETE to prevent orphaned storage content.
 
 #### 4. Deletion Failure Handling
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:237-240`  
 **FIXME:** Propagate blob deletion failures, don't remove metadata  
 **Effort:** 1 day  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md §1.4
+**Details:** If underlying blob storage DELETE returns non-success, do NOT remove the metadata row; surface error to caller for retry; track orphaned blobs for periodic cleanup job.
 
 #### 5. Workspace Authorization
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:301,347,354`  
 **FIXME:** Add workspace membership checks in upload/list/delete  
 **Effort:** 2 days  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md §1.5
+**Details:** Before upload/list/delete, verify caller's ClaimsPrincipal sub (userId) has WorkspaceMembership row with at least Viewer role for the target workspaceId.
 
 **Blob Security Total:** 7 days
 
@@ -57,31 +57,31 @@ All specification/documentation issues are complete. See commit history for deta
 **Issue:** Application layer calling Redis/Dapper directly  
 **Fix:** Create ICacheService, IDashboardRepository abstractions  
 **Effort:** 2 days  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md §3.1
+**Details:** Extract direct Redis/Dapper calls from DashboardService into IDashboardRepository (Infrastructure) and ICacheService abstraction; Application layer depends only on interfaces.
 
 #### 7. Token Validation on Startup
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:212-213`  
 **Fix:** Add BlobStorageOptions validation with ValidateOnStart  
 **Effort:** 0.5 days  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md §3.2
+**Details:** Use IOptions<BlobStorageOptions>.ValidateOnStart with DataAnnotationsValidator to verify account name/container/SAS at DI build, not at first upload.
 
 #### 8. Idempotency Keys Infrastructure
 **Location:** `docs/planning/NFR.md:73`  
 **Fix:** IdempotencyKeys table + middleware + 24h cache  
 **Effort:** 3 days  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md §3.3
+**Details:** Create IdempotencyKeys table (Key PK, RequestHash, ResponseBody, ExpiresAt); middleware checks Idempotency-Key header on write requests; cache GET in Redis 24h.
 
 #### 9. Browser Refresh Serialization
 **Location:** `docs/planning/CACHING-REFRESH-SYNC-STRATEGY.md:341-346`  
 **Fix:** Share single in-flight refresh promise to prevent concurrent calls  
 **Effort:** 1 day  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md (browser section)
+**Details:** Web (TanStack Query) + Mobile (GraphQL Flutter) share a single in-flight refresh-token Promise/Future; concurrent callers await the same result to avoid double-rotation race.
 
 #### 10. Concurrent Refresh Token Rotation
 **Location:** `docs/planning/CACHING-REFRESH-SYNC-STRATEGY.md:733-735`  
 **Fix:** Atomic claim with @@ROWCOUNT check in single transaction  
 **Effort:** 2 days  
-**Details:** See CODERABBIT-REMAINING-ISSUES.md (token rotation section)
+**Details:** AuthRepository.RotateRefreshTokenAsync uses RepeatableRead transaction + conditional ExecuteUpdate WHERE RevokedAt IS NULL; 0 rows affected = reuse evidence = family-scoped RevokeFamilyAsync.
 
 **Architecture Total:** 8.5 days
 
@@ -131,8 +131,10 @@ grep -r "TODO" backend/project-kit/ docs/planning/ | wc -l
 
 ## 📖 Full Details
 
-**Complete implementation guidance with code examples:**  
-See `docs/planning/CODERABBIT-REMAINING-ISSUES.md` (369 lines)
+Each item above includes inline implementation details. For architectural decisions,
+see `docs/decisions/ADR-003-auth-architecture-otp-security.md` (auth) and
+related ADRs in `docs/decisions/`. For feature-specific guidance, see the
+owning feature spec under `<system>/project-kit/feature-specs/`.
 
 **Planning phase complete:** ✅  
 **Implementation phase:** Ready to begin (15.5 days estimated)
