@@ -16,7 +16,7 @@
 - **SQL Server 2022 (primary)** — the Week-2 deliverable database. Runs as `mcr.microsoft.com/mssql/server:2022-latest` on Parrot (no native Debian package; the image *is* SQL Server, not a fake). DBeaver/SSMS-compatible. All schema, procs, and queries in this doc target SQL Server T-SQL.
 - **PostgreSQL 16 (secondary)** — also in the compose file per the guide's stack list: used as the **secondary/test** store (e.g., running the same schema in an alternate engine for cohort discussions, or as a scratch DB). The capstone's canonical DB is SQL Server.
 - **Auth: `[own-stack]`** — custom JWT access/refresh implemented on ASP.NET Core Identity-free middleware (Argon2 + Redis). The guide avoids naming a vendor, so the mechanism is "whatever is encoded in-house, auditable in Week 6."
-- **Redis** — `[own-stack]` rate limiting + refresh-token/session store, compose service since Week 1.
+- **Redis** — `[own-stack]` rate limiting; SQL Server stores refresh tokens, compose service since Week 1.
 - **Solution layout** is modular-but-pragmatic, single `.sln`:
 
 ```
@@ -102,7 +102,7 @@ await _db.ExecuteAsync("dbo.usp_BulkUpdateTaskStatus",
 ## 6. Auth (own-stack, no vendor) — built on ASP.NET Core primitives
 
 - **Argon2** password hashing (`Konscious.Security.Cryptography`).
-- **JWT access** tokens, 15-min TTL, claims `sub`/`wid`, signed by an env-provided key.
+- **JWT access** tokens, 15-min TTL, claims `sub`/`email`/`jti`, signed by an env-provided key.
 - **Opaque refresh tokens**, stored **hashed** in SQL Server (`RefreshTokens` table), **rotated on use** (old revoked, new issued) — the pattern Week-6's OWASP pass verifies.
 - **Redis sliding-window rate limit** on `/api/auth/login` and a query-cost guard on `/graphql`.
 - CORS allow-list set to the Vercel origin in prod, localhost dev.
@@ -130,3 +130,10 @@ One collection with `REST` + `GraphQL` folders, chained via environment vars (`b
 
 ---
 **Engineering Excellence. Production Mindset. Professional Impact.**
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.

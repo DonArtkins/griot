@@ -80,7 +80,7 @@ Id GUID PK | WorkspaceId FK→Workspaces | ActorId FK→Users | EntityType nvarc
 Id GUID PK | UserId FK→Users | Type NotificationType | Title nvarchar(200) | Body nvarchar(500) ? | TargetRef nvarchar(200) | ReadAt datetime2 ? | CreatedAt datetime2
 
 ### RefreshTokens (Identity)
-Id GUID PK | UserId FK→Users | TokenHash nvarchar(128) UQ | ExpiresAt datetime2 | RevokedAt datetime2 ? | ReplacedByTokenId GUID ? | CreatedAt datetime2
+Id GUID PK | UserId FK→Users | TokenHash nvarchar(128) UQ | FamilyId GUID (stable rotation family) | ExpiresAt datetime2 | RevokedAt datetime2 ? | ReplacedByTokenId GUID ? | CreatedAt datetime2
 
 ### ApiLogs (Observability — request tracing)
 Id GUID PK | RequestId GUID UQ | UserId FK→Users ? | Method nvarchar(8) | Path nvarchar(300) | QueryString nvarchar(500) ? | StatusCode int | DurationMs int | UserAgent nvarchar(300) ? | IpAddress nvarchar(45) ? | CreatedAt datetime2
@@ -127,7 +127,7 @@ OBSERVABILITY GOVERNANCE (annotation box connected to all three amber tables):
 - TaskItems(AssigneeId), TaskItems(DueDate) — my tasks + reminder agent
 - ActivityLogs(WorkspaceId, CreatedAt DESC) — feed + summarize_project
 - Notifications(UserId, ReadAt) — unread count
-- RefreshTokens(UserId), RefreshTokens(TokenHash) UQ
+- RefreshTokens(UserId), RefreshTokens(TokenHash) UQ, RefreshTokens(UserId, FamilyId)
 - Invites(Token) UQ, Invites(WorkspaceId, Email)
 - ApiLogs(RequestId) UQ, ApiLogs(UserId, CreatedAt), ApiLogs(Path)
 - ErrorLogs(FixStatus) partial, ErrorLogs(FixedAt)
@@ -160,3 +160,15 @@ Paste the full prompt once. If the canvas omits any table (named above), **do no
 - [ ] Names/values match `backend/project-kit/context/data-layer.md` + `docs/database/DATABASE-DESIGN.md` exactly
 - [ ] Module color-coding (purple/blue/teal/amber) applied
 - [ ] Approved → PNG → `diagrams/erd/griot-erd-v1.0.0.png` → ledger updated
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+The current REST transport uses JSON refresh tokens for Postman/mobile. Web
+HttpOnly cookie transport in the design remains a backend prerequisite for web
+Feature 05; do not treat the cookie diagrams as live behavior or store tokens in
+localStorage. SQL Server owns refresh rows; Redis currently owns login limits.

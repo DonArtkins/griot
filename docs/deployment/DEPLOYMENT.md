@@ -12,7 +12,7 @@
 
 ## Env matrix (per app)
 
-- backend: `ConnectionStrings__Default`, `JWT__SigningKey`, `JWT__Issuer`, `JWT__Audience`, `Redis__Connection`, `GRIOT_SERVICE_TOKEN`, `Cors__AllowedOrigins`
+- backend: `ConnectionStrings__Default`, `JWT__Key`, `JWT__Issuer`, `JWT__Audience`, `Redis__Connection`, `GRIOT_SERVICE_TOKEN`, `Cors__AllowedOrigins`
 - web: `VITE_API_URL`
 - ai/mcp: `GRIOT_API_URL`, `GRIOT_SERVICE_TOKEN` (+ ai: LLM keys, `TRIGGER_WEBHOOK_SECRET`)
 - compose (local): `SABABISHA_SA_PASSWORD`, `SABABISHA_PG_PASSWORD`

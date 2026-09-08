@@ -506,7 +506,7 @@ public class GriotQuery
             .Select(x => x.Project.WorkspaceId)
             .FirstOrDefault();
 
-        if (workspaceId == null)
+        if (workspaceId == Guid.Empty)
             throw new UnauthorizedAccessException();
 
         RequireWorkspaceAccessSync(dbContext, workspaceId, userGuid);

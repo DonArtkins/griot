@@ -59,7 +59,7 @@ Derived from the Week-1 entity/screen mapping + the Lyncxs observability/error-t
 
 **Notifications** — `Id` (GUID, PK) · `UserId` (FK → Users) · `Type` (enum NotificationType) · `Title` (nvarchar(200)) · `Body` (nvarchar(500), nullable) · `TargetRef` (nvarchar(200)) · `ReadAt` (datetime2, nullable) · `CreatedAt`
 
-**RefreshTokens** — `Id` (GUID, PK) · `UserId` (FK → Users) · `TokenHash` (nvarchar(128), UQ — SHA-256 of the opaque token) · `ExpiresAt` · `RevokedAt` (nullable) · `ReplacedByTokenId` (GUID, nullable — rotation chain) · `CreatedAt`
+**RefreshTokens** — `Id` (GUID, PK) · `UserId` (FK → Users) · `TokenHash` (nvarchar(128), UQ — SHA-256 of the opaque token) · `FamilyId` (GUID, required; stable rotation family) · `ExpiresAt` · `RevokedAt` (nullable) · `ReplacedByTokenId` (GUID, nullable — rotation chain) · `CreatedAt`
 
 ### Observability & audit (added in planning so the schema never changes later)
 
@@ -181,3 +181,15 @@ When prompting the backend agent (Cline/Claude), say: *"Build backend features 0
 - [ ] Refined ≥1 round; approved; PNG exported to `diagrams/erd/griot-erd-v1.0.0.png`
 - [ ] Diagrams ledger updated (source = Figma Make project URL)
 - [ ] Backend feature 02 treats the ERD as its contract; no schema code before approval
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+The current REST transport uses JSON refresh tokens for Postman/mobile. Web
+HttpOnly cookie transport in the design remains a backend prerequisite for web
+Feature 05; do not treat the cookie diagrams as live behavior or store tokens in
+localStorage. SQL Server owns refresh rows; Redis currently owns login limits.

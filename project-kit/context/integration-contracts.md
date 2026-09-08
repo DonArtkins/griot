@@ -17,7 +17,7 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | Scope | Var | Purpose |
 |---|---|---|
 | backend | `ConnectionStrings__Default` | SQL Server (compose: `Server=sababisha-sqlserver,1433;Database=griot;User Id=sa;Password=…`) |
-| backend | `JWT__SigningKey` `JWT__Issuer` `JWT__Audience` | Token sign/validate |
+| backend | `JWT__Key` `JWT__Issuer` `JWT__Audience` | Token sign/validate |
 | backend | `Redis__Connection` | `sababisha-redis:6379` |
 | backend | `GRIOT_SERVICE_TOKEN` | AI/MCP service calls (Bearer) |
 | backend | `Cors__AllowedOrigins` | Vercel origin prod; localhost dev |
@@ -45,6 +45,13 @@ Tools (ids): `list_projects`, `list_boards`, `get_board`, `get_task`, `create_ta
 ## CI/CD contract
 
 GitHub Actions job names (qa owns suites, infra owns pipeline): `test-dotnet`, `test-web`, `test-mobile`, `test-ai`, `test-mcp`, `newman`, `cypress`, `deploy`. Merge blocked if any red.
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register( and `POST /api/auth/otp/verify` (200/401/429;; sets `Users.EmailVerified`; branded Resend template per purpose (`auth-contract.md`). Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -232,6 +232,8 @@ public class GriotDbContext : DbContext
         {
             b.HasIndex(r => r.UserId);
             b.HasIndex(r => r.TokenHash).IsUnique();
+            // FamilyId index: scopes reuse-revocation queries to one rotation chain
+            b.HasIndex(r => new { r.UserId, r.FamilyId });
 
             b.Property(r => r.TokenHash).HasMaxLength(128);
 

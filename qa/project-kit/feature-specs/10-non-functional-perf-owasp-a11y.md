@@ -42,5 +42,12 @@ CREATE: k6 scripts + baseline report; OWASP checklist entries per item; axe runs
 - [ ] axe pass on both shells
 
 
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

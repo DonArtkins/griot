@@ -93,3 +93,15 @@ This file + the approved ERD are the **single schema contract**. A schema change
 ---
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+`RefreshTokens.FamilyId` is a required GUID with composite index
+`IX_RefreshTokens_UserId_FamilyId`. `AddRefreshTokenFamilyId` preserves existing
+linked chains by assigning their root IDs before requiring the column. See the
+linked auth contract for migration and real SQL Server regression tests.

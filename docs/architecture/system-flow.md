@@ -10,7 +10,7 @@
 [Browser] User opens /app/board/123
   1. Vercel serves the SPA (static) + env VITE_API_URL.
   2. Apollo Client sends: POST {VITE_API_URL}/graphql { board(id:123){ columns{ tasks{...} } } }  + Bearer access JWT (memory).
-  3. Backend: JWT middleware verifies (iss/aud/sig) → principal {sub, wid}.
+  3. Backend: JWT middleware verifies (iss/aud/sig) → principal {sub, email, jti}.
   4. HotChocolate resolves board → GraphQL resolver → BoardService → repos → EF Core.
   5. DataLoader batches assignee + comment fetches (N+1 safe).
   6. ApiLogs row written (requestId, duration); response JSON.
@@ -77,3 +77,10 @@ Reads via graphql_flutter (explicit refetch after writes); writes via dio.
 ---
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.

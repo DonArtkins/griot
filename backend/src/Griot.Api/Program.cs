@@ -7,6 +7,7 @@ using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
 using Griot.Infrastructure.Persistence;
 using Griot.Infrastructure.Redis;
+using Griot.Infrastructure.Email;
 using Griot.Infrastructure.Repositories;
 using HotChocolate.AspNetCore;
 using HotChocolate.Execution.Options;
@@ -20,6 +21,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Local dev secrets (DB connection string, JWT key) live in appsettings.Local.json — git-ignored.
 // The design-time factory reads the same file; runtime now loads it too so `dotnet run --project src/Griot.Api` works out of the box.
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+// Explicit environment/CLI settings take precedence over the local development file.
+builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
 
 // Controllers (thin wrappers only; business logic lives in Griot.Application services).
 builder.Services.AddControllers();
@@ -32,6 +35,10 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddHttpClient<IEmailService, ResendEmailService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
 
 // Repositories (Infrastructure layer — Dapper for hot paths, EF Core via DbContext for regular ops).
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
@@ -61,12 +68,16 @@ builder.Services.AddScoped(sp =>
 
 // Redis (spec 07): sliding-window rate limiting on /api/auth/login.
 // Connection is config/env driven (Redis:Connection / Redis__Connection); localhost dev default below.
-var redisUri = builder.Configuration["Redis:Connection"];
-if (string.IsNullOrWhiteSpace(redisUri))
-    redisUri = "redis://localhost:6380"; // host port of the shared sababisha-redis container
+// IMPORTANT: StackExchange.Redis expects "host:port" format — NOT "redis://host:port".
+var redisEndpoint = builder.Configuration["Redis:Connection"];
+if (string.IsNullOrWhiteSpace(redisEndpoint))
+    redisEndpoint = "localhost:6380"; // host port of the shared sababisha-redis container
 
-var redisConnection = ConnectionMultiplexer.Connect(redisUri, null);
-builder.Services.AddScoped<IConnectionMultiplexer>(_ => redisConnection);
+var redisConnection = ConnectionMultiplexer.Connect(redisEndpoint);
+// IConnectionMultiplexer is a long-lived shared object — must be singleton.
+// Registering as scoped would allow the DI container to dispose it at request end,
+// breaking all subsequent Redis calls.
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ => redisConnection);
 builder.Services.AddScoped<IRedisRateLimiter, RedisRateLimiter>();
 
 // GraphQL server (HotChocolate 14+) — code-first schema, DataLoaders, filtering, sorting, auth,
@@ -113,14 +124,14 @@ builder.Services.AddCors(options =>
 });
 
 // Auth: JWT bearer validation wiring (token issuance flows are spec 07; key from config, never hardcoded).
-var jwtKey = builder.Configuration["JWT:Key"]
-    ?? throw new InvalidOperationException("JWT:Key is not configured (set JWT__Key).");
-var jwtIssuer = builder.Configuration["JWT:Issuer"] ?? "Griot";
-var jwtAudience = builder.Configuration["JWT:Audience"] ?? "GriotClients";
-
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Resolve the finalized configuration used by AuthService, including host overrides.
+        var jwtKey = builder.Configuration["JWT:Key"]
+            ?? throw new InvalidOperationException("JWT:Key is not configured (set JWT__Key).");
+        var jwtIssuer = builder.Configuration["JWT:Issuer"] ?? "Griot";
+        var jwtAudience = builder.Configuration["JWT:Audience"] ?? "GriotClients";
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -192,3 +203,5 @@ app.MapGraphQL("/graphql")
     });
 
 app.Run();
+
+public partial class Program { }

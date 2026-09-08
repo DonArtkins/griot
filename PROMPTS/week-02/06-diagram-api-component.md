@@ -27,7 +27,7 @@
 | **Repositories** | EF Core repos (95%) + Dapper repos (2 procs: usp_BulkUpdateTaskStatus, usp_GetDashboardSummary) | DbContext / SqlConnection |
 | **GriotDbContext** | EF Core 8 mappings, migrations | SQL Server |
 | **Redis client** | rate limit, refresh metadata, token budgets | Redis |
-| **Auth middleware** | JWT validation → principal (`sub`, `wid`); `GRIOT_SERVICE_TOKEN` → ai-agent principal | — |
+| **Auth middleware** | JWT validation → principal (`sub`, `email`, `jti`); `GRIOT_SERVICE_TOKEN` → ai-agent principal | — |
 
 > **AttachmentService** responsibility: validates attachment metadata (mime type, size limits), persists `Attachments` row via EF repo, returns signed URL or metadata DTO. Blob storage (Azure Blob / S3) is v2 — v1 stores `StorageUrl` as a placeholder.
 >

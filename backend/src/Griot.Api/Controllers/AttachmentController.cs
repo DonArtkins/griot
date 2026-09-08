@@ -12,19 +12,19 @@ public class AttachmentController : ControllerBase
     [HttpGet("/api/tasks/{id}/attachments")]
     public IActionResult GetAttachments(Guid id)
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
     [HttpPost("/api/tasks/{id}/attachments")]
     public IActionResult CreateAttachment(Guid id)
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
     [HttpDelete("/api/tasks/{id}/attachments/{attachmentId}")]
     public IActionResult DeleteAttachment(Guid id, Guid attachmentId)
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
 }

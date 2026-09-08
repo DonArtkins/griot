@@ -117,7 +117,7 @@ curl -X POST http://localhost:5064/graphql \
 - **GraphQL Playground** - Standalone desktop app
 - **Browser extensions** - Altair, GraphiQL
 
-### 4. Example Queries (for when auth is implemented)
+### 4. Example Queries (requires JWT authentication — Feature 07 implemented)
 
 #### Simple Board Query
 ```graphql
@@ -188,7 +188,7 @@ query {
 
 ## ✅ Authentication Live: JWT + Argon2 + Redis (Feature 07)
 
-Most GraphQL queries and all mutations are protected with `[Authorize]` attribute. **Feature 07** (JWT + Argon2 + Redis authentication) is ✅ **implemented** — register via `POST /api/auth/register` and login via `POST /api/auth/login` to get your JWT access token, then include it as `Authorization: Bearer <token>`.
+Most GraphQL queries and all mutations are protected with the `[Authorize]` attribute; unauthenticated requests are correctly rejected with `AUTH_NOT_AUTHENTICATED`. **Feature 07** (JWT + Argon2 + Redis + Resend OTP authentication) is ✅ **fully implemented** — register via `POST /api/auth/register` (returns 201, auto-sends email-verify OTP via Resend branded template) and login via `POST /api/auth/login` (returns JWT access + refresh token pair) to get your access token, then pass it as `Authorization: Bearer <token>` on GraphQL requests.
 
 ```json
 {
@@ -258,18 +258,15 @@ builder.Services
 
 ## 🎯 Next Steps
 
-1. **Feature 07** - Implement JWT authentication so GraphQL queries can be tested end-to-end
-2. **Feature 08** - Create Postman collection with GraphQL queries
-3. **Phase 2 Optimization** - Add Redis caching for board queries (post-baseline)
+1. **Feature 08** - Create the Postman collection on `feature/backend/08-api-testing-postman`; use Feature 07 REST auth tokens for GraphQL.
+2. **Phase 2 Optimization** - Add Redis caching only after k6 evidence justifies it.
 
-## ⚠️ Known Warnings (Non-blocking)
+## Build status
 
-Build produces 3 warnings (code compiles and runs fine):
-- 2 nullable reference warnings in DataLoaders
-- 1 comparison warning in GriotQuery
-
-These are safe to address in a follow-up cleanup pass.
+The 2026-09-08 full rebuild (`dotnet build --no-incremental`) reports
+0 warnings and 0 errors. DataLoader defaults, Redis result nullability and
+the missing-board GUID check are corrected.
 
 ---
 
-**Summary:** Feature 05 is fully implemented and operational. The GraphQL endpoint is live, schema is complete, DataLoaders are configured, and test data is available. Authentication gating is expected and will be resolved in Feature 07.
+**Summary:** Feature 05 is fully implemented and operational. The GraphQL endpoint is live, schema is complete, DataLoaders are configured, and test data is available. Feature 07 REST authentication is implemented; authenticated GraphQL requests use its bearer access token. Feature 08 (Postman) is next.

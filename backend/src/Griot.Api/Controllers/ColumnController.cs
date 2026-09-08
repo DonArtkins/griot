@@ -12,13 +12,13 @@ public class ColumnController : ControllerBase
     [HttpPatch("{id}")]
     public IActionResult UpdateColumn(Guid id)
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
     [HttpDelete("{id}")]
     public IActionResult DeleteColumn(Guid id)
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
 }
