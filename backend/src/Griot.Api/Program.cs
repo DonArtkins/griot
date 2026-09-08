@@ -37,8 +37,8 @@ var defaultConnection = builder.Configuration.GetConnectionString("Default")
 builder.Services.AddDbContext<GriotDbContext>(options =>
     options.UseSqlServer(defaultConnection));
 
-// DbContextFactory for GraphQL DataLoaders (required for batching)
-builder.Services.AddDbContextFactory<GriotDbContext>(options =>
+// DbContextFactory for GraphQL DataLoaders (required for batching) - using pooled factory
+builder.Services.AddPooledDbContextFactory<GriotDbContext>(options =>
     options.UseSqlServer(defaultConnection));
 
 // GraphQL server (HotChocolate 14+) — code-first schema, DataLoaders, filtering, sorting, auth, query cost guard
