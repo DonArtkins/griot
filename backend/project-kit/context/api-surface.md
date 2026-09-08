@@ -51,14 +51,14 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 
 ## GraphQL (`/graphql`)
 
-- **Queries**: `me`, `workspace(id)`, `projects`, `board(id)`, `tasks(filter, sort, pagination)`, `task(id)`, `comments(taskId)`, `notifications`, `unreadNotificationCount`, `activityFeed(workspaceId)`, `dashboardSummary(workspaceId)`
-- **Mutations**: `register`, `login`, `refresh`, `logout`, `createWorkspace`, `updateWorkspace`, `deleteWorkspace`, `inviteMember`, `acceptInvite`, `updateMember`, `removeMember`, `createProject`, `updateProject`, `deleteProject`, `createBoard`, `createColumn`, `updateColumn`, `deleteColumn`, `createTask`, `updateTask`, `deleteTask`, `moveTask`, `bulkUpdateTaskStatus`, `addComment`, `addAttachment`, `markNotificationsRead`
+- **Queries**: `me`, `workspace(id)`, `projects(workspaceId, filter, sort)`, `board(id)`, `tasks(boardId, filter, sort, pagination)` — **`boardId` is required** (an unscoped task query would cross workspace boundaries), `task(id)`, `comments(taskId)`, `notifications`, `unreadNotificationCount`, `activityFeed(workspaceId)`, `dashboardSummary(workspaceId)`
+- **Mutations** (spec 05 — only fully implemented fields are registered; auth spec 08, bulk/column/invite spec 06, attachments spec 11 register theirs later): `createWorkspace`, `updateWorkspace`, `deleteWorkspace`, `createProject`, `updateProject`, `deleteProject`, `createBoard`, `createTask`, `updateTask`, `deleteTask`, `addComment`
 - **Types**: `User`, `Workspace`, `WorkspaceMember`, `Project`, `Board`, `Column`, `TaskItem`, `Comment`, `Attachment`, `ActivityLog`, `Notification`, `Invite`, `AuthPayload`, `DashboardSummary`, `NotificationCount`
 - **DataLoader (Phase 1 — N+1 prevention)**: `AssigneeDataLoader` batches `Task.assignee` queries, `CommentDataLoader` batches `Task.comments` queries. **Impact:** Board with 50 tasks: 101 queries → 3 queries (1 board + 1 batch assignees + 1 batch comments). See `feature-specs/05-graphql-layer-hotchocolate.md`.
 - **Response caching (Phase 2)**: Board queries cached in Redis by `(boardId, workspaceId, userId, timestamp)` key. Invalidated on writes. Configured via `.AddQueryCachePipeline().AddRedisQueryStorage()`. **Impact:** Hot boards served from Redis (~1ms) instead of SQL (~50–200ms).
 - **Filters/sorts**: tasks (status, priority, assignee, dueDate), notifications (readAt). **Pagination**: MaxPageSize = 1,000.
-- **Guards**: query-cost limit + depth limit + timeouts; same JWT bearer; `GRIOT_SERVICE_TOKEN` → ai-agent scope (no deletes/invites).
-- Auth: same JWT bearer; query-cost guard middleware.
+- **Authorization**: `[Authorize]` authenticates only; every workspace-scoped resolver and mutation additionally enforces caller ownership/membership per resource (`Workspaces.OwnerId` or a `WorkspaceMembers` row) before reading/mutating. Cross-workspace resource IDs are rejected. Destructive ops (delete workspace/project/task) require Owner/Admin. No global filter — enforcement is per-resolver.
+- **Guards**: parser caps 256 fields / 512 nodes + max execution depth 10 (introspection excluded) + 30 s execution timeout + global rate limiter; same JWT bearer; `GRIOT_SERVICE_TOKEN` → ai-agent scope (no deletes/invites).
 
 ## Controller topology
 

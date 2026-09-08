@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Griot.Api.GraphQL.Types;
-using Griot.Application.Interfaces.Services;
 using Griot.Infrastructure.Persistence;
 using HotChocolate.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -9,58 +8,6 @@ namespace Griot.Api.GraphQL;
 
 public class GriotMutation
 {
-    /// <summary>
-    /// Register a new user account
-    /// </summary>
-    public async Task<AuthPayloadType> Register(
-        string email,
-        string password,
-        string displayName,
-        [Service] IAuthService authService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - will be completed in spec 08
-        throw new NotImplementedException("Auth implementation pending - spec 08");
-    }
-
-    /// <summary>
-    /// Login with email and password
-    /// </summary>
-    public async Task<AuthPayloadType> Login(
-        string email,
-        string password,
-        [Service] IAuthService authService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - will be completed in spec 08
-        throw new NotImplementedException("Auth implementation pending - spec 08");
-    }
-
-    /// <summary>
-    /// Refresh access token using refresh token
-    /// </summary>
-    public async Task<AuthPayloadType> Refresh(
-        string refreshToken,
-        [Service] IAuthService authService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - will be completed in spec 08
-        throw new NotImplementedException("Auth implementation pending - spec 08");
-    }
-
-    /// <summary>
-    /// Logout and revoke refresh token
-    /// </summary>
-    [Authorize]
-    public async Task<bool> Logout(
-        [Service] IAuthService authService,
-        ClaimsPrincipal claimsPrincipal,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - will be completed in spec 08
-        throw new NotImplementedException("Auth implementation pending - spec 08");
-    }
-
     /// <summary>
     /// Create a new workspace
     /// </summary>
@@ -101,13 +48,14 @@ public class GriotMutation
     }
 
     /// <summary>
-    /// Update workspace details
+    /// Update workspace details (workspace owner or member)
     /// </summary>
     [Authorize]
     public async Task<WorkspaceType> UpdateWorkspace(
         Guid id,
         string name,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var workspace = await dbContext.Workspaces
@@ -115,6 +63,9 @@ public class GriotMutation
 
         if (workspace == null)
             throw new ArgumentException("Workspace not found");
+
+        // Caller must be workspace owner or member (CWE-862): never trust the id alone.
+        await RequireWorkspaceAccessAsync(dbContext, workspace.Id, claimsPrincipal, cancellationToken);
 
         workspace.Name = name;
         workspace.UpdatedAt = DateTime.UtcNow;
@@ -138,6 +89,7 @@ public class GriotMutation
     public async Task<bool> DeleteWorkspace(
         Guid id,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var workspace = await dbContext.Workspaces
@@ -146,67 +98,13 @@ public class GriotMutation
         if (workspace == null)
             return false;
 
+        // Owner only - delete is the most destructive operation.
+        await RequireWorkspaceOwnerAsync(dbContext, workspace.Id, claimsPrincipal, cancellationToken);
+
         dbContext.Workspaces.Remove(workspace);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return true;
-    }
-
-    /// <summary>
-    /// Invite a member to workspace by email
-    /// </summary>
-    [Authorize]
-    public async Task<bool> InviteMember(
-        Guid workspaceId,
-        string email,
-        string role,
-        [Service] IWorkspaceService workspaceService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - will be completed in spec 06
-        throw new NotImplementedException("Invite implementation pending - spec 06");
-    }
-
-    /// <summary>
-    /// Accept workspace invite
-    /// </summary>
-    [Authorize]
-    public async Task<bool> AcceptInvite(
-        string token,
-        [Service] IWorkspaceService workspaceService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - will be completed in spec 06
-        throw new NotImplementedException("Invite implementation pending - spec 06");
-    }
-
-    /// <summary>
-    /// Update member role in workspace
-    /// </summary>
-    [Authorize]
-    public async Task<bool> UpdateMember(
-        Guid workspaceId,
-        Guid userId,
-        string role,
-        [Service] IWorkspaceService workspaceService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - will be completed in spec 06
-        throw new NotImplementedException("Member management pending - spec 06");
-    }
-
-    /// <summary>
-    /// Remove member from workspace
-    /// </summary>
-    [Authorize]
-    public async Task<bool> RemoveMember(
-        Guid workspaceId,
-        Guid userId,
-        [Service] IWorkspaceService workspaceService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - will be completed in spec 06
-        throw new NotImplementedException("Member management pending - spec 06");
     }
 
     /// <summary>
@@ -218,8 +116,11 @@ public class GriotMutation
         string name,
         string? description,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
+
         var project = new Griot.Domain.Entities.Project
         {
             Id = Guid.NewGuid(),
@@ -254,6 +155,7 @@ public class GriotMutation
         Guid id,
         string name,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var project = await dbContext.Projects
@@ -261,6 +163,8 @@ public class GriotMutation
 
         if (project == null)
             throw new ArgumentException("Project not found");
+
+        await RequireWorkspaceAccessAsync(dbContext, project.WorkspaceId, claimsPrincipal, cancellationToken);
 
         project.Name = name;
         project.UpdatedAt = DateTime.UtcNow;
@@ -285,6 +189,7 @@ public class GriotMutation
     public async Task<bool> DeleteProject(
         Guid id,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var project = await dbContext.Projects
@@ -292,6 +197,9 @@ public class GriotMutation
 
         if (project == null)
             return false;
+
+        // Owner/Admin only per api-surface.md (delete is destructive).
+        await RequireWorkspaceAdminOrOwnerAsync(dbContext, project.WorkspaceId, claimsPrincipal, cancellationToken);
 
         dbContext.Projects.Remove(project);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -307,8 +215,17 @@ public class GriotMutation
         Guid projectId,
         string name,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        var project = await dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+
+        if (project == null)
+            throw new ArgumentException("Project not found");
+
+        await RequireWorkspaceAccessAsync(dbContext, project.WorkspaceId, claimsPrincipal, cancellationToken);
+
         var board = new Griot.Domain.Entities.Board
         {
             Id = Guid.NewGuid(),
@@ -330,48 +247,6 @@ public class GriotMutation
     }
 
     /// <summary>
-    /// Create a new column in board
-    /// </summary>
-    [Authorize]
-    public async Task<ColumnType> CreateColumn(
-        Guid boardId,
-        string name,
-        decimal position,
-        [Service] IBoardService boardService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - column management in spec 06
-        throw new NotImplementedException("Column management pending - spec 06");
-    }
-
-    /// <summary>
-    /// Update column details
-    /// </summary>
-    [Authorize]
-    public async Task<ColumnType> UpdateColumn(
-        Guid id,
-        string name,
-        [Service] IBoardService boardService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - column management in spec 06
-        throw new NotImplementedException("Column management pending - spec 06");
-    }
-
-    /// <summary>
-    /// Delete a column
-    /// </summary>
-    [Authorize]
-    public async Task<bool> DeleteColumn(
-        Guid id,
-        [Service] IBoardService boardService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - column management in spec 06
-        throw new NotImplementedException("Column management pending - spec 06");
-    }
-
-    /// <summary>
     /// Create a new task in column
     /// </summary>
     [Authorize]
@@ -388,6 +263,13 @@ public class GriotMutation
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
             throw new UnauthorizedAccessException();
 
+        // Reject out-of-range priorities before the enum cast reaches persistence (CWE-20).
+        var priorityValue = ValidatePriority(priority);
+
+        // Caller must belong to the workspace owning the column's board.
+        var workspaceId = await ResolveColumnWorkspaceIdAsync(dbContext, columnId, cancellationToken);
+        await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
+
         var task = new Griot.Domain.Entities.TaskItem
         {
             Id = Guid.NewGuid(),
@@ -395,7 +277,7 @@ public class GriotMutation
             Title = title,
             Description = description,
             Status = Griot.Domain.Enums.TaskStatus.Backlog,
-            Priority = (Griot.Domain.Enums.Priority)priority,
+            Priority = priorityValue,
             CreatorId = userGuid,
             Position = 0,
             CreatedAt = DateTime.UtcNow,
@@ -430,6 +312,7 @@ public class GriotMutation
         Guid id,
         string title,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var task = await dbContext.TaskItems
@@ -437,6 +320,9 @@ public class GriotMutation
 
         if (task == null)
             throw new ArgumentException("Task not found");
+
+        var workspaceId = await ResolveColumnWorkspaceIdAsync(dbContext, task.ColumnId, cancellationToken);
+        await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
 
         task.Title = title;
         task.UpdatedAt = DateTime.UtcNow;
@@ -466,6 +352,7 @@ public class GriotMutation
     public async Task<bool> DeleteTask(
         Guid id,
         [Service] GriotDbContext dbContext,
+        ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         var task = await dbContext.TaskItems
@@ -474,40 +361,13 @@ public class GriotMutation
         if (task == null)
             return false;
 
+        var workspaceId = await ResolveColumnWorkspaceIdAsync(dbContext, task.ColumnId, cancellationToken);
+        await RequireWorkspaceAdminOrOwnerAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
+
         dbContext.TaskItems.Remove(task);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return true;
-    }
-
-    /// <summary>
-    /// Move task to different column and position
-    /// </summary>
-    [Authorize]
-    public async Task<TaskItemType> MoveTask(
-        Guid id,
-        Guid targetColumnId,
-        decimal position,
-        [Service] ITaskService taskService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - task movement in spec 06
-        throw new NotImplementedException("Task movement pending - spec 06");
-    }
-
-    /// <summary>
-    /// Bulk update task statuses (atomic)
-    /// </summary>
-    [Authorize]
-    public async Task<bool> BulkUpdateTaskStatus(
-        Guid workspaceId,
-        List<Guid> taskIds,
-        string status,
-        [Service] ITaskService taskService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - bulk operations in spec 06
-        throw new NotImplementedException("Bulk operations pending - spec 06");
     }
 
     /// <summary>
@@ -524,6 +384,16 @@ public class GriotMutation
         var userId = claimsPrincipal.FindFirst("sub")?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
             throw new UnauthorizedAccessException();
+
+        var task = await dbContext.TaskItems
+            .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+
+        if (task == null)
+            throw new ArgumentException("Task not found");
+
+        // Caller must belong to the workspace owning the task's board.
+        var workspaceId = await ResolveColumnWorkspaceIdAsync(dbContext, task.ColumnId, cancellationToken);
+        await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
 
         var comment = new Griot.Domain.Entities.Comment
         {
@@ -550,35 +420,138 @@ public class GriotMutation
     }
 
     /// <summary>
-    /// Add an attachment to a task
+    /// Get the currently authenticated user id from the JWT principal, or reject
+    /// the request when the token has no usable subject claim.
     /// </summary>
-    [Authorize]
-    public async Task<AttachmentType> AddAttachment(
-        Guid taskId,
-        string fileName,
-        string fileUrl,
-        long fileSizeBytes,
-        [Service] ITaskService taskService,
-        CancellationToken cancellationToken)
-    {
-        // Stub implementation - attachments in spec 11 (blob storage)
-        throw new NotImplementedException("Attachment upload pending - spec 11");
-    }
-
-    /// <summary>
-    /// Mark all notifications as read for current user
-    /// </summary>
-    [Authorize]
-    public async Task<bool> MarkNotificationsRead(
-        [Service] INotificationService notificationService,
-        ClaimsPrincipal claimsPrincipal,
-        CancellationToken cancellationToken)
+    private static Guid AuthenticatedUserId(ClaimsPrincipal claimsPrincipal)
     {
         var userId = claimsPrincipal.FindFirst("sub")?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
-            return false;
+            throw new UnauthorizedAccessException();
 
-        // Stub implementation - notification management in spec 06
-        throw new NotImplementedException("Notification management pending - spec 06");
+        return userGuid;
+    }
+
+    /// <summary>
+    /// Validate a GraphQL priority argument (0..3 = Low..Urgent) before it is
+    /// assigned to a TaskItem. Rejects out-of-range values that would otherwise
+    /// produce an undefined enum instance reaching persistence (CWE-20).
+    /// </summary>
+    private static Griot.Domain.Enums.Priority ValidatePriority(int priority)
+    {
+        if (priority == 0)
+            return Griot.Domain.Enums.Priority.Low;
+        if (priority == 1)
+            return Griot.Domain.Enums.Priority.Medium;
+        if (priority == 2)
+            return Griot.Domain.Enums.Priority.High;
+        if (priority == 3)
+            return Griot.Domain.Enums.Priority.Urgent;
+
+        throw new ArgumentException($"Invalid priority value: {priority}");
+    }
+
+    /// <summary>
+    /// Resolve a column's owning workspace id (Column -&gt; Board -&gt; Project) and
+    /// throw when the chain is broken so existence is never disclosed.
+    /// </summary>
+    private async Task<Guid> ResolveColumnWorkspaceIdAsync(
+        GriotDbContext dbContext,
+        Guid columnId,
+        CancellationToken cancellationToken)
+    {
+        var column = await dbContext.Columns
+            .FirstOrDefaultAsync(c => c.Id == columnId, cancellationToken);
+
+        if (column == null)
+            throw new ArgumentException("Column not found");
+
+        var board = await dbContext.Boards
+            .FirstOrDefaultAsync(b => b.Id == column.BoardId, cancellationToken);
+
+        if (board == null)
+            throw new ArgumentException("Board not found");
+
+        var project = await dbContext.Projects
+            .FirstOrDefaultAsync(p => p.Id == board.ProjectId, cancellationToken);
+
+        if (project == null)
+            throw new ArgumentException("Project not found");
+
+        return project.WorkspaceId;
+    }
+
+    /// <summary>
+    /// Workspace access check: the caller must be the workspace owner or a
+    /// workspace member of any role (CWE-862).
+    /// </summary>
+    private async Task RequireWorkspaceAccessAsync(
+        GriotDbContext dbContext,
+        Guid workspaceId,
+        ClaimsPrincipal claimsPrincipal,
+        CancellationToken cancellationToken)
+    {
+        var userGuid = AuthenticatedUserId(claimsPrincipal);
+
+        var workspace = await dbContext.Workspaces
+            .FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
+
+        if (workspace == null)
+            throw new ArgumentException("Workspace not found");
+
+        if (workspace.OwnerId == userGuid)
+            return;
+
+        var member = await dbContext.WorkspaceMembers
+            .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == userGuid, cancellationToken);
+
+        if (member == null)
+            throw new UnauthorizedAccessException();
+    }
+
+    /// <summary>
+    /// Workspace Owner/Admin gate: caller must be the workspace owner or a member
+    /// with an Admin role. Members are rejected (destructive operations).
+    /// </summary>
+    private async Task RequireWorkspaceAdminOrOwnerAsync(
+        GriotDbContext dbContext,
+        Guid workspaceId,
+        ClaimsPrincipal claimsPrincipal,
+        CancellationToken cancellationToken)
+    {
+        var userGuid = AuthenticatedUserId(claimsPrincipal);
+
+        var workspace = await dbContext.Workspaces
+            .FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
+
+        if (workspace == null)
+            throw new ArgumentException("Workspace not found");
+
+        if (workspace.OwnerId == userGuid)
+            return;
+
+        var member = await dbContext.WorkspaceMembers
+            .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == userGuid, cancellationToken);
+
+        if (member == null || member.Role == Griot.Domain.Enums.WorkspaceRole.Member)
+            throw new UnauthorizedAccessException();
+    }
+
+    /// <summary>
+    /// Workspace Owner-only gate: only the workspace owner may pass (delete).
+    /// </summary>
+    private async Task RequireWorkspaceOwnerAsync(
+        GriotDbContext dbContext,
+        Guid workspaceId,
+        ClaimsPrincipal claimsPrincipal,
+        CancellationToken cancellationToken)
+    {
+        var userGuid = AuthenticatedUserId(claimsPrincipal);
+
+        var workspace = await dbContext.Workspaces
+            .FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
+
+        if (workspace == null || workspace.OwnerId != userGuid)
+            throw new UnauthorizedAccessException();
     }
 }
