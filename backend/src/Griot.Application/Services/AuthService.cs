@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Griot.Application.DTOs.Auth;
+using Griot.Application.Email;
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Domain.Entities;
@@ -27,23 +28,40 @@ public sealed class AuthService : IAuthService
     private const int Argon2HashLength = 32; // bytes -> 64-char hex
     private const int SaltLength = 16; // bytes
 
+    // Fixed valid Argon2id record at the same cost as registered users.
+    private const string DummyPasswordHash =
+        "000102030405060708090A0B0C0D0E0F:7E3ED151DF93C2D532176F71C174B83C3508E541010C86D28579A04BAC9FD517";
+
     // Refresh token: 32 raw bytes -> 64-char hex; stored as SHA-256 hash.
     private const int RefreshTokenBytes = 32;
     private static readonly TimeSpan RefreshTokenTtl = TimeSpan.FromDays(30);
     private static readonly TimeSpan AccessTokenTtl = TimeSpan.FromMinutes(15);
 
+    // OTP 2FA (research/ai-features-research.md §1): crypto-secure 6-digit codes,
+    // HMAC-SHA256 hashed at rest with a server-side pepper, 10-minute expiry,and
+    // a 5-attempt lockout per challenge. Delivered via Resend using the branded email template.
+
+    private const int OtpCodeLength = 6;
+    private static readonly TimeSpan OtpTtl = TimeSpan.FromMinutes(10);
+    private const int OtpMaxAttempts = 5;
+    private static readonly string[] OtpPurposes = { "email_verify", "login_2fa", "password_reset" };
+    private const string OtpPepperDefault = "griot-dev-otp-pepper-change-me";
+
     private readonly IAuthRepository _authRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
+    private readonly IEmailService _emailService;
 
     public AuthService(
         IAuthRepository authRepository,
         IConfiguration configuration,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        IEmailService emailService)
     {
         _authRepository = authRepository;
         _configuration = configuration;
         _logger = logger;
+        _emailService = emailService;
     }
 
     // -----------------------------------------------------------------------------
@@ -77,6 +95,13 @@ public sealed class AuthService : IAuthService
 
         _logger.LogInformation("User registered: {UserId} ({Email})", user.Id, email);
 
+        // Email-OTP 2FA (research/ai-features-research.md §1.3): send the verification code
+        // automatically with a branded Resend email; delivery is best-effort so an email outage
+        // never fails registration — the recipient can re-request via POST /api/auth/otp/request..
+        await CreateOtpChallengeAndEmailAsync(
+            user.Id, user.Email, user.DisplayName, "email_verify", requestIp: null, CancellationToken.None).ConfigureAwait(false);
+        await SendNewAccountAdminEmailAsync(user).ConfigureAwait(false);
+
         return await IssueTokenPairAsync(user).ConfigureAwait(false);
     }
 
@@ -90,8 +115,9 @@ public sealed class AuthService : IAuthService
 
         var user = await _authRepository.FindUserByEmailAsync(email).ConfigureAwait(false);
 
-        // Constant-time failure: always verify even when user not found, to prevent timing oracle.
-        if (user is null || !VerifyPassword(request.Password, user.PasswordHash))
+        // Unknown accounts must pay the same password hashing cost as existing accounts.
+        var passwordValid = VerifyPassword(request.Password, user?.PasswordHash ?? DummyPasswordHash);
+        if (user is null || !passwordValid)
         {
             _logger.LogWarning("Failed login attempt for {Email}", email);
             return null;
@@ -108,6 +134,8 @@ public sealed class AuthService : IAuthService
     public async Task<AuthResponse?> RefreshAsync(string refreshToken)
     {
         var tokenHash = HashToken(refreshToken);
+        if (tokenHash is null)
+            return null;
 
         var storedToken = await _authRepository
             .FindRefreshTokenByTokenHashAsync(tokenHash)
@@ -128,7 +156,7 @@ public sealed class AuthService : IAuthService
                 storedToken.UserId);
 
             await _authRepository
-                .RevokeAllActiveTokensForUserAsync(storedToken.UserId, DateTime.UtcNow)
+                .RevokeFamilyAsync(storedToken.UserId, storedToken.FamilyId, DateTime.UtcNow)
                 .ConfigureAwait(false);
             return null;
         }
@@ -146,14 +174,23 @@ public sealed class AuthService : IAuthService
         {
             Id = Guid.NewGuid(),
             UserId = storedToken.UserId,
-            TokenHash = HashToken(rawNewRefresh),
+            FamilyId = storedToken.FamilyId,
+            TokenHash = HashToken(rawNewRefresh)!,
             ExpiresAt = DateTime.UtcNow.Add(RefreshTokenTtl),
             CreatedAt = DateTime.UtcNow
         };
 
-        await _authRepository
+        var rotated = await _authRepository
             .RotateRefreshTokenAsync(storedToken, replacement)
             .ConfigureAwait(false);
+
+        if (rotated is null)
+        {
+            await _authRepository
+                .RevokeFamilyAsync(storedToken.UserId, storedToken.FamilyId, DateTime.UtcNow)
+                .ConfigureAwait(false);
+            return null;
+        }
 
         _logger.LogInformation("Refresh token rotated for user {UserId}.", storedToken.UserId);
 
@@ -167,6 +204,8 @@ public sealed class AuthService : IAuthService
     public async Task LogoutAsync(string refreshToken)
     {
         var tokenHash = HashToken(refreshToken);
+        if (tokenHash is null)
+            return;
         var stored = await _authRepository
             .FindRefreshTokenByTokenHashAsync(tokenHash)
             .ConfigureAwait(false);
@@ -182,6 +221,128 @@ public sealed class AuthService : IAuthService
         _logger.LogInformation("Refresh token revoked for user {UserId}.", stored.UserId);
     }
 
+    public async Task<OtpRequestResult?> RequestOtpAsync(OtpRequestRequest request, string? requestIp)
+    {
+        if (!OtpPurposes.Contains(request.Purpose, StringComparer.Ordinal))
+            return new OtpRequestResult { Success = false, Message = $"Unsupported purpose '{request.Purpose}'. Supported: email_verify, login_2fa, password_reset." };
+
+        var email = request.Email.Trim().ToLowerInvariant();
+
+        var user = await _authRepository.FindUserByEmailAsync(email).ConfigureAwait(false);
+        if (user is null)
+            return null;
+
+        var created = await CreateOtpChallengeAndEmailAsync(
+            user.Id, user.Email, user.DisplayName, request.Purpose, requestIp, CancellationToken.None).ConfigureAwait(false);
+
+        return created
+            ? new OtpRequestResult { Success = true, Message = $"A 6-digit code has been sent to {email}." }
+            : new OtpRequestResult { Success = false, Message = "Email delivery failed. Verify Resend:ApiKey / RESEND_API_KEY and the destination address." };
+    }
+
+    public async Task<OtpVerifyResult> VerifyOtpAsync(OtpVerifyRequest request)
+    {
+        var email = request.Email.Trim().ToLowerInvariant();
+
+        var user = await _authRepository.FindUserByEmailAsync(email).ConfigureAwait(false);
+        if (user is null)
+            return new OtpVerifyResult { Verified = false, Message = "Unknown email address." };
+
+        var challenge = await _authRepository.FindActiveOtpChallengeAsync(user.Id, request.Purpose).ConfigureAwait(false);
+        if (challenge is null)
+            return new OtpVerifyResult { Verified = false, Message = "No active code for this purpose. Request a new code." };
+
+        if (challenge.AttemptCount >= OtpMaxAttempts)
+        {
+            await _authRepository.MarkOtpChallengeConsumedAsync(challenge.Id).ConfigureAwait(false);
+            return new OtpVerifyResult { Verified = false, Message = "Too many attempts. Request a new code.", LockedOut = true };
+        }
+
+        var pepper = _configuration["Otp:Pepper"] ?? OtpPepperDefault;
+        var candidateHash = HashOtpCode(request.Code, pepper);
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(candidateHash),
+                Encoding.UTF8.GetBytes(challenge.CodeHash)))
+        {
+            await _authRepository.AddOtpAttemptAsync(challenge.Id).ConfigureAwait(false);
+            var attempts = challenge.AttemptCount + 1;
+            if (attempts >= OtpMaxAttempts)
+            {
+                await _authRepository.MarkOtpChallengeConsumedAsync(challenge.Id).ConfigureAwait(false);
+                return new OtpVerifyResult { Verified = false, Message = "Too many attempts. The code has been invalidated. Request a new one.", LockedOut = true };
+            }
+            return new OtpVerifyResult { Verified = false, Message = "Invalid code." };
+        }
+
+        await _authRepository.MarkOtpChallengeConsumedAsync(challenge.Id).ConfigureAwait(false);
+
+        var emailVerified = false;
+        if (request.Purpose == "email_verify")
+        {
+            await _authRepository.MarkEmailVerifiedAsync(user.Id).ConfigureAwait(false);
+            emailVerified = true;
+        }
+
+        _logger.LogInformation("OTP verified: {UserId} purpose={Purpose}", user.Id, request.Purpose);
+        return new OtpVerifyResult { Verified = true, Message = "Code verified.", EmailVerified = emailVerified };
+    }
+
+    private async Task<bool> CreateOtpChallengeAndEmailAsync(
+        Guid userId, string email, string displayName, string purpose, string? requestIp, CancellationToken ct)
+    {
+        var code = GenerateOtpCode();
+        var pepper = _configuration["Otp:Pepper"] ?? OtpPepperDefault;
+
+        await _authRepository.InvalidateOtpChallengesAsync(userId, purpose).ConfigureAwait(false);
+
+        var challenge = new OtpChallenge
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CodeHash = HashOtpCode(code, pepper),
+            Purpose = purpose,
+            ExpiresAt = DateTime.UtcNow.Add(OtpTtl),
+            AttemptCount = 0,
+            Consumed = false,
+            CreatedAt = DateTime.UtcNow,
+            RequestIp = requestIp
+        };
+        await _authRepository.InsertOtpChallengeAsync(challenge).ConfigureAwait(false);
+
+        var html = BrandedEmailTemplate.RenderOtpEmail(purpose, code, displayName, GetSiteUrl());
+        var ok = await _emailService.SendAsync(new EmailMessage(email, BrandedEmailTemplate.OtpSubject(purpose), html), ct).ConfigureAwait(false);
+        if (!ok)
+            _logger.LogWarning("OTP email delivery failed for {Email} purpose={Purpose}", email, purpose);
+
+        return ok;
+    }
+
+    private async Task SendNewAccountAdminEmailAsync(User user)
+    {
+        var adminTo = _configuration["Resend:ContactToEmail"] ?? _configuration["CONTACT_TO_EMAIL"];
+        if (string.IsNullOrWhiteSpace(adminTo))
+            return;
+
+        var html = BrandedEmailTemplate.RenderNewAccountAdminEmail(user.DisplayName, user.Email, GetSiteUrl());
+        await _emailService.SendAsync(new EmailMessage(adminTo, "New user registered on Griot", html)).ConfigureAwait(false);
+    }
+
+    private static string GenerateOtpCode()
+    {
+        // Crypto-secure RNG (research §1.3) — never System.Random..
+
+        var bytes = RandomNumberGenerator.GetBytes(4);
+        var value = BitConverter.ToUInt32(bytes, 0) % 1_000_000;
+        return value.ToString("D6");
+    }
+
+    private static string HashOtpCode(string code, string pepper)
+        => Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(pepper), Encoding.UTF8.GetBytes(code)));
+
+    private string GetSiteUrl()
+        => (_configuration["SITE_URL"] ?? "https://sababisha.com").TrimEnd('/');
+
+
     // -----------------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------------
@@ -195,7 +356,8 @@ public sealed class AuthService : IAuthService
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            TokenHash = HashToken(rawRefresh),
+            FamilyId = Guid.NewGuid(),
+            TokenHash = HashToken(rawRefresh)!,
             ExpiresAt = DateTime.UtcNow.Add(RefreshTokenTtl),
             CreatedAt = DateTime.UtcNow
         };
@@ -315,9 +477,14 @@ public sealed class AuthService : IAuthService
     private static string GenerateOpaqueToken()
         => Convert.ToHexString(RandomNumberGenerator.GetBytes(RefreshTokenBytes));
 
-    /// <summary>SHA-256 hash of an opaque token for at-rest storage.</summary>
-    private static string HashToken(string token)
-        => Convert.ToHexString(SHA256.HashData(Convert.FromHexString(token)));
+    /// <summary>Hash a 256-bit hexadecimal token, or reject malformed input.</summary>
+    private static string? HashToken(string? token)
+    {
+        if (token is null || token.Length != RefreshTokenBytes * 2 || !token.All(Uri.IsHexDigit))
+            return null;
+
+        return Convert.ToHexString(SHA256.HashData(Convert.FromHexString(token)));
+    }
 }
 
 /// <summary>Thrown by RegisterAsync when the email is already taken.</summary>

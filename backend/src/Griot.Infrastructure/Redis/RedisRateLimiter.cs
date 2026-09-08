@@ -57,11 +57,11 @@ public sealed class RedisRateLimiter : IRedisRateLimiter
             CommandFlags.None
         );
 
-        var result = (RedisResult[])(rawResult ?? RedisResult.Create(new RedisResult[]
+        var result = (RedisResult[]?)rawResult ?? new RedisResult[]
         {
             RedisResult.Create((RedisValue)0),
             RedisResult.Create((RedisValue)0)
-        }));
+        };
 
         var allowed = (int)result[0] == 1;
         var remaining = allowed ? (int)result[1] : 0;

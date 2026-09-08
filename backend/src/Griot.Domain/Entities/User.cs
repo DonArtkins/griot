@@ -14,6 +14,13 @@ public class User
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public Griot.Domain.Enums.TwoFactorMethod TwoFactorMethod { get; set; } = Griot.Domain.Enums.TwoFactorMethod.None;
 
+    /// <summary>
+    /// True once the user has verified the email address with a 6-digit OTP code
+    /// delivered via Resend (purpose `email_verify`). Registration sends the code
+    /// automatically; `POST /api/auth/otp/verify` marks this true.
+    /// </summary>
+    public bool EmailVerified { get; set; }
+
     public ICollection<WorkspaceMember> WorkspaceMembers { get; set; } = new List<WorkspaceMember>();
     public ICollection<Invite> SentInvites { get; set; } = new List<Invite>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();

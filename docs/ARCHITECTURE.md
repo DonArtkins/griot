@@ -61,7 +61,7 @@ _Rule that never changes: **AI (`ai/` + `mcp/`) only talks to the backend API** 
 ### 3.1 Web read (dashboard/board)
 1. Browser → Vercel (static assets + env).
 2. JS → `POST /graphql` (Apollo) or `GET /api/...` (Axios) with access JWT in memory.
-3. Backend middleware validates JWT → principal (`sub`, `wid`).
+3. Backend middleware validates JWT → principal (`sub`, `email`, `jti`).
 4. Controllers/resolvers call `Griot.Application` services → repos → SQL Server.
 5. DataLoader batches `assignee`+`comments` (N+1 safe).
 6. Response → cache (Apollo/TanStack) → UI. Web never talks to a DB.
@@ -95,7 +95,7 @@ Flutter app → same REST + GraphQL endpoints; refresh token in `flutter_secure_
 |---|---|
 | Password | Argon2 (per-user salt) |
 | 2FA      | Resend Email OTP (hashed codes, 10-min expiry, rate-limited) |
-| Access | JWT 15-min (sub/wid), signed; rejected bad iss/aud |
+| Access | JWT 15-min (sub/email/jti), signed; rejected bad iss/aud |
 | Refresh | opaque 256-bit, SHA-256 at rest, **rotation + family-revoke on reuse** |
 | Rate limit | Redis sliding window `/auth/login` + GraphQL query-cost guard |
 | CORS | allow-list (Vercel origin) |
@@ -140,3 +140,10 @@ Full treatment: `docs/planning/CAPACITY-PLAN.md` + `docs/planning/OPTIMIZATION-R
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 _Griot — the record of what the team built, and how well they built it._
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.

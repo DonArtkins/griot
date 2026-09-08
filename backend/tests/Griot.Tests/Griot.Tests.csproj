@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Griot.Api\Griot.Api.csproj" />
     <ProjectReference Include="..\..\src\Griot.Application\Griot.Application.csproj" />
     <ProjectReference Include="..\..\src\Griot.Domain\Griot.Domain.csproj" />
     <ProjectReference Include="..\..\src\Griot.Infrastructure\Griot.Infrastructure.csproj" />

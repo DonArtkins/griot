@@ -12,7 +12,7 @@ public class AssigneeDataLoader : BatchDataLoader<Guid, UserType>
         IBatchScheduler batchScheduler,
         IDbContextFactory<GriotDbContext> dbContextFactory,
         DataLoaderOptions? options = null)
-        : base(batchScheduler, options)
+        : base(batchScheduler, options ?? new DataLoaderOptions())
     {
         _dbContextFactory = dbContextFactory;
     }

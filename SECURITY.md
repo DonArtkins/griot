@@ -32,3 +32,15 @@ You'll get an acknowledgment within **48 hours**. We'll confirm, fix, test, and 
 Weekly-6/7 include an OWASP Top-10 review (logged per item) and every state-changing write is captured in `AuditLogs` + `ActivityLogs`. See `qa/project-kit/` + `docs/observability/MONITORING.md`.
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+The current REST transport uses JSON refresh tokens for Postman/mobile. Web
+HttpOnly cookie transport in the design remains a backend prerequisite for web
+Feature 05; do not treat the cookie diagrams as live behavior or store tokens in
+localStorage. SQL Server owns refresh rows; Redis currently owns login limits.

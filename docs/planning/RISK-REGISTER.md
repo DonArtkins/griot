@@ -26,3 +26,10 @@
 3. Refresh replay (covered by test; watch 401 spikes).
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.

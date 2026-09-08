@@ -54,3 +54,10 @@
 This is the guarantee that "I don't come back later to change the schema" holds — whatever changes, it's captured, tested, and synchronized **before** it becomes code.
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.

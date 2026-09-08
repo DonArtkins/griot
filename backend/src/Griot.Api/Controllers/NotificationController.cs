@@ -12,25 +12,25 @@ public class NotificationController : ControllerBase
     [HttpGet]
     public IActionResult GetNotifications()
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
     [HttpPost]
     public IActionResult CreateNotification()
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
     [HttpPost("read-all")]
     public IActionResult ReadAll()
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
     [HttpGet("unread-count")]
     public IActionResult GetUnreadCount()
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
 }

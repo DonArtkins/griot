@@ -32,3 +32,5 @@ research/screenshots/*.jpeg
 
 # Cloudinary manifest (committed)
 !.cloudinary-manifest.json
+
+.bug

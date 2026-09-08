@@ -159,10 +159,13 @@
 **Status:** ✅ **Fixed** — spec files physically renamed, all ~65 references updated system-wide; the CodeRabbit 🟠 Major "Progress tracker dependency order" is closed.
 
 **Next Implementation:**
-- Backend: Spec **07** (Auth: JWT + Argon2 + Redis).
-- Branch: `feature/backend/07-auth-jwt-argon2-redis`.
-- After 07: 08 (Postman) → 09 (AI token) → 10 (docs) → 11 (blob, parallelizable).
+- Backend: Spec **08** (API testing with Postman).
+- Branch: `feature/backend/08-api-testing-postman`.
+- Auth Spec 07 is implemented; after 08: 09 (AI token) → 10 (docs) → 11 (blob).
 
 ---
 
 **Contract:** This audit ensures no feature is implemented before its dependencies exist. Progress trackers must reflect actual dependency order, not just sequential numbering.
+
+The auth repair also removes the accidentally retained obsolete Spec 07/Postman
+and Spec 08/Auth files; the canonical feature files are 07/Auth and 08/Postman.

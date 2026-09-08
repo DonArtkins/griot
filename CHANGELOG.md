@@ -2,6 +2,19 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-09-08 (Feature 07 auth repair + Email-OTP 2FA)
+
+### Added
+- Email-OTP 2FA implemented end-to-end per `research/ai-features-research.md` §1: `POST /api/auth/otp/request` (202; also auto-sent with a branded `email_verify` code on register( + `POST /api/auth/otp/verify` (200/401/429;; sets `Users.EmailVerified`; purposes `email_verify`/`login_2fa`/`password_reset`.
+- Branded Resend email templates (`Griot.Application/Email/BrandedEmailTemplate.cs` — C# port of the Sababisha site's branded shell, per-purpose copy) + Resend transport (`Griot.Infrastructure/Email/ResendEmailService.cs`;`Resend:ApiKey`/`Resend:FromEmail`/`Resend:ContactToEmail`; admin "New user registered" notice on register(.
+- `Users.EmailVerified` bit column (migration `20260908144212_AddRefreshTokenFamilyId` amended( + OTP challenge lifecycle in `AuthRepository` (hash-at-rest, 10-min expiry, 5-attempt lockout, supersede-old-challenges(.
+- Contract-sync evidence: `docs/planning/FEATURE-07-AUTH-REPAIR.md` (repair + review matrix(; OTP routes/statuses/config documented in `docs/api/auth-contract.md`, `api-surface.md`, integration contracts, AGENTS.md, skill, spec 07 acceptance criteria(.
+- Tests: unit OTP coverage in `AuthServiceTests` + SQL/HTTP `HttpOtp_VerifyConsumes_AndMarksEmailVerified_AndLocksAfterFive` (optional `GRIOT_RUN_SQL_TESTS=1`(.
+
+### Fixed
+- Root "Not implemented yet" auth responses: caused by a stale pre-auth build in `backend/src/Griot.Api/bin`; the implemented auth controller/service/repository now serve 201/200/401/204 — rebuild required. README scaffold note unchanged (workspaces stub still legit(.
+- CodeRabbit review (8 actionable comments(: verified already-applied code fixes in the working tree (singleton `IConnectionMultiplexer`; `localhost:6380` fallback; `64-hex` token validation; timing-safe dummy-password login; `DbUpdateException`→`DuplicateEmailException` mapping; atomic family-scoped rotation with transactional conditional-update; family-scoped reuse revocation) and completed the remaining doc/stale-status synchronization (GRAPHQL-STATUS zero-warning/, DEPENDENCY-AUDIT Spec  ‏08 next(.
+
 ## [0.2.0] - 2026-09-03 (planning phase)
 
 ### Added

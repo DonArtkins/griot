@@ -44,7 +44,7 @@
 | # | From → To | Data / label |
 |---|---|---|
 | F1 | Workspace Owner / Team Member → P1/P2 | credentials (email+password), workspace + board + task operations, comments |
-| F2 | P1/P2 → P3 | HTTPS REST + GraphQL, JWT Bearer (`sub`, `wid`) |
+| F2 | P1/P2 → P3 | HTTPS REST + GraphQL, JWT Bearer (`sub`, `email`, `jti`) |
 | F3 | P3 → D1/D2/D3 | T-SQL (EF Core 8 + Dapper 2: `usp_BulkUpdateTaskStatus`, `usp_GetDashboardSummary`); Redis TCP |
 | F4 | P3 → P1/P2 | 200/201 responses + `Set-Cookie refreshToken` (web) / JSON body (mobile) |
 | F5 | P3 → Clients | 401/404/403 rejection semantics (404 never discloses existence) |

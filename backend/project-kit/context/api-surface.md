@@ -6,7 +6,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 
 | Method | Route | Purpose | Role gate |
 |---|---|---|---|
-| POST | `/api/auth/register` · `/login` · `/refresh` · `/logout` | auth lifecycle | public / authenticated |
+| POST | `/api/auth/register` · `/login` · `/refresh` · `/logout` · `/otp/request` · `/otp/verify` | auth lifecycle + email-OTP 2FA | public / authenticated |
 | GET/POST | `/api/workspaces` | list/create | authenticated |
 | GET/PUT/DELETE | `/api/workspaces/{id}` | read/update/delete | DELETE = Owner only |
 | GET/POST | `/api/workspaces/{id}/members` | member list/add | Owner/Admin |
@@ -85,6 +85,13 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 - Pagination: fixed page size, stable order (tasks by `(ColumnId, Position)`); cursor or skip/take.
 - Latency budgets (p95): board read < 500 ms, dashboard < 500 ms, login < 300 ms, bulk-status < 800 ms.
 - Postman collection (`Postman/Griot.postman_collection.json`) mirrors every route; Newman reuses it in CI (qa).
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register( + `POST /api/auth/otp/verify` (200/401/429; sets `Users.EmailVerified`; per-purpose branded Resend template — `auth-contract.md` §Email. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

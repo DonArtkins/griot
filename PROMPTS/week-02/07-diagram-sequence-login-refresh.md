@@ -20,7 +20,7 @@ User → AuthController: POST /api/auth/login {email, password}
 AuthController → AuthService: LoginAsync(dto)
 AuthService → Users(DB): find by email
 AuthService: Argon2 verify hash
-AuthService: generate access JWT (15-min, sub/wid) + opaque refresh (256-bit)
+AuthService: generate access JWT (15-min, sub/email/jti) + opaque refresh (256-bit)
 AuthService: derive FamilyId = new GUID (root of a new rotation chain)
 AuthService → RefreshTokens(DB): store { TokenHash, FamilyId, UserId,
     ReplacedByTokenId=NULL, ExpiresAt }
@@ -120,7 +120,7 @@ User → AuthController: POST /api/auth/login {email, password}
 AuthController → AuthService: LoginAsync(dto)
 AuthService → SQL Server: find user by email
 AuthService [self]: Argon2 verify hash (no timing leak)
-AuthService [self]: generate access JWT (15-min, claims sub/wid) + opaque refresh (256-bit)
+AuthService [self]: generate access JWT (15-min, claims sub/email/jti) + opaque refresh (256-bit)
 AuthService [self]: FamilyId = new GUID (root of rotation chain)
 AuthService → SQL Server: INSERT RefreshTokens
     { TokenHash=SHA256(token), FamilyId, UserId, ReplacedByTokenId=NULL, ExpiresAt }
@@ -178,3 +178,15 @@ STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills
 - [ ] Transport documented on every auth response: web = httpOnly Secure cookie; mobile = JSON body + secure storage; Postman = JSON body
 - [ ] Labels match `jwt-argon2-auth` skill
 - [ ] Approved → PNG → `diagrams/architecture/sequence-login-refresh.png`
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+The current REST transport uses JSON refresh tokens for Postman/mobile. Web
+HttpOnly cookie transport in the design remains a backend prerequisite for web
+Feature 05; do not treat the cookie diagrams as live behavior or store tokens in
+localStorage. SQL Server owns refresh rows; Redis currently owns login limits.

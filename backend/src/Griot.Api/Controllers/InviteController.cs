@@ -12,7 +12,7 @@ public class InviteController : ControllerBase
     [HttpPost("{token}/accept")]
     public IActionResult AcceptInvite(string token)
     {
-        return Ok(new { message = "Not implemented yet" });
+        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
     }
 
 }

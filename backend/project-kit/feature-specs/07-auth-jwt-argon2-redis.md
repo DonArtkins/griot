@@ -6,7 +6,7 @@ NEW FEATURE (`[own-stack]` — the guide is silent on auth; the mechanism is own
 
 ## What This Delivers
 
-The bootcamp's un-specified auth surface, implemented in-house: Argon2 password hashing, JWT access tokens (15-min, `sub`/`wid`), opaque rotated refresh tokens (SHA-256 at rest, family revoke on reuse), and Redis sliding-window rate limiting.
+The bootcamp's un-specified auth surface, implemented in-house: Argon2 password hashing, JWT access tokens (15-min, `sub`/`email`/`jti`), opaque rotated refresh tokens (SHA-256 at rest, family revoke on reuse), and Redis sliding-window rate limiting.
 
 ## Dependencies
 
@@ -27,12 +27,14 @@ The bootcamp's un-specified auth surface, implemented in-house: Argon2 password 
 - `backend/src/Griot.Application/AuthService.cs` + auth DTOs
 - `backend/src/Griot.Infrastructure/Redis/*` (rate limiter, session store)
 - `backend/src/Griot.Api/Middleware/*` (auth middleware, rate-limit middleware)
+- `backend/src/Griot.Application/Email/BrandedEmailTemplate.cs` (branded Resend OTP/admin email shell, port of the site's templates(
+- `backend/src/Griot.Infrastructure/Email/ResendEmailService.cs` (Resend transport: `Resend:ApiKey`, `Resend:FromEmail`, `Resend:ContactToEmail`(
 
 ## Files
 
 CREATE: `AuthService` — register (Argon2 hash), login (verify + issue), refresh (rotate), logout (revoke).
 CREATE: Redis rate limiter (sliding window on login; query-cost guard for GraphQL).
-CREATE: auth middleware + principal factory (`sub`, `wid` claims).
+CREATE: auth middleware + principal factory (`sub`, `email`, `jti` claims; workspace context per-request).
 MODIFY: `Program.cs` — AddAuthentication(JwtBearer), CORS allow-list.
 RUN: `dotnet build`; integration smoke of register→login→refresh→reuse-rejected.
 
@@ -41,7 +43,7 @@ RUN: `dotnet build`; integration smoke of register→login→refresh→reuse-rej
 ```bash
 dotnet add src/Griot.Api package Microsoft.AspNetCore.Authentication.JwtBearer
 dotnet add src/Griot.Infrastructure package Konscious.Security.Cryptography
-# env: JWT__SigningKey (>=256-bit), JWT__Issuer, JWT__Audience, Redis__Connection
+# env: JWT__Key (>=256-bit), JWT__Issuer, JWT__Audience, Redis__Connection
 ```
 
 ## Implementation Notes
@@ -49,6 +51,11 @@ dotnet add src/Griot.Infrastructure package Konscious.Security.Cryptography
 - Refresh rotation: on every refresh call, revoke the old token row, hash+insert the new one, link via `ReplacedByTokenId`.
 - Reuse of a rotated token → revoke the whole family (qa spec 05 test).
 - Rate limit: Redis fixed/sliding window returns 429 with `Retry-After`.
+- OTP 2FA (`research/ai-features-research.md` §1): crypto-secure 6-digit codes, HMAC-SHA256 hashed at rest
+  with a server pepper (`Otp:Pepper`), 10-minute expiry, 5-attempt lockout per challenge. Endpoints
+  `POST /api/auth/otp/request` (202; email-verify OTP is auto-sent on register and Admin new-account notice
+  goes to `Resend:ContactToEmail`) and `POST /api/auth/otp/verify` (200 / 401 / 429; `email_verify` marks
+  `Users.EmailVerified = true`; purposes: `email_verify`, `login_2fa`, `password_reset`. Resend branded email per purpose.
 - CORS: allow-list only (Vercel origin prod, localhost dev).
 
 ## Separation of Concerns
@@ -61,7 +68,7 @@ dotnet add src/Griot.Infrastructure package Konscious.Security.Cryptography
 
 ## Out of Scope
 
-OAuth/SSO, 2FA, session revocation UI (v2).
+OAuth/SSO, session revocation UI (v2).
 
 ## Future Modifications
 
@@ -69,10 +76,19 @@ OAuth/SSO, 2FA, session revocation UI (v2).
 
 ## Acceptance Criteria
 
-- [ ] register/login/refresh/logout work; replay of a rotated refresh returns 401 and revokes the family
-- [ ] Rate limit returns 429 under hammering
-- [ ] JWT claims `sub`/`wid` correct; CORS restricts to allow-list
+- [x] register/login/refresh/logout work; replay of a rotated refresh returns 401 and revokes the family
+- [x] Rate limit returns 429 under hammering (Redis sliding window: login 10/15min/IP, OTP request 3/15min/email)
+- [x] JWT claims `sub`/`email`/`jti` correct; CORS restricts to allow-list
+- [x] `POST /api/auth/otp/request` → 202 + branded Resend email per purpose (`email_verify` auto-sent on register; admin notice → `RESEND_FROM_EMAIL`/`CONTACT_TO_EMAIL`)
+- [x] `POST /api/auth/otp/verify` → 200 marks `EmailVerified` (purpose `email_verify`); 5 failed attempts lock the challenge (429)
 
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

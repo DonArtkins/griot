@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Griot.Application.DTOs.Auth;
+using Griot.Application.Interfaces.Services;
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Services;
 using Griot.Domain.Entities;
@@ -27,12 +28,24 @@ public class AuthServiceTests
             {
                 ["JWT:Key"]      = "test-signing-key-must-be-at-least-256bits-long-padding-here",
                 ["JWT:Issuer"]   = "Griot",
-                ["JWT:Audience"] = "GriotClients"
+                ["JWT:Audience"] = "GriotClients",
+                ["Otp:Pepper"] = "test-otp-pepper"
             })
             .Build();
 
+    private static IEmailService BuildEmailService()
+    {
+        var mock = new Mock<IEmailService>();
+        mock.Setup(m => m.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        return mock.Object;
+
+    }
+
     private static AuthService BuildService(Mock<IAuthRepository> repoMock) =>
-        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>());
+        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService());
+
+    private static AuthService BuildService(Mock<IAuthRepository> repoMock, IEmailService emailService) =>
+        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), emailService);
 
     /// <summary>Builds a raw opaque token (64-char hex of 32 random bytes) the same way AuthService does.</summary>
     private static string MakeRawToken() =>
@@ -83,7 +96,7 @@ public class AuthServiceTests
                 .ReturnsAsync(revokedToken);
 
         // Family revoke must be called exactly once.
-        repoMock.Setup(r => r.RevokeAllActiveTokensForUserAsync(userId, It.IsAny<DateTime>()))
+        repoMock.Setup(r => r.RevokeFamilyAsync(userId, revokedToken.FamilyId, It.IsAny<DateTime>()))
                 .Returns(Task.CompletedTask);
 
         var sut = BuildService(repoMock);
@@ -93,7 +106,7 @@ public class AuthServiceTests
 
         // Assert
         Assert.Null(result);
-        repoMock.Verify(r => r.RevokeAllActiveTokensForUserAsync(userId, It.IsAny<DateTime>()), Times.Once);
+        repoMock.Verify(r => r.RevokeFamilyAsync(userId, revokedToken.FamilyId, It.IsAny<DateTime>()), Times.Once);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -135,7 +148,8 @@ public class AuthServiceTests
         Assert.NotEmpty(result!.AccessToken);
         Assert.NotEmpty(result.RefreshToken);
         Assert.NotEqual(rawToken, result.RefreshToken); // new token != old token
-        repoMock.Verify(r => r.RotateRefreshTokenAsync(activeToken, It.IsAny<RefreshToken>()), Times.Once);
+        repoMock.Verify(r => r.RotateRefreshTokenAsync(activeToken,
+            It.Is<RefreshToken>(t => t.FamilyId == activeToken.FamilyId && t.UserId == user.Id)), Times.Once);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -237,6 +251,11 @@ public class AuthServiceTests
                 .ReturnsAsync((User u) => u);
         repoMock.Setup(r => r.InsertRefreshTokenAsync(It.IsAny<RefreshToken>()))
                 .ReturnsAsync((RefreshToken t) => t);
+        // OTP: registration persists the email-verify challenge (best-effort Resend send is not asserted here).
+        repoMock.Setup(r => r.InvalidateOtpChallengesAsync(It.IsAny<Guid>(), "email_verify"))
+                .Returns(Task.CompletedTask);
+        repoMock.Setup(r => r.InsertOtpChallengeAsync(It.IsAny<OtpChallenge>()))
+                .Returns(Task.CompletedTask);
 
         var sut = BuildService(repoMock);
 
@@ -311,4 +330,47 @@ public class AuthServiceTests
         // Act + Assert — should not throw
         await sut.LogoutAsync(rawToken);
     }
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("invalid")]
+    [InlineData("ABC")]
+    [InlineData("000000000000000000000000000000000000000000000000000000000000000G")]
+    [InlineData("000000000000000000000000000000000000000000000000000000000000000")]
+    [InlineData("00000000000000000000000000000000000000000000000000000000000000000")]
+    public async Task MalformedTokens_RefreshRejects_LogoutSucceeds_WithoutDatabaseAccess(string? token)
+    {
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        var service = BuildService(repo);
+        Assert.Null(await service.RefreshAsync(token!));
+        await service.LogoutAsync(token!);
+        repo.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Refresh_LostRotationRace_RevokesOnlyStoredFamily_AndIssuesNoPair()
+    {
+        var raw = MakeRawToken();
+        var token = new RefreshToken { UserId = Guid.NewGuid(), ExpiresAt = DateTime.UtcNow.AddDays(1) };
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(raw))).ReturnsAsync(token);
+        repo.Setup(r => r.RotateRefreshTokenAsync(token, It.IsAny<RefreshToken>())).ReturnsAsync((RefreshToken?)null);
+        repo.Setup(r => r.RevokeFamilyAsync(token.UserId, token.FamilyId, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        Assert.Null(await BuildService(repo).RefreshAsync(raw));
+        repo.Verify(r => r.RevokeFamilyAsync(token.UserId, token.FamilyId, It.IsAny<DateTime>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("WrongPassword!")]
+    [InlineData("Griot-dummy-login-record")]
+    public async Task Login_UnknownUser_RejectsEvenWhenDummyPasswordMatches(string password)
+    {
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindUserByEmailAsync("missing@example.com")).ReturnsAsync((User?)null);
+        Assert.Null(await BuildService(repo).LoginAsync(new LoginRequest
+        {
+            Email = "missing@example.com", Password = password
+        }));
+    }
+
 }

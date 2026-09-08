@@ -32,4 +32,19 @@ public interface IAuthService
     /// Silently succeeds if the token is unknown (idempotent).
     /// </summary>
     Task LogoutAsync(string refreshToken);
-}
+
+    /// <summary>
+    /// Request a fresh 6-digit OTP code for the given purpose and deliver it via Resend
+    /// using the branded email template. Returns null when the email is unknown;
+    /// result.Success=false when Resend rejected the message (→ 502 at the controller).
+    /// </summary>
+    Task<OtpRequestResult?> RequestOtpAsync(OtpRequestRequest request, string? requestIp);
+
+    /// <summary>
+    /// Verify a submitted OTP code against the latest active challenge.
+    /// Success consumes the challenge (and, for `email_verify`, marks the user's
+    /// email verified). Repeated failures lock the challenge after 5 attempts.
+    /// </summary>
+    Task<OtpVerifyResult> VerifyOtpAsync(OtpVerifyRequest request);
+
+    }

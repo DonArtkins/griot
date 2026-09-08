@@ -21,7 +21,7 @@
 ## 2. Frames
 
 **FRAME A — Login + dashboard read** (happy path, per 07):
-`POST /api/auth/login` → Argon2 verify (Users) → Redis session + rate-limit → issue access JWT (15-min `sub`/`wid`) + opaque refresh (web: httpOnly cookie; mobile: secure storage) → GraphQL bootstrap (`me`, `projects`, `boards`, `tasks`). Refresh rotation + replay-race handled in 07 — reference, don't redraw.
+`POST /api/auth/login` → Argon2 verify (Users) → Redis session + rate-limit → issue access JWT (15-min `sub`/`email`/`jti`) + opaque refresh (web: httpOnly cookie; mobile: secure storage) → GraphQL bootstrap (`me`, `projects`, `boards`, `tasks`). Refresh rotation + replay-race handled in 07 — reference, don't redraw.
 
 **FRAME B — Create task + fan-out** (per 08):
 `createTask {title, columnId, assigneeId?}` → BEGIN TX (UPDLOCK position lock) → INSERT TaskItems + ActivityLogs + Notifications + AuditLogs → COMMIT → Trigger-realtime notification (assignee) → 201. Assignee subscribed → realtime event; else next board load pulls.
@@ -41,7 +41,7 @@ Paste the full prompt below into Figma Make (Plan mode first). It draws all five
 UML sequence diagram: Griot end-to-end system choreography. Lifelines left→right:
 User/Client, Web App/Mobile App, API (backend ASP.NET Core 8), SQL Server, Redis, ai/ agents (Trigger.dev), mcp/ server, External AI client, Email provider. Draw 5 labeled frames, each with its own small caption.
 
-FRAME A (LOGIN + READ): User → Web: POST /api/auth/login {email,password} → API: Argon2 verify (Users table) → Redis: session + rate-limit → API: issue access JWT (15min, sub/wid) + opaque refresh [web: Set-Cookie HttpOnly; mobile: JSON body → secure storage] → Web → API: GET /graphql bootstrap (me, projects, boards, tasks) → SQL Server → 200.
+FRAME A (LOGIN + READ): User → Web: POST /api/auth/login {email,password} → API: Argon2 verify (Users table) → Redis: session + rate-limit → API: issue access JWT (15min, sub/email/jti) + opaque refresh [web: Set-Cookie HttpOnly; mobile: JSON body → secure storage] → Web → API: GET /graphql bootstrap (me, projects, boards, tasks) → SQL Server → 200.
 
 FRAME B (TASK FANOUT): Web → API: createTask {title, columnId, assigneeId?} → API: BEGIN TX; SELECT MAX(Position) UPDLOCK/HOLDLOCK; INSERT TaskItems + ActivityLogs + Notifications + AuditLogs; COMMIT → Trigger realtime → assignee client (realtime if subscribed, else next load) → 201.
 
@@ -72,3 +72,15 @@ STYLE: mono protocol labels, dashed HMAC + deploy edges, light canvas (#F7F8FA),
 - [ ] Matches `docs/ARCHITECTURE.md` §3 (flows 3.1–3.4) and `system-map.md`
 - [ ] Approved → PNG → `diagrams/architecture/sequence-end-to-end.png`
 Trigger cron → ai/ (`dueReminders` / `sprintDigest`) → API (service token) → Notifications → SQL Server → email provider → inbox.
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+The current REST transport uses JSON refresh tokens for Postman/mobile. Web
+HttpOnly cookie transport in the design remains a backend prerequisite for web
+Feature 05; do not treat the cookie diagrams as live behavior or store tokens in
+localStorage. SQL Server owns refresh rows; Redis currently owns login limits.

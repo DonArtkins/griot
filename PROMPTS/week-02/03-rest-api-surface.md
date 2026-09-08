@@ -69,7 +69,7 @@
 ```text
 Build the backend API exactly per `backend/project-kit/context/api-surface.md` and this list. Verify every route/type against the approved ERD at `diagrams/erd/`; update the spec if the ERD differs. Enforce:
 - Separation of concerns: thin controllers/resolvers to `Griot.Application` services to repos (EF 95% + Dapper for `usp_BulkUpdateTaskStatus` + `usp_GetDashboardSummary` only). Zero business logic in controllers.
-- Auth: Argon2, 15-min JWT (claims sub/wid), rotated opaque refresh (SHA-256 at rest, FamilyId for scoped family-revoke on replay), Redis sliding-window rate limit on login + query-cost guard on /graphql, CORS allow-list. Refresh-token transport: web via `Set-Cookie: HttpOnly; Secure; SameSite=Strict` (never in JSON body); mobile via JSON body + secure storage; Postman via JSON body. The `/api/auth/refresh` endpoint accepts Cookie (web) or JSON body (mobile/Postman). Single-transaction rotation: `WHERE RevokedAt IS NULL` is the sole gate; any miss is a replay → revoke `WHERE FamilyId = @familyId`.
+- Auth: Argon2, 15-min JWT (claims sub/email/jti), rotated opaque refresh (SHA-256 at rest, FamilyId for scoped family-revoke on replay), Redis sliding-window rate limit on login + query-cost guard on /graphql, CORS allow-list. Refresh-token transport: web via `Set-Cookie: HttpOnly; Secure; SameSite=Strict` (never in JSON body); mobile via JSON body + secure storage; Postman via JSON body. The `/api/auth/refresh` endpoint accepts Cookie (web) or JSON body (mobile/Postman). Single-transaction rotation: `WHERE RevokedAt IS NULL` is the sole gate; any miss is a replay → revoke `WHERE FamilyId = @familyId`.
 - Service-token principal: GRIOT_SERVICE_TOKEN to restricted ai-agent (no deletes/invites). HMAC on /api/webhooks/trigger.
 - Errors: 404 on ownership miss (never disclose existence), 400 validation, 401 unauthenticated, 403 forbidden, 409 conflict/illegal state (incl. illegal task transition + bulk atomic rollback), 429 rate limit.
   - **`PATCH /api/tasks/bulk-status` specific rule:** the entire batch runs inside `usp_BulkUpdateTaskStatus` as a single TVP transaction. If **any** `taskId` in the batch is invalid (not found, wrong workspace, or wrong state), the proc rolls back the entire transaction and the endpoint returns **409** (not 404 or 400). Do not return 404 for individual missing task ids in a batch, and do not return 400 for a state mismatch — both are 409 to keep the atomic contract unambiguous. Pre-validation (empty array, malformed input) is 400 before the proc is even called.
@@ -95,3 +95,15 @@ Build the backend API exactly per `backend/project-kit/context/api-surface.md` a
 - [ ] Error codes + pagination + latency budgets met
 - [ ] Postman collection = the Newman contract suite source
 - [ ] api-surface.md + collection + docs/api + diagram all synchronized
+
+## Implemented authentication contract (Feature 07)
+
+Use the [auth contract](../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
+configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
+replay revokes only the same user/family. Registration returns 201 after SQL
+persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+The current REST transport uses JSON refresh tokens for Postman/mobile. Web
+HttpOnly cookie transport in the design remains a backend prerequisite for web
+Feature 05; do not treat the cookie diagrams as live behavior or store tokens in
+localStorage. SQL Server owns refresh rows; Redis currently owns login limits.

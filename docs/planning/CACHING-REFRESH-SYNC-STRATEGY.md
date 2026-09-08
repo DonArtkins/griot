@@ -751,83 +751,24 @@ class OfflineBanner extends StatelessWidget {
 
 ## 5. Refresh Token Rotation & Session Management
 
-### 5.1 Refresh flow (backend)
+### 5.1 Refresh flow (backend, implemented Feature 07)
 
-**Token storage:**
-```
-Access token:  JWT (15-min expiry), stored in memory (web: Zustand, mobile: Riverpod)
-Refresh token: Opaque 256-bit token, SHA-256 hash stored in SQL Server RefreshTokens table
-               Sent as httpOnly cookie (web) or secure storage (mobile)
-```
+See [the auth contract](../api/auth-contract.md). Access tokens expire in 15
+minutes; refresh tokens expire in 30 days. Refresh accepts a JSON
+`refreshToken` and returns `{accessToken, refreshToken, expiresAt, user}`.
+The web cookie examples below are planned integration work, not current API
+support; web Feature 05 cannot pass until that backend prerequisite exists.
 
-**Rotation on refresh:**
-```csharp
-// backend/Griot.Application/Services/AuthService.cs
-public async Task<AuthResult> RefreshAsync(string refreshToken, CancellationToken ct)
-{
-    // 1. Hash incoming token
-    var tokenHash = ComputeSHA256(refreshToken);
-    
-    // 2. Find in database (check not revoked)
-    var existingToken = await _db.RefreshTokens
-        .Where(t => t.TokenHash == tokenHash && t.RevokedAt == null)
-        .FirstOrDefaultAsync(ct);
-    
-    if (existingToken == null || existingToken.ExpiresAt < DateTime.UtcNow)
-    {
-        throw new UnauthorizedException("Invalid or expired refresh token");
-    }
-    
-    // 3. Check for reuse (replay attack detection)
-    if (existingToken.ReplacedByTokenId != null)
-    {
-        // This token was already rotated → revoke entire family
-        await RevokeTokenFamilyAsync(existingToken.FamilyId, ct);
-        throw new SecurityException("Token reuse detected");
-    }
-    
-    // 4. Generate new token pair
-    var newAccessToken = GenerateJWT(existingToken.UserId);
-    var newRefreshToken = GenerateSecureToken();
-    var newTokenHash = ComputeSHA256(newRefreshToken);
-    
-    // 5. Store new refresh token (same family)
-    var newTokenRow = new RefreshToken
-    {
-        Id = Guid.NewGuid(),
-        UserId = existingToken.UserId,
-        TokenHash = newTokenHash,
-        FamilyId = existingToken.FamilyId, // Preserve family
-        ExpiresAt = DateTime.UtcNow.AddDays(7),
-        CreatedAt = DateTime.UtcNow,
-    };
-    await _db.RefreshTokens.AddAsync(newTokenRow, ct);
-    
-    // 6. Mark old token as replaced (not revoked)
-    existingToken.ReplacedByTokenId = newTokenRow.Id;
-    await _db.SaveChangesAsync(ct);
-    
-    return new AuthResult(newAccessToken, newRefreshToken);
-}
-```
+`AuthService` validates exactly 64 hexadecimal characters and hashes the decoded
+32 bytes. It loads even revoked tokens so reuse can be detected. An unknown or
+expired token returns 401. Reuse revokes active rows matching the stored
+`UserId` and `FamilyId`. Each login starts an independent family.
 
-**Family-based revocation (on reuse detection):**
-```csharp
-private async Task RevokeTokenFamilyAsync(Guid familyId, CancellationToken ct)
-{
-    var familyTokens = await _db.RefreshTokens
-        .Where(t => t.FamilyId == familyId && t.RevokedAt == null)
-        .ToListAsync(ct);
-    
-    foreach (var token in familyTokens)
-    {
-        token.RevokedAt = DateTime.UtcNow;
-    }
-    
-    await _db.SaveChangesAsync(ct);
-    _logger.LogWarning("Revoked token family {FamilyId} due to reuse detection", familyId);
-}
-```
+`AuthRepository.RotateRefreshTokenAsync` begins a SQL transaction, conditionally
+updates the original row with `RevokedAt IS NULL`, inserts one replacement with
+the same `FamilyId`, then commits. Zero affected rows returns no token pair and
+triggers family revocation. Insert failure rolls back the original update.
+Persistence remains in Infrastructure; Application does not own a DbContext.
 
 ### 5.2 Silent refresh (web)
 
