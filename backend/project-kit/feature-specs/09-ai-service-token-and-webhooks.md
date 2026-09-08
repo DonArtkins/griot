@@ -10,7 +10,7 @@ The trusted AI-onboarding surface: `GRIOT_SERVICE_TOKEN` resolves to a dedicated
 
 ## Dependencies
 
-- Feature 08 (Bearer auth middleware exists to extend).
+- Feature 07 (Bearer auth middleware exists to extend).
 
 ## Context To Read First
 

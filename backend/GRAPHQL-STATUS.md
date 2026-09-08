@@ -104,7 +104,7 @@ curl 'http://localhost:5064/graphql?sdl'
 
 ### 2. Test with curl (Requires JWT for most queries)
 ```bash
-# This will return AUTH_NOT_AUTHENTICATED until feature 08 (auth) is implemented
+# This will return AUTH_NOT_AUTHENTICATED until feature 07 (auth) is implemented
 curl -X POST http://localhost:5064/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"query { board(id: \"ffffffff-ffff-ffff-ffff-ffffffffffff\") { id name } }"}'
@@ -187,7 +187,7 @@ query {
 
 ## 🚧 Current Limitation: Authentication Required
 
-Most GraphQL queries and all mutations are protected with `[Authorize]` attribute. Until **Feature 08** (JWT + Argon2 + Redis authentication) is implemented, you'll see:
+Most GraphQL queries and all mutations are protected with `[Authorize]` attribute. Until **Feature 07** (JWT + Argon2 + Redis authentication) is implemented, you'll see:
 
 ```json
 {
@@ -257,8 +257,8 @@ builder.Services
 
 ## 🎯 Next Steps
 
-1. **Feature 08** - Implement JWT authentication so GraphQL queries can be tested end-to-end
-2. **Feature 07** - Create Postman collection with GraphQL queries
+1. **Feature 07** - Implement JWT authentication so GraphQL queries can be tested end-to-end
+2. **Feature 08** - Create Postman collection with GraphQL queries
 3. **Phase 2 Optimization** - Add Redis caching for board queries (post-baseline)
 
 ## ⚠️ Known Warnings (Non-blocking)
@@ -271,4 +271,4 @@ These are safe to address in a follow-up cleanup pass.
 
 ---
 
-**Summary:** Feature 05 is fully implemented and operational. The GraphQL endpoint is live, schema is complete, DataLoaders are configured, and test data is available. Authentication gating is expected and will be resolved in Feature 08.
+**Summary:** Feature 05 is fully implemented and operational. The GraphQL endpoint is live, schema is complete, DataLoaders are configured, and test data is available. Authentication gating is expected and will be resolved in Feature 07.

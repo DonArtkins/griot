@@ -39,7 +39,7 @@ Root shared skills + `qa/.agents/skills/` (all seven suites). Apply the relevant
 
 ## Hard Rules
 
-1. The Postman collection (backend feature 07) is the contract suite - Newman reuses it; never a throwaway.
+1. The Postman collection (backend feature 08) is the contract suite - Newman reuses it; never a throwaway.
 2. No LLM in CI: golden transcripts (mock), MSW-stubbed copilot, MCP contract tests.
 3. Service-layer + auth coverage first; presentation second; aggregate-only passes are failures.
 4. Manual/UAT runs against the deployed system, not just localhost.

@@ -11,7 +11,7 @@ The bootcamp deliverable **"REST integration (Axios + TanStack Query)"**: the ty
 ## Dependencies
 
 - Web feature 01 (lib skeleton).
-- Backend features 04 + 08 (routes + auth).
+- Backend features 04 + 07 (routes + auth).
 
 ## Context To Read First
 

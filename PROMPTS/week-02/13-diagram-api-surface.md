@@ -87,7 +87,7 @@ BELOW BOTH HALVES:
 - Arrows: every REST group → shared layer; GraphQL box → shared layer.
 - Below that: repositories (EF Core 95% + Dapper procs usp_BulkUpdateTaskStatus / usp_GetDashboardSummary) → SQL Server.
 
-ANNOTATION: "Postman collection mirrors this map 1:1 (backend feature 07); a route change updates api-surface.md + the collection + this diagram together."
+ANNOTATION: "Postman collection mirrors this map 1:1 (backend feature 08); a route change updates api-surface.md + the collection + this diagram together."
 STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills only (per docs/design/MASTER-DESIGN-SYSTEM.md), readable at 100% zoom, one page.
 ```
 

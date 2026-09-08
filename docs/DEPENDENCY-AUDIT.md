@@ -5,20 +5,16 @@
 
 ## Critical Findings
 
-### 🔴 **Backend: Specs 07 and 08 Must Run in Dependency Order (the "Major" finding)**
+### ✅ **Backend: Specs 07 and 08 — Ordering Violation Found and Fixed by ID Swap**
 
-**Finding:** Backend **Feature 07 (API testing — Postman)** depends on **Feature 08 (Auth: JWT + Argon2 + Redis)**, yet 07 is numbered before 08. Following plain numbering would build the Postman collection before its auth endpoints exist.
+**Original Finding:** Backend **Feature 07 (API testing — Postman)** depended on **Feature 08 (Auth: JWT + Argon2 + Redis)**, yet 07 was numbered before 08. Following plain numbering would build the Postman collection before its auth endpoints exist.
 
-**Corrected Order:**
-- **08: Auth: JWT + Argon2 + Redis** ← implement FIRST
-- **07: API testing (Postman)** ← implement AFTER 08 (needs auth endpoints)
+**Resolution — spec IDs physically swapped (2026-09-08, branch `fix/backend/swap-specs-07-08`):**
+- **07 = Auth: JWT + Argon2 + Redis** ← implement FIRST (file: `07-auth-jwt-argon2-redis.md`)
+- **08 = API testing (Postman)** ← implement AFTER 07 (file: `08-api-testing-postman.md`)
+- All ~65 references across all 7 systems updated atomically in this branch.
 
-**Resolution — spec IDs kept, ordering enforced everywhere (renumbering REJECTED):**
-- Spec IDs stay locked: **07 = Postman, 08 = Auth**. 30+ references across the 7 systems + docs already resolve "Feature 08 = auth" (web specs 03/05, mobile 02, ai 02, mcp 03, `backend/AGENTS.md`, `api-surface.md`, `architecture.md`, the GraphQL guides, `docs/api/README.md`, PROMPTS). Physically renaming files 07↔08 would flip every one of those references and create contract drift.
-- Implementation order is now explicit in every state document: backend + root progress trackers, README status, this audit, and the specs' own `## Dependencies` sections.
-- **Canonical next-step rule:** never start 07 (Postman) or 10 (API docs) before **08 (Auth)** ships. Next branch: `feature/backend/08-auth-jwt-argon2-redis` — **not** 07.
-
-**Reason:** Spec 07's Dependencies section explicitly lists "Feature 08 (auth endpoints exist; collection auth flow needs them)". Postman collection cannot test login/register/refresh endpoints that don't exist yet.
+**Canonical next-step rule:** implement **07 (Auth)** first. Next branch: `feature/backend/07-auth-jwt-argon2-redis`.
 
 ---
 
@@ -34,19 +30,19 @@
 | 04 | REST APIs | 02, 03 (domain + Dapper) | ✅ Yes |
 | 05 | GraphQL layer | 04 (service layer) | ✅ Yes |
 | 06 | Bulk operations | 03, 04 (procs + routes) | ✅ Yes |
-| 07 | API testing (Postman) | 04-06, **08 (auth)** | ❌ **NO** - needs 08 first |
-| 08 | Auth: JWT + Argon2 | 04, 02 (controllers + table) | ✅ Yes (move before 07) |
-| 09 | AI service token | 08 (auth middleware) | ✅ Yes (after 08) |
-| 10 | API documentation | 04-08, 07 (routes + Postman) | ✅ Yes (after 07) |
+| 07 | Auth: JWT + Argon2 | 04, 02 (controllers + table) | ✅ Yes |
+| 08 | API testing (Postman) | 04-07 (routes + auth) | ✅ Yes (after 07) |
+| 09 | AI service token | 07 (auth middleware) | ✅ Yes (after 07) |
+| 10 | API documentation | 04-07, 08 (routes + Postman) | ✅ Yes (after 08) |
 | 11 | Blob storage | None listed | ✅ Yes (independent) |
 
 **Corrected Implementation Order (canonical):**
 1. 01 → 02 → 03 → 04 → 05 → 06 ✅ (done, unchanged)
-2. **08** (Auth) — move here (next branch: `feature/backend/08-auth-jwt-argon2-redis`)
-3. **07** (Postman) — move here
-4. 09 (AI service token — needs 08)
-5. 10 (API docs — needs 04–08 + 07)
-6. 11 (Blob storage — needs only 01/02/04; may run in parallel once 04 exists, not gated behind 07–10)
+2. **07** (Auth) — next branch: `feature/backend/07-auth-jwt-argon2-redis`
+3. **08** (Postman) — after 07
+4. 09 (AI service token — needs 07)
+5. 10 (API docs — needs 04–07 + 08)
+6. 11 (Blob storage — needs only 01/02/04; may run in parallel once 04 exists, not gated behind 08–10)
 
 ---
 
@@ -56,16 +52,16 @@
 |------|-------|--------------|-----------|
 | 01 | React setup Vite | Backend 04-06 (proxy target) | ✅ Yes |
 | 02 | Material UI | 01 (scaffold), Week-1 Figma | ✅ Yes |
-| 03 | REST integration | 01, Backend 04 + **08 (auth)** | ✅ Yes |
+| 03 | REST integration | 01, Backend 04 + **07 (auth)** | ✅ Yes |
 | 04 | GraphQL Apollo | 03, Backend 05 | ✅ Yes |
-| 05 | Secure auth & state | Backend 08, Web 03+04 | ✅ Yes |
+| 05 | Secure auth & state | Backend 07, Web 03+04 | ✅ Yes |
 | 06 | Public shell | 01, 02, 05, Figma screens | ✅ Yes |
-| 07 | App shell | 03, 04, 05, Backend 04–06 + 08 (routes + auth) | ✅ Yes (updated) |
+| 07 | App shell | 03, 04, 05, Backend 04–06 + 07 (routes + auth) | ✅ Yes (updated) |
 | 08 | Kanban interactions | 07, Backend 06 | ✅ Yes |
 | 09 | Notifications | 07, Backend 04–06 | ✅ Yes (updated) |
 | 10 | Copilot panel | 05, 07, AI 02 | ✅ Yes |
 
-**Status:** ✅ All dependencies correct. Web specs reference Backend 08 (auth) correctly in specs 03 and 05.
+**Status:** ✅ All dependencies correct. Web specs reference Backend 07 (auth) correctly in specs 03 and 05.
 
 ---
 
@@ -74,14 +70,14 @@
 | Spec | Title | Dependencies | Order OK? |
 |------|-------|--------------|-----------|
 | 01 | Flutter app setup | Flutter 3.19+ toolchain | ✅ Yes |
-| 02 | Login & auth screens | 01, Backend 08 (auth) | ✅ Yes |
+| 02 | Login & auth screens | 01, Backend 07 (auth) | ✅ Yes |
 | 03 | REST API integration | 02 (auth provider) | ✅ Yes |
 | 04 | GraphQL integration | 01, 02, Backend 05 | ✅ Yes |
 | 05 | Riverpod state mgmt | 03, 04 (data hooks) | ✅ Yes |
 | 06 | Responsive UI | 04, 05 (data + state) | ✅ Yes |
 | 07 | Notifications | 02-06, Backend 04 | ✅ Yes |
 
-**Status:** ✅ All dependencies correct. Mobile spec 02 correctly references Backend 08 (auth).
+**Status:** ✅ All dependencies correct. Mobile spec 02 correctly references Backend 07 (auth).
 
 ---
 
@@ -125,44 +121,48 @@
 
 (13 specs — dependencies checked, refer to completed backend/web/mobile features, no ordering issues)
 
-**Status:** ✅ All dependencies correct. QA spec 04 reuses **Backend 07's Postman base collection**; QA spec 05 (Newman) executes it in CI (Infra 05); QA spec 06 targets backend code under test (routes 04–06 + auth 08 — the Postman collection is a contract artifact, not code).
+**Status:** ✅ All dependencies correct. QA spec 04 reuses **Backend 08's Postman base collection**; QA spec 05 (Newman) executes it in CI (Infra 05); QA spec 06 targets backend code under test (routes 04–06 + auth 07 — the Postman collection is a contract artifact, not code).
 
 ---
 
 ## Resolution — Actions Taken (all complete in this audit pass)
 
-**Key decision — spec IDs kept, ordering enforced (no renumber):** Renumbering backend files `07↔08` was considered and **rejected**: it would flip 30+ references across the 7 systems (web/mobile/ai/mcp specs, AGENTS.md files, `api-surface.md`, `architecture.md`, GraphQL guides, docs, PROMPTS), and the IDs already consistently mean "07 = Postman, 08 = Auth" everywhere. The broken label was *implementation order*, not the IDs — so the order is now encoded in every state document.
+**Spec IDs physically swapped (branch `fix/backend/swap-specs-07-08`, 2026-09-08):** Backend files `07↔08` were renamed so file numbers match natural implementation order. Auth is now `07-auth-jwt-argon2-redis.md`, Postman is now `08-api-testing-postman.md`. All ~65 references across all 7 systems were updated atomically.
 
-### 1. Ordering fixed in every state document
-- **Backend progress tracker:** Spec 07 = `Pending (depends on 08)`, Spec 08 = `Next`; Next Steps list **08 → 07** explicitly.
-- **Root progress tracker:** backend row + Next Steps now name **08 (Auth) → 07 (Postman)** as the immediate sequence and give the full canonical order.
-- **README.md:** status line updated (through spec 06; "Next: spec 08 (Auth)" with the dependency rationale).
+### 1. File renames
+- `backend/project-kit/feature-specs/08-auth-jwt-argon2-redis.md` → `07-auth-jwt-argon2-redis.md`
+- `backend/project-kit/feature-specs/07-api-testing-postman.md` → `08-api-testing-postman.md`
+
+### 2. Ordering fixed in every state document
+- **Backend progress tracker:** Spec 07 = Auth `Next`; Spec 08 = `Pending (depends on 07)`; Next Steps list **07 → 08** explicitly.
+- **Root progress tracker:** backend row + Next Steps now name **07 (Auth) → 08 (Postman)** as the immediate sequence.
+- **README.md:** status line updated ("Next: spec 07 (Auth)" with the dependency rationale).
 - **This audit file** records the canonical order permanently (see Backend section above).
 
-### 2. Spec-level cleanliness (contract sync, same pass)
+### 3. Spec-level cleanliness (contract sync, same pass)
 - `backend/…/10-api-documentation.md`: bogus "Backend feature 13" → real reference `PROMPTS/week-02/13-diagram-api-surface.md` (a diagram prompt, not a feature spec).
-- `backend/…/11-blob-storage-integration.md`: added missing `## Dependencies` section (needs 01/02/04; **not** gated by 07–10 — parallelizable).
+- `backend/…/11-blob-storage-integration.md`: added missing `## Dependencies` section (needs 01/02/04; **not** gated by 08–10 — parallelizable).
 - `infra/…/07-netdata-monitoring.md`: added missing `## Dependencies` section (needs 02 + 06; Phase-1 blocker, not a gate).
-- `backend/…/07-api-testing-postman.md`: corrected stale QA-spec numbers (Newman = qa 05, k6 = qa 10, Cypress = qa 09).
-- `qa/…/06-unit-integration-xunit.md`: narrowed "Backend 04-08" → "04–06, 08 (code under test)".
-- `web/…/07` + `web/…/09` (on this branch): backend deps clarified to routes + auth (04–06, 08) — applied.
+- `backend/…/08-api-testing-postman.md`: corrected stale QA-spec numbers (Newman = qa 05, k6 = qa 10, Cypress = qa 09).
+- `qa/…/06-unit-integration-xunit.md`: narrowed "Backend 04-08" → "04–06, 07 (code under test)".
+- `web/…/07` + `web/…/09`: backend deps clarified to routes + auth (04–06, 07) — applied.
 
-### 3. Progress-tracker verification (post-fix)
-- ✅ Backend: Spec 08 (Auth) = Next; Spec 07 depends on 08; canonical order 08 → 07 → 09 → 10 → 11.
-- ✅ Web/Mobile/AI/MCP/Infra/QA: all cross-system spec numbers verified correct — every "Backend 08 (auth)" / "Backend 07 (Postman)" reference remains valid under the kept IDs.
+### 4. Progress-tracker verification (post-fix)
+- ✅ Backend: Spec 07 (Auth) = Next; Spec 08 depends on 07; canonical order 07 → 08 → 09 → 10 → 11.
+- ✅ Web/Mobile/AI/MCP/Infra/QA: all cross-system spec numbers updated — every "Backend 07 (auth)" / "Backend 08 (Postman)" reference is now consistent.
 
 ---
 
 ## Summary
 
 **Total Feature Specs Audited:** 58 (59 markdown files under `**/feature-specs/`, incl. the root `feature-specs/README.md`)  
-**Dependency/Ordering Violations Found & Fixed:** 1 real ordering issue (Backend 07↔08) + 4 secondary reference bugs (backend 10 "feature 13", backend 07 QA-spec numbers, missing Dependencies sections in backend 11 + infra 07)  
-**Status:** ✅ **Fixed** — ordering corrected in every tracker + README + audit; spec IDs kept deliberately (contract-safe); the CodeRabbit 🟠 Major "Progress tracker dependency order" is closed.
+**Dependency/Ordering Violations Found & Fixed:** 1 real ordering issue (Backend 07↔08 swap) + 4 secondary reference bugs (backend 10 "feature 13", backend 08 QA-spec numbers, missing Dependencies sections in backend 11 + infra 07)  
+**Status:** ✅ **Fixed** — spec files physically renamed, all ~65 references updated system-wide; the CodeRabbit 🟠 Major "Progress tracker dependency order" is closed.
 
 **Next Implementation:**
-- Backend: Spec **08** (Auth: JWT + Argon2 + Redis) — *not* 07 (Postman).
-- Branch: `feature/backend/08-auth-jwt-argon2-redis`.
-- After 08: 07 (Postman) → 09 (AI token) → 10 (docs) → 11 (blob, parallelizable).
+- Backend: Spec **07** (Auth: JWT + Argon2 + Redis).
+- Branch: `feature/backend/07-auth-jwt-argon2-redis`.
+- After 07: 08 (Postman) → 09 (AI token) → 10 (docs) → 11 (blob, parallelizable).
 
 ---
 

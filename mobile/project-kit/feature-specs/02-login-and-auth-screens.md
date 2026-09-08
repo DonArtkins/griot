@@ -11,7 +11,7 @@ The bootcamp deliverable **"Complete login & authentication screens"**: signup/l
 ## Dependencies
 
 - Mobile feature 01.
-- Backend feature 08 (auth).
+- Backend feature 07 (auth).
 
 ## Context To Read First
 

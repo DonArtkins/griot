@@ -72,7 +72,7 @@ curl 'http://localhost:5064/graphql?sdl'
 
 ### Important Note on Authentication
 
-Most GraphQL queries require authentication (JWT bearer token). Feature spec 08 implements authentication. Until then, you can:
+Most GraphQL queries require authentication (JWT bearer token). Feature spec 07 implements authentication. Until then, you can:
 
 1. **Browse the schema** using the SDL endpoint (no auth required)
 2. **Use Banana Cake Pop or GraphQL Playground** to explore the schema

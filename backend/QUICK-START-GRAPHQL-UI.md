@@ -89,7 +89,7 @@ You'll see a list of all available queries!
 
 ---
 
-## ⚠️ What WON'T Work Yet (Needs Feature 08 Auth)
+## ⚠️ What WON'T Work Yet (Needs Feature 07 Auth)
 
 If you try to query actual data, like:
 
@@ -116,7 +116,7 @@ You'll get:
 
 **This is CORRECT and EXPECTED!** 
 
-Authentication comes in Feature 08 (JWT + Argon2 + Redis). Once that's implemented:
+Authentication comes in Feature 07 (JWT + Argon2 + Redis). Once that's implemented:
 1. You'll register/login to get a JWT token
 2. Add the token to the "Headers" section in the UI
 3. All queries and mutations will work!
@@ -202,7 +202,7 @@ See `backend/src/Griot.Infrastructure/Sql/README-SEED-DATA.md` for full details.
 - ✅ Better error messages
 - ✅ GraphQL-specific features (fragments, directives, etc.)
 
-**Use Postman (Feature 07) for:**
+**Use Postman (Feature 08) for:**
 - Full API test suites (REST + GraphQL combined)
 - Team collaboration (shared collections)
 - CI/CD integration (Newman)
@@ -218,10 +218,10 @@ See `backend/src/Griot.Infrastructure/Sql/README-SEED-DATA.md` for full details.
 → Refresh the page (F5) or hard refresh (Ctrl+Shift+R)
 
 ### "All queries return AUTH_NOT_AUTHENTICATED"
-→ This is expected! Only introspection queries work before Feature 08
+→ This is expected! Only introspection queries work before Feature 07
 
 ### "I want to test with real data NOW"
-→ You need to wait for Feature 08 (JWT authentication) first
+→ You need to wait for Feature 07 (JWT authentication) first
 
 ---
 

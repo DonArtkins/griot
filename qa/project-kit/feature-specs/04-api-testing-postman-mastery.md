@@ -6,11 +6,11 @@ NEW FEATURE
 
 ## What This Delivers
 
-The Week-6 step 4 deliverable: advanced Postman collections - environment variables, assertions, reusable scripts, and GraphQL coverage on top of the backend feature-07 collection.
+The Week-6 step 4 deliverable: advanced Postman collections - environment variables, assertions, reusable scripts, and GraphQL coverage on top of the backend feature-08 collection.
 
 ## Dependencies
 
-- Backend feature 07 (base collection).
+- Backend feature 08 (base collection).
 
 ## Context To Read First
 

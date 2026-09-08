@@ -64,7 +64,7 @@ dotnet run --project src/Griot.Api
 
 ## Out of Scope
 
-GraphQL (feature 05), auth flows (feature 08), Postman collection (feature 07).
+GraphQL (feature 05), auth flows (feature 07), Postman collection (feature 08).
 
 ## Future Modifications
 

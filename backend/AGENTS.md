@@ -47,7 +47,7 @@ Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, thrott
 2. Both REST and GraphQL share `Griot.Application` services — zero drift allowed.
 3. `GRIOT_SERVICE_TOKEN` resolves to the restricted `ai-agent` principal; `/api/webhooks/trigger` verifies HMAC.
 4. Every raw SQL / Dapper call is parameterized; stored procs are `usp_` prefixed and idempotent.
-5. Auth details (Argon2, 15-min JWT, refresh rotation with revocation-on-reuse) match spec 08 exactly.
+5. Auth details (Argon2, 15-min JWT, refresh rotation with revocation-on-reuse) match spec 07 exactly.
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 
