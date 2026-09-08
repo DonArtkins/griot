@@ -1,8 +1,11 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using Griot.Api.GraphQL;
+using Griot.Api.GraphQL.DataLoaders;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
 using Griot.Infrastructure.Persistence;
+using HotChocolate.Execution.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -31,8 +34,37 @@ builder.Services.AddSwaggerGen();
 // DbContext (SQL Server 2022) — connection string is config/env driven (ConnectionStrings__Default); never hardcoded.
 var defaultConnection = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("ConnectionStrings:Default is not configured (set ConnectionStrings__Default).");
-builder.Services.AddDbContext<GriotDbContext>(options =>
-    options.UseSqlServer(defaultConnection));
+
+// Pooled DbContextFactory for both GraphQL DataLoaders and regular use
+// This creates a context pool that can be used by both controllers and DataLoaders
+builder.Services.AddPooledDbContextFactory<GriotDbContext>(options =>
+{
+    options.UseSqlServer(defaultConnection);
+});
+
+// Also register as scoped for controllers that expect DbContext injection
+builder.Services.AddScoped(sp => 
+{
+    var factory = sp.GetRequiredService<IDbContextFactory<GriotDbContext>>();
+    return factory.CreateDbContext();
+});
+
+// GraphQL server (HotChocolate 14+) — code-first schema, DataLoaders, filtering, sorting, auth, query cost guard
+builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<GriotQuery>()
+    .AddMutationType<GriotMutation>()
+    .AddAuthorization()
+    .AddDataLoader<AssigneeDataLoader>()
+    .AddDataLoader<CommentDataLoader>()
+    .AddFiltering()
+    .AddSorting()
+    .AddProjections()
+    .ModifyRequestOptions(opt =>
+    {
+        // Execution timeout (abuse prevention)
+        opt.ExecutionTimeout = TimeSpan.FromSeconds(30);
+    });
 
 // Health checks (/health).
 builder.Services.AddHealthChecks();
@@ -116,5 +148,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.MapGraphQL("/graphql");
 
 app.Run();
