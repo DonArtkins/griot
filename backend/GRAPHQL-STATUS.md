@@ -102,11 +102,12 @@ Full details in `backend/src/Griot.Infrastructure/Sql/README-SEED-DATA.md`
 curl 'http://localhost:5064/graphql?sdl'
 ```
 
-### 2. Test with curl (Requires JWT for most queries)
+### 2. Test with curl (Requires JWT — use `POST /api/auth/login` first)
 ```bash
-# This will return AUTH_NOT_AUTHENTICATED until feature 07 (auth) is implemented
+# Feature 07 (auth) is ✅ Done — get a token via /api/auth/login first, then pass it as Bearer
 curl -X POST http://localhost:5064/graphql \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_access_token>" \
   -d '{"query":"query { board(id: \"ffffffff-ffff-ffff-ffff-ffffffffffff\") { id name } }"}'
 ```
 
@@ -185,9 +186,9 @@ query {
 }
 ```
 
-## 🚧 Current Limitation: Authentication Required
+## ✅ Authentication Live: JWT + Argon2 + Redis (Feature 07)
 
-Most GraphQL queries and all mutations are protected with `[Authorize]` attribute. Until **Feature 07** (JWT + Argon2 + Redis authentication) is implemented, you'll see:
+Most GraphQL queries and all mutations are protected with `[Authorize]` attribute. **Feature 07** (JWT + Argon2 + Redis authentication) is ✅ **implemented** — register via `POST /api/auth/register` and login via `POST /api/auth/login` to get your JWT access token, then include it as `Authorization: Bearer <token>`.
 
 ```json
 {
