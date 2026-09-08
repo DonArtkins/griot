@@ -5,6 +5,7 @@ using Griot.Api.GraphQL.DataLoaders;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
 using Griot.Infrastructure.Persistence;
+using HotChocolate.AspNetCore;
 using HotChocolate.Execution.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -160,6 +161,15 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health");
-app.MapGraphQL("/graphql");
+
+// GraphQL endpoint with Banana Cake Pop UI in development
+// - /graphql → GraphQL endpoint (POST requests)
+// - /graphql?sdl → Schema Definition Language (GET)
+// - /graphql/ → Banana Cake Pop interactive UI (dev only)
+app.MapGraphQL("/graphql")
+    .WithOptions(options =>
+    {
+        options.Tool.Enable = app.Environment.IsDevelopment();
+    });
 
 app.Run();
