@@ -7,5 +7,5 @@ namespace Griot.Application.Interfaces.Services;
 
 public interface ITaskService
 {
-    // Stub
+    Task<BulkUpdateTaskStatusResponse> BulkUpdateStatusAsync(BulkUpdateTaskStatusRequest request, Guid userId);
 }

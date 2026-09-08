@@ -2,7 +2,7 @@
 
 ## Current State
 
-Week 2. Spec 05 is complete (GraphQL layer). Spec 06 (bulk operations & advanced data) is next.
+Week 2. Spec 06 is complete (bulk operations & advanced data). Spec 07 (API testing with Postman) is next.
 
 | Spec | Title | Status |
 |---|---|---|
@@ -11,8 +11,8 @@ Week 2. Spec 05 is complete (GraphQL layer). Spec 06 (bulk operations & advanced
 | 03 | Stored procedures & optimized queries | ✅ Done |
 | 04 | REST APIs (.NET 8) | ✅ Done |
 | 05 | GraphQL layer (HotChocolate) | ✅ Done |
-| 06 | Bulk operations & advanced data | Next |
-| 07 | API testing (Postman) | Pending |
+| 06 | Bulk operations & advanced data | ✅ Done |
+| 07 | API testing (Postman) | Next |
 | 08 | Auth: JWT + Argon2 + Redis [own-stack] | Pending |
 | 09 | AI service token + webhooks [own-stack] | Pending |
 | 10 | API documentation | Pending |
@@ -20,7 +20,7 @@ Week 2. Spec 05 is complete (GraphQL layer). Spec 06 (bulk operations & advanced
 
 ## Next Steps
 
-1. Implement spec 06 (bulk operations & advanced data) on branch `feature/backend/06-bulk-operations-advanced`.
+1. Implement spec 07 (API testing with Postman) on branch `feature/backend/07-api-testing-postman`.
 2. Implement subsequent specs sequentially, each feature on its own branch.
 
 ## Session Notes

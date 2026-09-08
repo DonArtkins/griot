@@ -2,9 +2,11 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Griot.Api.GraphQL;
 using Griot.Api.GraphQL.DataLoaders;
+using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
 using Griot.Infrastructure.Persistence;
+using Griot.Infrastructure.Repositories;
 using HotChocolate.AspNetCore;
 using HotChocolate.Execution.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -28,6 +30,10 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Repositories (Infrastructure layer — Dapper for hot paths, EF Core via DbContext for regular ops).
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
