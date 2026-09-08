@@ -10,7 +10,7 @@ The bootcamp deliverable **"Secure authentication & state management"**: the ful
 
 ## Dependencies
 
-- Backend feature 08 (auth endpoints).
+- Backend feature 07 (auth endpoints).
 - Web features 03 (REST hooks) + 04 (Apollo guard).
 
 ## Context To Read First

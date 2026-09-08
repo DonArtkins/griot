@@ -10,7 +10,7 @@ The Week-6 step 5 deliverable for the backend: xUnit unit tests (services with m
 
 ## Dependencies
 
-- Backend features 04–06, 08 (REST + bulk routes and auth code — the Postman collection in backend 07 is a contract artifact, not code under test).
+- Backend features 04–06, 07 (REST + bulk routes and auth code — the Postman collection in backend 08 is a contract artifact, not code under test).
 
 ## Context To Read First
 

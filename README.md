@@ -20,7 +20,7 @@ Each system is self-contained (own `AGENTS.md`, `.agents/skills/`, `project-kit/
 
 ## Status
 
-**Backend/API implemented through spec 06** (EF Core 8 data layer, stored procedures + Dapper, REST controllers wired in `src/Griot.Api`, HotChocolate GraphQL layer, bulk operations). **Next: spec 08 (Auth: JWT + Argon2 + Redis)** — spec 07 (Postman collection) deliberately comes *after* it because the collection's auth flow needs the auth endpoints (dependency order per `docs/DEPENDENCY-AUDIT.md`). Web (React) and Mobile (Flutter) are spec'd but **not yet scaffolded** — runbook commands for them below are the target conventions. See `docs/planning/`, `PROMPTS/`, and `project-kit/`.
+**Backend/API implemented through spec 06** (EF Core 8 data layer, stored procedures + Dapper, REST controllers wired in `src/Griot.Api`, HotChocolate GraphQL layer, bulk operations). **Next: spec 07 (Auth: JWT + Argon2 + Redis)** — spec 08 (Postman collection) comes after it because the collection's auth flow needs the auth endpoints (dependency order per `docs/DEPENDENCY-AUDIT.md`). Web (React) and Mobile (Flutter) are spec'd but **not yet scaffolded** — runbook commands for them below are the target conventions. See `docs/planning/`, `PROMPTS/`, and `project-kit/`.
 
 - Docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/planning/` (NFR, capacity, risk, runbook, change-management)
 - Diagrams: 12 design diagrams specified in `PROMPTS/week-02/` → to be generated in **Figma Make**

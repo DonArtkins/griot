@@ -45,7 +45,7 @@ backend/
 
 ## Auth (own-stack)
 
-Argon2 hashing · JWT access (15-min, `sub`/`wid`) · opaque rotated refresh (hashed at rest) · Redis sliding-window rate limit · `GRIOT_SERVICE_TOKEN` → restricted `ai-agent` principal · HMAC `/api/webhooks/trigger`. Full detail: `/.agents/skills/jwt-argon2-auth` + feature spec 08.
+Argon2 hashing · JWT access (15-min, `sub`/`wid`) · opaque rotated refresh (hashed at rest) · Redis sliding-window rate limit · `GRIOT_SERVICE_TOKEN` → restricted `ai-agent` principal · HMAC `/api/webhooks/trigger`. Full detail: `/.agents/skills/jwt-argon2-auth` + feature spec 07.
 
 ## Operational details
 

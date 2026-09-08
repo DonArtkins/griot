@@ -1,6 +1,6 @@
 # API Documentation — Griot
 
-> The Postman-first API docs. **The Postman collection is the source of truth** (backend feature 07); this folder renders it for humans and links to the contract.
+> The Postman-first API docs. **The Postman collection is the source of truth** (backend feature 08); this folder renders it for humans and links to the contract.
 
 ## Collections & contract
 
@@ -10,7 +10,7 @@
   - Option B — **Redoc / Scalar** static page generated from the OpenAPI export of the REST controllers (via NSwag/Swashbuckle) + a GraphQL schema page (`/graphql?sdl`).
 - The full route/type surface is in `backend/project-kit/context/api-surface.md`, and the big **API surface diagram** is at `PROMPTS/week-02/13-diagram-api-surface.md` (→ `diagrams/architecture/api-surface-map.png`).
 
-## What Postman will test (backend feature 07 scope)
+## What Postman will test (backend feature 08 scope)
 
 - Auth (register/login/refresh/logout; chained token env vars).
 - Workspaces → members → invites → accept.

@@ -6,12 +6,12 @@ NEW FEATURE (DOCUMENTATION)
 
 ## What This Delivers
 
-The API documentation surface for Griot: the **Postman collection is the machine-readable contract**, and a rendered human/agent-facing doc site lives at `docs/api/`. Built from the API surface diagram + `api-surface.md`, so Postman testing (feature 07), the docs, and implementation all agree.
+The API documentation surface for Griot: the **Postman collection is the machine-readable contract**, and a rendered human/agent-facing doc site lives at `docs/api/`. Built from the API surface diagram + `api-surface.md`, so Postman testing (feature 08), the docs, and implementation all agree.
 
 ## Dependencies
 
 - Backend features 04–08 (routes + auth exist).
-- Backend feature 07 (Postman collection is the source).
+- Backend feature 08 (Postman collection is the source).
 - API surface map diagram (`PROMPTS/week-02/13-diagram-api-surface.md` — a diagram *prompt* #13, not a backend feature spec).
 
 ## Context To Read First
@@ -53,7 +53,7 @@ MODIFY: `docs/api/README.md` — index + how to render (Stoplight/Postman publis
 
 ## Separation of Concerns
 
-- Docs live in `docs/api/` (root) + derived from backend's `api-surface.md`; the Postman collection is owned by backend feature 07.
+- Docs live in `docs/api/` (root) + derived from backend's `api-surface.md`; the Postman collection is owned by backend feature 08.
 
 ## Out of Scope
 

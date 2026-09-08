@@ -99,7 +99,7 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-// Auth: JWT bearer validation wiring (token issuance flows are spec 08; key from config, never hardcoded).
+// Auth: JWT bearer validation wiring (token issuance flows are spec 07; key from config, never hardcoded).
 var jwtKey = builder.Configuration["JWT:Key"]
     ?? throw new InvalidOperationException("JWT:Key is not configured (set JWT__Key).");
 var jwtIssuer = builder.Configuration["JWT:Issuer"] ?? "Griot";

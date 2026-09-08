@@ -14,7 +14,7 @@ This is HotChocolate's built-in GraphQL IDE called **Banana Cake Pop**. It's lik
 - ✅ Write and execute GraphQL queries interactively
 - ✅ Get autocomplete suggestions as you type
 - ✅ See documentation for every field and type
-- ✅ Add authentication headers (for JWT tokens when Feature 08 is done)
+- ✅ Add authentication headers (for JWT tokens when Feature 07 is done)
 - ✅ View query execution results with syntax highlighting
 - ✅ Save and organize your queries
 
@@ -106,7 +106,7 @@ Press the **Play** button (▶️) or `Ctrl+Enter` to execute.
 
 ### Step 4: Try a Real Query (After Authentication)
 
-Once Feature 08 is implemented, you can query actual data:
+Once Feature 07 is implemented, you can query actual data:
 
 ```graphql
 query GetBoard {
@@ -121,7 +121,7 @@ query GetBoard {
 
 ### Step 5: Add Authentication Headers
 
-When Feature 08 is done and you have a JWT token:
+When Feature 07 is done and you have a JWT token:
 
 1. Look for the **"Headers"** or **"HTTP Headers"** section
 2. Add a header:
@@ -146,7 +146,7 @@ When Feature 08 is done and you have a JWT token:
 }
 ```
 
-### Query 2: Board Details (Requires auth — Feature 08)
+### Query 2: Board Details (Requires auth — Feature 07)
 ```graphql
 query {
   board(id: "ffffffff-ffff-ffff-ffff-ffffffffffff") {
@@ -237,7 +237,7 @@ Right now, most queries will return:
 }
 ```
 
-**This is expected!** Authentication is implemented in **Feature 08** (JWT + Argon2 + Redis).
+**This is expected!** Authentication is implemented in **Feature 07** (JWT + Argon2 + Redis).
 
 **What works NOW without auth:**
 - ✅ Schema introspection (`__schema`, `__type` queries)
@@ -256,7 +256,7 @@ Right now, most queries will return:
 | Real-time schema sync | ✅ Yes | ❌ No |
 | Best for | GraphQL development | API collection management |
 
-**Verdict:** Use **Banana Cake Pop** during development, use **Postman** for full API test suites (REST + GraphQL) in Feature 07.
+**Verdict:** Use **Banana Cake Pop** during development, use **Postman** for full API test suites (REST + GraphQL) in Feature 08.
 
 ## 🔧 Troubleshooting
 
@@ -275,12 +275,12 @@ Right now, most queries will return:
   ```
 
 ### "All my queries return AUTH_NOT_AUTHENTICATED"
-- **Status:** Expected until Feature 08 is implemented
-- **Timeline:** Feature 08 (JWT authentication) comes next
+- **Status:** Expected until Feature 07 is implemented
+- **Timeline:** Feature 07 (JWT authentication) comes next
 - **Workaround:** Use introspection queries for now (they work without auth)
 
 ### "I want to test with real data"
-- **Step 1:** Wait for Feature 08 to be implemented (JWT auth)
+- **Step 1:** Wait for Feature 07 to be implemented (JWT auth)
 - **Step 2:** Register a user via `/api/auth/register`
 - **Step 3:** Login via `/api/auth/login` to get a JWT token
 - **Step 4:** Add the token to Banana Cake Pop headers
@@ -302,9 +302,9 @@ Right now, most queries will return:
 |---------------|-----|------------|
 | Interactive UI | http://localhost:5064/graphql/ | ✅ Yes |
 | Schema (SDL) | http://localhost:5064/graphql?sdl | ✅ Yes |
-| Execute queries | http://localhost:5064/graphql | ⚠️ Auth required (Feature 08) |
+| Execute queries | http://localhost:5064/graphql | ⚠️ Auth required (Feature 07) |
 | Browse docs | Use Banana Cake Pop UI | ✅ Yes |
-| Test mutations | Use Banana Cake Pop UI | ⚠️ Auth required (Feature 08) |
+| Test mutations | Use Banana Cake Pop UI | ⚠️ Auth required (Feature 07) |
 
 ---
 
@@ -321,7 +321,7 @@ You can:
 
 **You DON'T need to wait for Postman** — Banana Cake Pop is your GraphQL IDE for development!
 
-Once Feature 08 (authentication) is done, you'll be able to:
+Once Feature 07 (authentication) is done, you'll be able to:
 - Execute all queries and mutations
 - Test with real data from the seed script
 - Debug DataLoader batching (N+1 prevention)
