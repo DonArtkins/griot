@@ -36,7 +36,8 @@ public interface IAuthService
     /// <summary>
     /// Request a fresh 6-digit OTP code for the given purpose and deliver it via Brevo
     /// using the branded email template. Returns null when the email is unknown;
-    /// result.Success=false when Brevo rejected the message (→ 502 at the controller).
+    /// result.Success=false when the email could not be delivered or configured
+    /// (missing Brevo API key or verified sender, network failure, or Brevo rejection) → 502 at the controller.
     /// </summary>
     Task<OtpRequestResult?> RequestOtpAsync(OtpRequestRequest request, string? requestIp);
 

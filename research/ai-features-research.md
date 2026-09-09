@@ -127,20 +127,23 @@ public interface IEmailProvider
 // Griot.Infrastructure/Email/BrevoEmailProvider.cs
 public class BrevoEmailProvider : IEmailProvider
 {
-    private readonly HttpClient _http; // base address: https://api.brevo.com/v3/smtp/email, api-key BREVO_API_KEY
+    // BaseAddress = https://api.brevo.com ; auth header: api-key: <BREVO_API_KEY>
+    private readonly HttpClient _http;
 
     public async Task<EmailResult> SendAsync(EmailMessage message, CancellationToken ct)
     {
-        var payload = new {
-            from = message.From ?? "Griot <noreply@yourdomain.dev>",
-            to = new[] { message.To },
+        var payload = new
+        {
+            sender = new { name = "Griot", email = message.From ?? "noreply@griot.app" },
+            to = new[] { new { email = message.To } },
             subject = message.Subject,
-            html = message.HtmlBody
+            htmlContent = message.HtmlBody
         };
-        var response = await _http.PostAsJsonAsync("/emails", payload, ct);
+        // Request targets https://api.brevo.com/v3/smtp/email (PostAsJsonAsync "v3/smtp/email")
+        var response = await _http.PostAsJsonAsync("v3/smtp/email", payload, ct);
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<BrevoResponse>(ct);
-        return new EmailResult(body!.Id, "resend");
+        return new EmailResult(body!.MessageId, "brevo");
     }
 }
 ```

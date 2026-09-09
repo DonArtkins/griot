@@ -95,7 +95,7 @@ The `[own-stack]` authentication system for Griot consists of **seven cooperatin
 │                                                       │ SQL Server     │ Brevo SaaS               │
 │                                                       ▼                ▼                          │
 │                                              ┌──────────────┐   ┌──────────────┐                    │
-│                                              │ Griot DB     │   │ resend.com   │                    │
+│                                              │ Griot DB     │   │ api.brevo.com│                    │
 │                                              │ • Users      │   │              │                    │
 │                                              │ • RefreshTkns│   │ SMTP relay + │                    │
 │                                              │ • OtpChallenges│ │ deliverability │                    │

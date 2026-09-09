@@ -32,5 +32,4 @@
 
 Use the [auth contract](auth-contract.md) for current routes, status codes, JWT claims,
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
-replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` + `/otp/verify` (202/200/401/429;; `email_verify` sets `Users.EmailVerified`; branded Brevo template per purpose. Registration returns 201 after SQL
-persistence; malformed refresh returns 401 and authenticated logout remains 204.
+replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202/400/401/429/502) + `POST /api/auth/otp/verify` (200/401/429); `email_verify` sets `Users.EmailVerified`; branded Brevo template per purpose. Registration returns 201 after SQL persistence; malformed refresh returns 401 and authenticated logout remains 204.

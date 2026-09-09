@@ -77,9 +77,9 @@ public sealed class BrevoEmailService : IEmailService
             _logger.LogInformation("Brevo accepted email to {To} subject={Subject}", message.To, message.Subject);
             return true;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "Brevo delivery to {To} failed", message.To);
+            _logger.LogError(ex, "Brevo delivery to {To} failed (including cancellation)", message.To);
             return false;
         }
     }

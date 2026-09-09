@@ -79,7 +79,7 @@ OAuth/SSO, session revocation UI (v2).
 - [x] register/login/refresh/logout work; replay of a rotated refresh returns 401 and revokes the family
 - [x] Rate limit returns 429 under hammering (Redis sliding window: login 10/15min/IP, OTP request 3/15min/email)
 - [x] JWT claims `sub`/`email`/`jti` correct; CORS restricts to allow-list
-- [x] `POST /api/auth/otp/request` → 202 + branded Brevo email per purpose (`email_verify` auto-sent on register; admin notice → `BREVO_FROM_EMAIL`/`CONTACT_TO_EMAIL`)
+- [x] `POST /api/auth/otp/request` → 202 + branded Brevo email per purpose (`email_verify` auto-sent on register; `BREVO_FROM_EMAIL` is the verified sender and `CONTACT_TO_EMAIL` is the admin-notice recipient)
 - [x] `POST /api/auth/otp/verify` → 200 marks `EmailVerified` (purpose `email_verify`); 5 failed attempts lock the challenge (429)
 
 

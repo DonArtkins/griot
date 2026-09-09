@@ -152,7 +152,7 @@ public static class BrandedEmailTemplate
         }
     }
 
-    /// <summary>Admin notification sent to <c>Brevo:ContactToEmail</c> (CONTACT_TO_EMAIL( when a new account registers.</summary>
+    /// <summary>Admin notification sent to <c>Brevo:ContactToEmail</c> (CONTACT_TO_EMAIL) when a new account registers.</summary>
     public static string RenderNewAccountAdminEmail(string displayName, string email, string siteUrl)
     {
         var details = $@"<table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" border=""0"" style=""margin:0 0 24px;""><tbody>
