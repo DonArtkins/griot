@@ -94,7 +94,7 @@ Flutter app → same REST + GraphQL endpoints; refresh token in `flutter_secure_
 | Layer | Control |
 |---|---|
 | Password | Argon2 (per-user salt) |
-| 2FA      | Resend Email OTP (hashed codes, 10-min expiry, rate-limited) |
+| 2FA      | Brevo Email OTP (hashed codes, 10-min expiry, rate-limited) |
 | Access | JWT 15-min (sub/email/jti), signed; rejected bad iss/aud |
 | Refresh | opaque 256-bit, SHA-256 at rest, **rotation + family-revoke on reuse** |
 | Rate limit | Redis sliding window `/auth/login` + GraphQL query-cost guard |

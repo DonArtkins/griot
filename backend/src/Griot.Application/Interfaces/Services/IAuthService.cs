@@ -34,9 +34,9 @@ public interface IAuthService
     Task LogoutAsync(string refreshToken);
 
     /// <summary>
-    /// Request a fresh 6-digit OTP code for the given purpose and deliver it via Resend
+    /// Request a fresh 6-digit OTP code for the given purpose and deliver it via Brevo
     /// using the branded email template. Returns null when the email is unknown;
-    /// result.Success=false when Resend rejected the message (→ 502 at the controller).
+    /// result.Success=false when Brevo rejected the message (→ 502 at the controller).
     /// </summary>
     Task<OtpRequestResult?> RequestOtpAsync(OtpRequestRequest request, string? requestIp);
 

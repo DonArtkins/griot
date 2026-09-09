@@ -103,7 +103,38 @@ dotnet test                               # xUnit suite (when tests exist)
   export JWT__Key='<dev key>' JWT__Issuer='Griot' JWT__Audience='GriotClients'
   ```
 
-### 3. Database — EF Core migrations & stored procedures — from `backend/`
+### 3. Transactional email — Brevo (OTP / admin notices)
+
+Griot uses **Brevo** (brevo.com) for all transactional email (OTP codes, admin new-user notices).
+Local secrets live in the git-ignored `backend/src/Griot.Api/appsettings.Local.json`:
+
+```jsonc
+"Brevo": {
+  "ApiKey": "xkeysib-...",            // Settings → SMTP & API → API Keys
+  "FromEmail": "you@example.com",      // REQUIRED — must be verified in Brevo
+  "FromName": "Griot",
+  "ContactToEmail": "info.donartkins.ke@gmail.com"  // admin new-user notice inbox
+}
+```
+
+- **`Brevo:ApiKey` / `BREVO_API_KEY`** — Brevo SMTP/API key (`xkeysib-...`).
+- **`Brevo:FromEmail` / `BREVO_FROM_EMAIL`** — **REQUIRED.** Add + verify a sender in Brevo
+  (Settings → Senders) or verify a domain (Settings → Senders/Domains) and use an address on it.
+- **`Brevo:FromName` / `BREVO_FROM_NAME`** — sender display name (default `Griot`).
+- **`Brevo:ContactToEmail` / `CONTACT_TO_EMAIL`** — inbox for the "New user registered" admin notice
+  (default `info.donartkins.ke@gmail.com`).
+
+Docker/env equivalents use `__` (e.g. `Brevo__ApiKey`, `BREVO_API_KEY`).
+
+> **Why Brevo?** The previous provider (Resend) restricted test-mode delivery to the account owner's
+> email / a verified domain, which blocked sending OTP to arbitrary test recipients on the free tier.
+> Brevo sends to any recipient on its free plan (300 emails/day) with a verified sender — no recipient
+> sandbox. Free limit: **300 emails/day** (resets daily). No credit card required.
+> Rate limits: keep under 300/day total; each `/api/auth/otp/request` = 1 transactional email.
+
+Full detail + troubleshooting: `docs/security/AUTHENTICATION-GUIDE.md` §4.10/§7/§8 and `docs/api/auth-contract.md`.
+
+### 4. Database — EF Core migrations & stored procedures — from `backend/`
 
 `dotnet-ef` 8.0.30 is pinned in `backend/.config/dotnet-tools.json` (restore it with `dotnet tool restore` once if missing). The connection comes from `appsettings.Local.json` or `ConnectionStrings__Default`.
 
@@ -135,7 +166,7 @@ docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
 
 **DBeaver:** new connection → SQL Server → host `localhost`, port `14333`, database `Griot`, user `sa`, password `SababishaDev2026!` (or `$SABABISHA_SA_PASSWORD`), enable **Trust server certificate**. Right-click database → Refresh to see new tables/procs. Stored procedures appear under **Stored Procedures** — not as tables.
 
-### 4. Web app (React + Vite + MUI) — from `web/`
+### 5. Web app (React + Vite + MUI) — from `web/`
 
 > 🚧 **Not scaffolded yet** — `web/` currently holds the design kit (`src/theme.ts`) and specs. Once the app lands (web feature specs 01–05), the commands are:
 
@@ -147,7 +178,7 @@ npm run build               # production build → dist/
 npm run lint && npm run typecheck && npm test   # verification gates
 ```
 
-### 5. Mobile app (Flutter) — from `mobile/`
+### 6. Mobile app (Flutter) — from `mobile/`
 
 > 🚧 **Not scaffolded yet** — `mobile/` currently holds `lib/core/theme` and specs. Once built out (mobile/feature-specs 01–07), the commands are:
 
@@ -161,7 +192,7 @@ flutter build apk --release          # ⚠️ build installable APK
 flutter build apk --debug            # faster debug APK for device testing
 ```
 
-### 6. AI agents & MCP (Trigger.dev / MCP) — from `ai/` and `mcp/`
+### 7. AI agents & MCP (Trigger.dev / MCP) — from `ai/` and `mcp/`
 
 ```bash
 cd ai && npm install && npm run dev      # start local Trigger.dev dev server (agents/Copilot)
@@ -170,7 +201,7 @@ cd ai && npm run deploy                  # trigger deploy (production)
 cd mcp && npm install && node index.js   # start the MCP server (contract tests via npm test)
 ```
 
-### 7. End-to-end smoke check (backend)
+### 8. End-to-end smoke check (backend)
 
 ```bash
 cd backend

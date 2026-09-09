@@ -26,7 +26,7 @@ Client (Postman / Web / Mobile)
         │           │
         ▼           ▼
   AuthRepository   IEmailService
-  (EF Core SQL)    (Resend HTTP)
+  (EF Core SQL)    (Brevo HTTP)
   │  │  │            │  │
   ▼  ▼  ▼            ▼  ▼
  Users RefreshTkns  resend.com
@@ -74,8 +74,8 @@ Content-Type: application/json
 **Side effects on success:**
 - User row persisted to SQL Server `Users` table with Argon2id password hash
 - First refresh token row created with new `FamilyId`
-- **Auto-sends branded `email_verify` OTP code** to the user via Resend
-- **Auto-sends "New user registered" admin notice** to `Resend:ContactToEmail`
+- **Auto-sends branded `email_verify` OTP code** to the user via Brevo
+- **Auto-sends "New user registered" admin notice** to `Brevo:ContactToEmail`
 
 **Failure cases:**
 | Status | Cause |
@@ -173,7 +173,7 @@ Content-Type: application/json
 | `400 Bad Request` | Invalid purpose, missing fields |
 | `401 Unauthorized` | Unknown email address |
 | `429 Too Many Requests` | 3 requests / 15 min per email. `Retry-After` header set. |
-| `502 Bad Gateway` | Resend API returned non-success (no key, network issue, quota exceeded) |
+| `502 Bad Gateway` | Brevo API returned non-success (no key, network issue, quota exceeded) |
 
 ### 2.6 Verify an OTP code
 
@@ -244,7 +244,7 @@ All workspace/project/board/task/comment/notification/invite/dashboard/column/at
 4. **POST Login** → capture new tokens from `200`.
 5. **POST Refresh** with `refreshToken` → get a NEW pair; confirm the old refresh now returns `401` on reuse.
 6. **POST Logout** with `Authorization: Bearer <accessToken>` and the latest `refreshToken` → `204`.
-7. **POST OTP Request** → `202` (or `502` if no Resend API key; the code is still stored in `OtpChallenges` table for manual testing).
+7. **POST OTP Request** → `202` (or `502` if no Brevo API key; the code is still stored in `OtpChallenges` table for manual testing).
 8. **POST OTP Verify** with the 6-digit code → `200` and `Users.EmailVerified=true`.
 
 ---
@@ -401,21 +401,21 @@ All auth uses `Authorization: Bearer <token>` header. No HTTP-only cookies, no a
 - ❌ **Cookie auth without CSRF tokens** — cross-site `<form action="https://api/account/delete" method="POST">` submits with cookies. Account deleted.
 - ❌ **Cookie + SameSite=Strict only** — breaks OAuth callback flows; legacy browsers (IE11) ignore SameSite. Defense-in-depth = avoid cookies entirely.
 
-### 4.10 Email Transport (Resend) — Fail-Open on Register, Fail-Closed on OTP Request
+### 4.10 Email Transport (Brevo) — Fail-Open on Register, Fail-Closed on OTP Request
 
-- **Register** sends `email_verify` best-effort: Resend 429/5xx → log + return 201 anyway. User can re-request verification OTP later.
-- **`POST /api/auth/otp/request` (explicit):** Resend failure → **502 Bad Gateway** (fail-closed — explicit request MUST deliver or inform).
-- From address fallback: `Griot <onboarding@resend.dev>` (Resend onboarding sender).
-- Admin notice: "New user registered" → `Resend:ContactToEmail` (canonical fallback: `info.donartkins.ke@gmail.com` when configuration keys are unset — notice is always delivered, never skipped).
+- **Register** sends `email_verify` best-effort: Brevo 429/5xx → log + return 201 anyway. User can re-request verification OTP later.
+- **`POST /api/auth/otp/request` (explicit):** Brevo failure → **502 Bad Gateway** (fail-closed — explicit request MUST deliver or inform).
+- From address: REQUIRED verified Brevo sender `Brevo:FromEmail` (`BREVO_FROM_EMAIL`); display name `Brevo:FromName` (default `Griot`). No default `*@resend.dev` fallback — Brevo only sends from a sender verified in the dashboard.
+- Admin notice: "New user registered" → `Brevo:ContactToEmail` (canonical fallback: `info.donartkins.ke@gmail.com` when configuration keys are unset — notice is always delivered, never skipped).
 - Never throws: `HttpRequestException` / generic `Exception` → `_logger.LogWarning` + return `false`. No 500 crash on email network blip.
 
 **Why secure:**
-- Register (user just typed their email) → no Resend key = user can STILL login. Blocking registration on email failure would be a denial-of-service.
+- Register (user just typed their email) → no Brevo key = user can STILL login. Blocking registration on email failure would be a denial-of-service.
 - Explicit OTP request (user expects an email NOW) → 502 tells the user it didn't send; they debug API key / inbox.
-- No stack traces or Resend response bodies in 502 payload (CWE-209 closed).
+- No stack traces or Brevo response bodies in 502 payload (CWE-209 closed).
 
 **What insecure alternatives this fixes:**
-- ❌ **Register fail-closed** — Resend rate-limited → every new user gets 502. DoS.
+- ❌ **Register fail-closed** — Brevo rate-limited → every new user gets 502. DoS.
 - ❌ **OTP request fail-open** — `202 Accepted` but no email sent. User waits 10 minutes, thinks code is in spam, requests another, another.
 
 ### 4.11 CORS: Specific Origins, Never Wildcard in Prod
@@ -442,7 +442,7 @@ Allowed origins from `Cors:AllowedOrigins` (comma-separated) plus always-added l
 | **A05 Security Misconfiguration** | Debug in prod, default creds | All secrets from env/appsettings.Local.json (git-ignored). Swagger UI `IsDevelopment` only. |
 | **A07 Identification & Auth Failures** | Credential stuffing, brute-force, no 2FA | §4.6 login rate limit, §4.8 OTP 2FA + 5-attempt lockout, §4.1 Argon2 memory-hard, §4.4 no enumeration, §4.3 family revoke. |
 | **A08 Software Integrity Failures** | Untrusted deps | Dependency audit at `docs/DEPENDENCY-AUDIT.md`. All NuGets pinned. |
-| **A10 Server-Side Request Forgery** | Blind HTTP calls from backend | Resend `IHttpClientFactory` named client configured with `AllowAutoRedirect = false` (redirects disabled on primary handler) and request URI restricted to `https://api.resend.com/emails` — cannot reach internal `localhost:6380`/`14333` via open redirect or 3xx response. |
+| **A10 Server-Side Request Forgery** | Blind HTTP calls from backend | Brevo `IHttpClientFactory` named client configured with `AllowAutoRedirect = false` (redirects disabled on primary handler) and request URI restricted to `https://api.brevo.com/v3/smtp/email` — cannot reach internal `localhost:6380`/`14333` via open redirect or 3xx response. |
 
 ---
 
@@ -458,7 +458,7 @@ These approaches were explicitly considered and REJECTED in ADR-003 §3. Each wo
 | D | **bcrypt + 30-day JWT + no refresh rotation** | bcrypt 72-byte truncation (silent entropy loss). GPU crackable. 30-day JWT = theft → 30-day impersonation. You'd need Redis blacklist anyway. |
 | E | **Server-sticky cookie + in-memory rate limiter** | Fails on multiple backends / Vercel serverless (sticky sessions). In-memory limiter = per-server count, not global behind LB. CSRF attack surface. |
 | F | **Pure Redis session (every API call = Redis lookup)** | Every REST/GraphQL resolver pays 1-2ms Redis roundtrip. Dashboard paginated 100-task queries → N+1 Redis lookups. Redis restart = full logout (SPOF). |
-| G (this one) | **Argon2id + 15m HS256 JWT (≥32-byte key validated at startup) + SHA-256 refresh-at-rest + rotation + FamilyId revoke + provider-default transaction conditional UPDATE + Redis sliding limit + Resend OTP HMAC-peppered + branded email + Bearer-only + Resend client redirects disabled** | ✅ **ACCEPTED**. See §4 for 11 rails. |
+| G (this one) | **Argon2id + 15m HS256 JWT (≥32-byte key validated at startup) + SHA-256 refresh-at-rest + rotation + FamilyId revoke + provider-default transaction conditional UPDATE + Redis sliding limit + Brevo OTP HMAC-peppered + branded email + Bearer-only + Brevo client redirects disabled** | ✅ **ACCEPTED**. See §4 for 11 rails. |
 
 ---
 
@@ -474,9 +474,10 @@ Set these in `backend/appsettings.Local.json` (git-ignored) OR as env vars (Dock
 | `JWT:Audience` | `JWT__Audience` | `GriotClients` | no | JWT `aud` claim |
 | `Redis:Connection` | `Redis__Connection` | `localhost:6380` | no | `host:port` format. Compose: `sababisha-redis:6379`. |
 | `Otp:Pepper` | `Otp__Pepper` | `griot-dev-otp-pepper-change-me` | ⚠️ dev-only | HMAC pepper. **CHANGE IN PROD.** |
-| `Resend:ApiKey` | `RESEND_API_KEY` | none | no | Unset → OTP request returns 502; register still works. |
-| `Resend:FromEmail` | `RESEND_FROM_EMAIL` | `Griot <onboarding@resend.dev>` | no | Resend sending address. |
-| `Resend:ContactToEmail` | `CONTACT_TO_EMAIL` | `info.donartkins.ke@gmail.com` (canonical fallback used when unset) | no | Admin inbox for new-user notices — canonical address `info.donartkins.ke@gmail.com`. |
+| `Brevo:ApiKey` | `BREVO_API_KEY` | none | ✅ (to send) | Unset → OTP request returns 502; register still works. |
+| `Brevo:FromEmail` | `BREVO_FROM_EMAIL` | none | ✅ (to send) | Verified Brevo sender. REQUIRED — Brevo only delivers from a verified sender. |
+| `Brevo:FromName` | `BREVO_FROM_NAME` | `Griot` | no | Sender display name. |
+| `Brevo:ContactToEmail` | `CONTACT_TO_EMAIL` | `info.donartkins.ke@gmail.com` (canonical fallback used when unset) | no | Admin inbox for new-user notices — canonical address `info.donartkins.ke@gmail.com`. |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins` | localhosts only | ⚠️ prod required | Comma-separated origins (Vercel prod domains). |
 | `SITE_URL` | `SITE_URL` | `https://griot.app` | no | Used in branded email template footer links. |
 
@@ -495,8 +496,8 @@ dotnet run --project src/Griot.Api
 ```
 
 ### "Register works but POST /api/auth/otp/request returns 502"
-**Cause:** No `RESEND_API_KEY`. The code is still stored in `OtpChallenges` (for manual inspection with SQL).  
-**Fix:** Set `RESEND_API_KEY` in env. Or for testing without email: query SQL `SELECT CodeHash, ExpiresAt FROM OtpChallenges WHERE UserId = (SELECT Id FROM Users WHERE Email='you@x.com')` — but you cannot reverse HMAC (no code = cannot verify). Use an API key.
+**Cause:** No `BREVO_API_KEY` (or unverified Brevo sender). The code is still stored in `OtpChallenges` (for manual inspection with SQL).  
+**Fix:** Set `BREVO_API_KEY` in env AND confirm `Brevo:FromEmail` is an address verified in the Brevo dashboard (Settings → Senders / SMTP & API). Or for testing without email: query SQL `SELECT CodeHash, ExpiresAt FROM OtpChallenges WHERE UserId = (SELECT Id FROM Users WHERE Email='you@x.com')` — but you cannot reverse HMAC (no code = cannot verify). Use an API key.
 
 ### "Refresh returns 401 immediately after register/login"
 **Cause 1:** The 64-hex token was truncated when copy-pasting from Postman. Check `token.Length == 64` and `all hex digits`.  
@@ -505,7 +506,7 @@ dotnet run --project src/Griot.Api
 
 ### "Login returns 401 but I'm sure password is correct"
 **Cause 1:** Email not lowercase-trimmed. Login/register normalize to `lowercase(trim(email))`.  
-**Cause 2:** Registration was rolled back (migration issue, Resend crash, etc.). Check `SELECT COUNT(*) FROM Users WHERE Email = 'x'`.
+**Cause 2:** Registration was rolled back (migration issue, Brevo crash, etc.). Check `SELECT COUNT(*) FROM Users WHERE Email = 'x'`.
 
 ### "Redis connection error on startup"
 **Cause:** `sababisha-redis` container not running (or wrong port).  

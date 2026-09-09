@@ -15,7 +15,7 @@ Local base URL: `http://localhost:5064`. The HTTPS launch profile also exposes
 | `/api/auth/login` | `email`, `password` | 200, token pair and user | 400 validation; 401 invalid credentials; 429 with `Retry-After` |
 | `/api/auth/refresh` | `refreshToken` | 200, replacement pair and user | 400 missing/empty required field; 401 malformed, unknown, expired or reused token |
 | `/api/auth/logout` | `refreshToken`; bearer access token required | 204, including malformed, unknown or already revoked tokens | 400 missing/empty required field; 401 absent/invalid bearer token |
-| POST | `/api/auth/otp/request` | `email`, `purpose` (`email_verify`/`login_2fa`/`password_reset`) | 202, code sent via Resend branded email | 400 invalid purpose; 401 unknown email; 429 (3/15min/email; with `Retry-After`); 502 Resend delivery failed |
+| POST | `/api/auth/otp/request` | `email`, `purpose` (`email_verify`/`login_2fa`/`password_reset`) | 202, code sent via Brevo branded email | 400 invalid purpose; 401 unknown email; 429 (3/15min/email; with `Retry-After`); 502 Brevo delivery failed |
 | POST | `/api/auth/otp/verify` | `email`, `code`, `purpose` | 200 `{verified:true,message,emailVerified}` (marks `Users.EmailVerified` for `email_verify`) | 400 invalid; 401 unknown/expired/invalid code; 429 lockout after 5 failed attempts |
 
 Token response: `{accessToken, refreshToken, expiresAt, user}`;
@@ -54,10 +54,11 @@ scaffold response and must fail acceptance checks.
   at rest with a server pepper, 10-minute expiry (`ExpiresAt`), `AttemptCount` lockout at 5. Request
   limit: 3 / 900 s per email via Redis (`ratelimit:otp:request:{email}`; returns 429 + `Retry-After`).
   `email_verify` sets `Users.EmailVerified = true`. OTP codes are never logged or returned in responses;
-  the brand token + exact code only travel via Resend (customized template per purpose).
-- Resend email: API key `Resend:ApiKey` (fallbacks `RESEND_API_KEY`, `Resend__ApiKey`); sender
-  address `Resend:FromEmail` (fallback `RESEND_FROM_EMAIL`; default `Griot <onboarding@resend.dev>`); admin
-  inbox `Resend:ContactToEmail` (fallback `CONTACT_TO_EMAIL`; canonical fallback `info.donartkins.ke@gmail.com`
+  the brand token + exact code only travel via Brevo (customized template per purpose).
+- Brevo email: API key `Brevo:ApiKey` (fallbacks `BREVO_API_KEY`, `Brevo__ApiKey`); sender
+  address `Brevo:FromEmail` (fallback `BREVO_FROM_EMAIL`); sender name `Brevo:FromName` (fallback
+  `BREVO_FROM_NAME`; default `Griot`); admin inbox `Brevo:ContactToEmail` (fallback `CONTACT_TO_EMAIL`;
+  canonical fallback `info.donartkins.ke@gmail.com`
   used when both configuration keys are unset — notice is always delivered, never skipped). Register
   also sends a branded admin "new user" notice to the ops inbox.
 
@@ -70,9 +71,10 @@ scaffold response and must fail acceptance checks.
 | `JWT__Issuer` / `JWT__Audience` | Defaults `Griot` / `GriotClients` |
 | `Redis__Connection` | StackExchange.Redis endpoint; default `localhost:6380`, compose `sababisha-redis:6379` |
 | `Otp__Pepper` | HMAC-SHA256 pepper for OTP code hashes; dev default only in ignored `appsettings.Local.json` |
-| `Resend__ApiKey` (`RESEND_API_KEY`) | Resend API key; when unset OTP/email delivery returns 502 (otp/request) bzw. register continues (201) with the code persisted for later manual resend |
-| `Resend__FromEmail` (`RESEND_FROM_EMAIL`) | Resend sending address; default `Griot <onboarding@resend.dev>` |
-| `Resend__ContactToEmail` (`CONTACT_TO_EMAIL`) | Admin inbox for new-user registration notices; canonical fallback `info.donartkins.ke@gmail.com` used when both keys are unset — notice is always delivered, never skipped |
+| `Brevo__ApiKey` (`BREVO_API_KEY`) | Brevo SMTP/API key; when unset OTP/email delivery returns 502 (otp/request) bzw. register continues (201) with the code persisted for later manual resend |
+| `Brevo__FromEmail` (`BREVO_FROM_EMAIL`) | Verified Brevo sender email (REQUIRED — Brevo only delivers from a sender you verified in the dashboard) |
+| `Brevo__FromName` (`BREVO_FROM_NAME`) | Sender display name; default `Griot` |
+| `Brevo__ContactToEmail` (`CONTACT_TO_EMAIL`) | Admin inbox for new-user registration notices; canonical fallback `info.donartkins.ke@gmail.com` used when both keys are unset — notice is always delivered, never skipped |
 
 Runtime reads the ignored `appsettings.Local.json`; environment variables and
 command-line arguments override it. Secrets never belong in committed files.
@@ -85,8 +87,8 @@ plan requires a secure HttpOnly cookie transport and must not put these tokens
 in localStorage. Cookie issuance/refresh support is a pending backend prerequisite
 for web Feature 05, not implemented behavior. **Email-OTP 2FA is implemented** (Feature 07):
 `POST /api/auth/otp/request` + `POST /api/auth/otp/verify`, purposes `email_verify` (auto-sent on
-register + sets `Users.EmailVerified`), `login_2fa`, `password_reset`; branded Resend template per purpose
-(see `Griot.Application/Email/BrandedEmailTemplate.cs`), admin new-account notice → `Resend:ContactToEmail`.
+register + sets `Users.EmailVerified`), `login_2fa`, `password_reset`; branded Brevo template per purpose
+(see `Griot.Application/Email/BrandedEmailTemplate.cs`), admin new-account notice → `Brevo:ContactToEmail`.
 Service-token flows remain separate planned work (spec 09).
 
 ## Verification

@@ -188,7 +188,7 @@ query {
 
 ## ✅ Authentication Live: JWT + Argon2 + Redis (Feature 07)
 
-Most GraphQL queries and all mutations are protected with the `[Authorize]` attribute; unauthenticated requests are correctly rejected with `AUTH_NOT_AUTHENTICATED`. **Feature 07** (JWT + Argon2 + Redis + Resend OTP authentication) is ✅ **fully implemented** — register via `POST /api/auth/register` (returns 201, auto-sends email-verify OTP via Resend branded template) and login via `POST /api/auth/login` (returns JWT access + refresh token pair) to get your access token, then pass it as `Authorization: Bearer <token>` on GraphQL requests.
+Most GraphQL queries and all mutations are protected with the `[Authorize]` attribute; unauthenticated requests are correctly rejected with `AUTH_NOT_AUTHENTICATED`. **Feature 07** (JWT + Argon2 + Redis + Brevo OTP authentication) is ✅ **fully implemented** — register via `POST /api/auth/register` (returns 201, auto-sends email-verify OTP via Brevo branded template) and login via `POST /api/auth/login` (returns JWT access + refresh token pair) to get your access token, then pass it as `Authorization: Bearer <token>` on GraphQL requests.
 
 ```json
 {

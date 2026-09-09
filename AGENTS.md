@@ -66,7 +66,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Stack at a Glance
 
-Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. + Resend Email OTP 2FA. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v3 Level-4 Autonomous Agents, MCP.
+Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. + Brevo Email OTP 2FA. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v3 Level-4 Autonomous Agents, MCP.
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 
@@ -74,7 +74,7 @@ Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, 
 
 Use the [auth contract](docs/api/auth-contract.md) for current routes, status codes, JWT claims,
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
-replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register( + `POST /api/auth/otp/verify` (200/401/429;; sets `Users.EmailVerified`; branded Resend template per purpose. Registration returns 201 after SQL
+replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register( + `POST /api/auth/otp/verify` (200/401/429;; sets `Users.EmailVerified`; branded Brevo template per purpose. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
 ## Database rollback / recovery contract
