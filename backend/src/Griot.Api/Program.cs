@@ -38,6 +38,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddHttpClient<IEmailService, ResendEmailService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AllowAutoRedirect = false
 });
 
 // Repositories (Infrastructure layer — Dapper for hot paths, EF Core via DbContext for regular ops).
@@ -128,8 +132,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         // Resolve the finalized configuration used by AuthService, including host overrides.
-        var jwtKey = builder.Configuration["JWT:Key"]
-            ?? throw new InvalidOperationException("JWT:Key is not configured (set JWT__Key).");
+        var jwtKey = builder.Configuration["JWT:Key"];
+        if (string.IsNullOrWhiteSpace(jwtKey))
+            throw new InvalidOperationException("JWT:Key is not configured (set JWT__Key).");
+        var jwtKeyBytes = Encoding.UTF8.GetBytes(jwtKey);
+        if (jwtKeyBytes.Length < 32)
+            throw new InvalidOperationException($"JWT:Key must be at least 32 UTF-8 bytes (HS256 minimum); configured key is {jwtKeyBytes.Length} bytes. Set a longer JWT__Key.");
         var jwtIssuer = builder.Configuration["JWT:Issuer"] ?? "Griot";
         var jwtAudience = builder.Configuration["JWT:Audience"] ?? "GriotClients";
         options.TokenValidationParameters = new TokenValidationParameters
@@ -140,7 +148,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = new SymmetricSecurityKey(jwtKeyBytes)
         };
     });
 builder.Services.AddAuthorization();

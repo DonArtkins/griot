@@ -270,12 +270,13 @@ Each safety rail below is tested by unit tests and has a specific CWE/OWASP mapp
 
 ### 4.2 Access Tokens: Short-Lived HS256 JWT (15 minutes)
 
-**Claims:** `sub` (UserId Guid), `email`, `jti` (opaque nonce). `iss=Griot`, `aud=GriotClients`. HS256 ≥ 256-bit key.
+**Claims:** `sub` (UserId Guid), `email`, `jti` (opaque nonce). `iss=Griot`, `aud=GriotClients`. HS256 ≥ 256-bit key (≥32 UTF-8 bytes).
 
 **Why secure:**
 - 15-minute TTL limits the **theft window**: a leaked access token grants at most 15 minutes of access (no blacklist infrastructure needed).
 - No workspace/role claims embedded — workspace membership is checked LIVE in resolver/controller (prevents stale privilege escalation from old JWTs).
 - Symmetric HS256: single backend service, no RSA key-rollover complexity. Key rotation = env redeploy.
+- **Startup key-length validation:** Before constructing `SymmetricSecurityKey`, the configured `JWT:Key` is checked for UTF-8 byte length ≥ 32; missing or shorter keys throw via the existing startup error path (InvalidOperationException at DI build time), preventing launch with a weak key.
 - `jti` present for future per-token blacklist (Redis SET with 15m TTL) if needed post-launch.
 
 **What insecure alternatives this fixes:**
@@ -293,7 +294,7 @@ Each safety rail below is tested by unit tests and has a specific CWE/OWASP mapp
 - **Hash-at-rest:** DB breach → attacker has SHA256 hashes, NOT the 64-hex tokens. Brute-forcing 256-bit random tokens is thermodynamically impossible.
 - **Rotation = single-use theft window:** An attacker who steals a refresh token from browser memory can use it ONCE. The legitimate user's next refresh will hit reuse → **family-scoped revoke**.
 - **Family scoping (NOT user-wide):** Laptop token reuse revokes ONLY the laptop family; mobile session stays logged in. Honest users with 2 devices do not get logged out because one device was compromised.
-- **RepeatableRead transaction + conditional UPDATE:** `ExecuteUpdateAsync WHERE Id = X AND RevokedAt IS NULL`. Exactly 1 concurrent caller wins. Losers → rollback + family revoke. Race conditions CANNOT create double-valid tokens.
+- **Provider-default transaction + conditional UPDATE:** Parameterless `BeginTransactionAsync()` uses SQL Server provider-default isolation (Read Committed). `ExecuteUpdateAsync WHERE Id = X AND RevokedAt IS NULL` reports affected rows for concurrency handling. Exactly 1 concurrent caller wins. Losers → rollback + family revoke. Race conditions CANNOT create double-valid tokens.
 - **Malformed token guard before DB touch:** `token.Length != 64 || !token.All(Uri.IsHexDigit) → return null`. Garbage input → instant 401, no DB call, no 500 crash, no stack trace leak.
 
 **What insecure alternatives this fixes:**
@@ -405,7 +406,7 @@ All auth uses `Authorization: Bearer <token>` header. No HTTP-only cookies, no a
 - **Register** sends `email_verify` best-effort: Resend 429/5xx → log + return 201 anyway. User can re-request verification OTP later.
 - **`POST /api/auth/otp/request` (explicit):** Resend failure → **502 Bad Gateway** (fail-closed — explicit request MUST deliver or inform).
 - From address fallback: `Griot <onboarding@resend.dev>` (Resend onboarding sender).
-- Admin notice: "New user registered" → `Resend:ContactToEmail` (skipped if unset).
+- Admin notice: "New user registered" → `Resend:ContactToEmail` (canonical fallback: `support@sababisha.com` when configuration keys are unset — notice is always delivered, never skipped).
 - Never throws: `HttpRequestException` / generic `Exception` → `_logger.LogWarning` + return `false`. No 500 crash on email network blip.
 
 **Why secure:**
@@ -441,7 +442,7 @@ Allowed origins from `Cors:AllowedOrigins` (comma-separated) plus always-added l
 | **A05 Security Misconfiguration** | Debug in prod, default creds | All secrets from env/appsettings.Local.json (git-ignored). Swagger UI `IsDevelopment` only. |
 | **A07 Identification & Auth Failures** | Credential stuffing, brute-force, no 2FA | §4.6 login rate limit, §4.8 OTP 2FA + 5-attempt lockout, §4.1 Argon2 memory-hard, §4.4 no enumeration, §4.3 family revoke. |
 | **A08 Software Integrity Failures** | Untrusted deps | Dependency audit at `docs/DEPENDENCY-AUDIT.md`. All NuGets pinned. |
-| **A10 Server-Side Request Forgery** | Blind HTTP calls from backend | Resend `IHttpClientFactory` named client with `BaseAddress = new Uri("https://api.resend.com/")` — cannot be redirected to internal `localhost:6380`/`14333`. |
+| **A10 Server-Side Request Forgery** | Blind HTTP calls from backend | Resend `IHttpClientFactory` named client configured with `AllowAutoRedirect = false` (redirects disabled on primary handler) and request URI restricted to `https://api.resend.com/emails` — cannot reach internal `localhost:6380`/`14333` via open redirect or 3xx response. |
 
 ---
 
@@ -457,7 +458,7 @@ These approaches were explicitly considered and REJECTED in ADR-003 §3. Each wo
 | D | **bcrypt + 30-day JWT + no refresh rotation** | bcrypt 72-byte truncation (silent entropy loss). GPU crackable. 30-day JWT = theft → 30-day impersonation. You'd need Redis blacklist anyway. |
 | E | **Server-sticky cookie + in-memory rate limiter** | Fails on multiple backends / Vercel serverless (sticky sessions). In-memory limiter = per-server count, not global behind LB. CSRF attack surface. |
 | F | **Pure Redis session (every API call = Redis lookup)** | Every REST/GraphQL resolver pays 1-2ms Redis roundtrip. Dashboard paginated 100-task queries → N+1 Redis lookups. Redis restart = full logout (SPOF). |
-| G (this one) | **Argon2id + 15m HS256 JWT + SHA-256 refresh-at-rest + rotation + FamilyId revoke + RepeatableRead conditional UPDATE + Redis sliding limit + Resend OTP HMAC-peppered + branded email + Bearer-only** | ✅ **ACCEPTED**. See §4 for 11 rails. |
+| G (this one) | **Argon2id + 15m HS256 JWT (≥32-byte key validated at startup) + SHA-256 refresh-at-rest + rotation + FamilyId revoke + provider-default transaction conditional UPDATE + Redis sliding limit + Resend OTP HMAC-peppered + branded email + Bearer-only + Resend client redirects disabled** | ✅ **ACCEPTED**. See §4 for 11 rails. |
 
 ---
 
@@ -475,7 +476,7 @@ Set these in `backend/appsettings.Local.json` (git-ignored) OR as env vars (Dock
 | `Otp:Pepper` | `Otp__Pepper` | `griot-dev-otp-pepper-change-me` | ⚠️ dev-only | HMAC pepper. **CHANGE IN PROD.** |
 | `Resend:ApiKey` | `RESEND_API_KEY` | none | no | Unset → OTP request returns 502; register still works. |
 | `Resend:FromEmail` | `RESEND_FROM_EMAIL` | `Griot <onboarding@resend.dev>` | no | Resend sending address. |
-| `Resend:ContactToEmail` | `CONTACT_TO_EMAIL` | `support@sababisha.com` | no | Admin inbox for new-user notices. |
+| `Resend:ContactToEmail` | `CONTACT_TO_EMAIL` | `support@sababisha.com` (canonical fallback used when unset) | no | Admin inbox for new-user notices — canonical address `support@sababisha.com`. |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins` | localhosts only | ⚠️ prod required | Comma-separated origins (Vercel prod domains). |
 | `SITE_URL` | `SITE_URL` | `https://sababisha.com` | no | Used in branded email template footer links. |
 

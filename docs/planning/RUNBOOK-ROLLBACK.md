@@ -38,7 +38,15 @@
      - **Data loss:** Transactions between snapshot time and incident time are lost
      - **Transaction replay:** NOT feasible with current schema (AuditLogs contains state snapshots, not commands). Document data loss and coordinate with affected users.
   3. **Communication**: Notify team and users of data loss window and RPO.
-  4. **Future enhancement (if RPO >24h unacceptable):** Enable PostgreSQL PITR with WAL archiving to external storage (requires setup; configure `archive_mode=on` + `archive_command` + restore_command in recovery; test restore periodically).
+  4. **Future enhancement (if RPO >24h unacceptable):** Use Railway's managed PostgreSQL PITR (pgBackRest-backed):
+     - In Railway dashboard, select the PostgreSQL service → **Backups** → **Point-in-Time Recovery**
+     - Choose a target recovery timestamp (must be within Railway's PITR retention window)
+     - Railway provisions a NEW separate PostgreSQL service (typically named `<service>-restored-YYYYMMDD-HHMM`) with a new volume
+     - Environment variables are copied from the source (excluding archive credentials); `POSTGRES_RECOVERY_TARGET_TIME` is set automatically
+     - The restored service reads from the source WAL archive in read-only mode and executes `pgbackrest restore --type=time --target=<timestamp>`
+     - Validate the restored database: check last `AuditLogs`/`ActivityLogs` timestamp, run smoke tests against the new connection string
+     - Cut over connections: update `ConnectionStrings__Default` on dependent Railway services and redeploy; update Vercel/Trigger env vars
+     - **Self-managed PostgreSQL only (non-Railway):** Configure `archive_mode=on` + `archive_command` + `restore_command` in recovery.conf; test restore periodically against a staging instance.
 - **Prevention**: Test migrations in staging environment with production-like data volume before deploying to production.
 
 ## What notices before a user does
