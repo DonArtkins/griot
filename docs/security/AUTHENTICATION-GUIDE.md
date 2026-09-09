@@ -29,7 +29,7 @@ Client (Postman / Web / Mobile)
   (EF Core SQL)    (Brevo HTTP)
   │  │  │            │  │
   ▼  ▼  ▼            ▼  ▼
- Users RefreshTkns  resend.com
+ Users RefreshTkns  api.brevo.com
  OtpChallenges
         │
         ▼

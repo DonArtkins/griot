@@ -5,12 +5,12 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 ## [Unreleased] — 2026-09-08 (Feature 07 auth repair + Email-OTP 2FA)
 
 ### Added
-- Email-OTP 2FA implemented end-to-end per `research/ai-features-research.md` §1: `POST /api/auth/otp/request` (202; also auto-sent with a branded `email_verify` code on register( + `POST /api/auth/otp/verify` (200/401/429;; sets `Users.EmailVerified`; purposes `email_verify`/`login_2fa`/`password_reset`.
-- Branded Brevo email templates (`Griot.Application/Email/BrandedEmailTemplate.cs` — C# port of the Griot branded shell, per-purpose copy) + Brevo transport (`Griot.Infrastructure/Email/BrevoEmailService.cs`;`Brevo:ApiKey`/`Brevo:FromEmail`/`Brevo:FromName`/`Brevo:ContactToEmail`; admin "New user registered" notice on register(.
+- Email-OTP 2FA implemented end-to-end per `research/ai-features-research.md` §1: `POST /api/auth/otp/request` (202; also auto-sent with a branded `email_verify` code on register) + `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; purposes `email_verify`/`login_2fa`/`password_reset`.
+- Branded Brevo email templates (`Griot.Application/Email/BrandedEmailTemplate.cs` — C# port of the Griot branded shell, per-purpose copy) + Brevo transport (`Griot.Infrastructure/Email/BrevoEmailService.cs`;`Brevo:ApiKey`/`Brevo:FromEmail`/`Brevo:FromName`/`Brevo:ContactToEmail`; admin "New user registered" notice on register).
 - **Email provider = Brevo** (replaced Resend): Resend sandbox restricted delivery to the account owner / verified-domain recipients; Brevo sends to arbitrary recipients on the free tier (300 emails/day) with a verified sender.
-- `Users.EmailVerified` bit column (migration `20260908144212_AddRefreshTokenFamilyId` amended( + OTP challenge lifecycle in `AuthRepository` (hash-at-rest, 10-min expiry, 5-attempt lockout, supersede-old-challenges(.
+- `Users.EmailVerified` bit column (migration `20260908144212_AddRefreshTokenFamilyId` amended) + OTP challenge lifecycle in `AuthRepository` (hash-at-rest, 10-min expiry, 5-attempt lockout, supersede-old-challenges).
 - OTP routes/statuses/config documented in `docs/api/auth-contract.md`, `backend/project-kit/context/api-surface.md`, integration contracts, AGENTS.md, and spec 07 acceptance criteria.
-- Tests: unit OTP coverage in `AuthServiceTests` + SQL/HTTP `HttpOtp_VerifyConsumes_AndMarksEmailVerified_AndLocksAfterFive` (optional `GRIOT_RUN_SQL_TESTS=1`(.
+- Tests: unit OTP coverage in `AuthServiceTests` + SQL/HTTP `HttpOtp_VerifyConsumes_AndMarksEmailVerified_AndLocksAfterFive` (optional `GRIOT_RUN_SQL_TESTS=1`).
 
 ### Fixed
 - Root "Not implemented yet" auth responses: caused by a stale pre-auth build in `backend/src/Griot.Api/bin`; the implemented auth controller/service/repository now serve 201/200/401/204 — rebuild required. README scaffold note unchanged (workspaces stub still legit(.

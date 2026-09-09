@@ -15,8 +15,8 @@ Local base URL: `http://localhost:5064`. The HTTPS launch profile also exposes
 | `/api/auth/login` | `email`, `password` | 200, token pair and user | 400 validation; 401 invalid credentials; 429 with `Retry-After` |
 | `/api/auth/refresh` | `refreshToken` | 200, replacement pair and user | 400 missing/empty required field; 401 malformed, unknown, expired or reused token |
 | `/api/auth/logout` | `refreshToken`; bearer access token required | 204, including malformed, unknown or already revoked tokens | 400 missing/empty required field; 401 absent/invalid bearer token |
-| POST | `/api/auth/otp/request` | `email`, `purpose` (`email_verify`/`login_2fa`/`password_reset`) | 202, code sent via Brevo branded email | 400 invalid purpose; 401 unknown email; 429 (3/15min/email; with `Retry-After`); 502 Brevo delivery failed |
-| POST | `/api/auth/otp/verify` | `email`, `code`, `purpose` | 200 `{verified:true,message,emailVerified}` (marks `Users.EmailVerified` for `email_verify`) | 400 invalid; 401 unknown/expired/invalid code; 429 lockout after 5 failed attempts |
+| `/api/auth/otp/request` | `email`, `purpose` (`email_verify`/`login_2fa`/`password_reset`) | 202, code sent via Brevo branded email | 400 invalid purpose; 401 unknown email; 429 (3/15min/email; with `Retry-After`); 502 Brevo delivery failed |
+| `/api/auth/otp/verify` | `email`, `code`, `purpose` | 200 `{verified:true,message,emailVerified}` (marks `Users.EmailVerified` for `email_verify`) | 400 invalid; 401 unknown/expired/invalid code; 429 lockout after 5 failed attempts |
 
 Token response: `{accessToken, refreshToken, expiresAt, user}`;
 `user` contains `{id, email, displayName, avatarUrl}`. `expiresAt` is the access
