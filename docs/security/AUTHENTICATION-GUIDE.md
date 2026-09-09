@@ -50,7 +50,7 @@ POST /api/auth/register
 Content-Type: application/json
 
 {
-  "email": "alice@sababisha.com",
+  "email": "alice@example.com",
   "displayName": "Alice Otieno",
   "password": "Correct-Horse-Battery-Staple-42!"
 }
@@ -64,7 +64,7 @@ Content-Type: application/json
   "expiresAt": "2026-09-09T12:15:00Z",
   "user": {
     "id": "guid",
-    "email": "alice@sababisha.com",
+    "email": "alice@example.com",
     "displayName": "Alice Otieno",
     "avatarUrl": null
   }
@@ -90,7 +90,7 @@ POST /api/auth/login
 Content-Type: application/json
 
 {
-  "email": "alice@sababisha.com",
+  "email": "alice@example.com",
   "password": "Correct-Horse-Battery-Staple-42!"
 }
 ```
@@ -154,7 +154,7 @@ POST /api/auth/otp/request
 Content-Type: application/json
 
 {
-  "email": "alice@sababisha.com",
+  "email": "alice@example.com",
   "purpose": "email_verify"
 }
 ```
@@ -162,7 +162,7 @@ Content-Type: application/json
 **Success:** `202 Accepted`
 ```json
 {
-  "message": "A 6-digit code has been sent to alice@sababisha.com.",
+  "message": "A 6-digit code has been sent to alice@example.com.",
   "expiresInMinutes": 10
 }
 ```
@@ -182,7 +182,7 @@ POST /api/auth/otp/verify
 Content-Type: application/json
 
 {
-  "email": "alice@sababisha.com",
+  "email": "alice@example.com",
   "code": "123456",
   "purpose": "email_verify"
 }
@@ -406,7 +406,7 @@ All auth uses `Authorization: Bearer <token>` header. No HTTP-only cookies, no a
 - **Register** sends `email_verify` best-effort: Resend 429/5xx → log + return 201 anyway. User can re-request verification OTP later.
 - **`POST /api/auth/otp/request` (explicit):** Resend failure → **502 Bad Gateway** (fail-closed — explicit request MUST deliver or inform).
 - From address fallback: `Griot <onboarding@resend.dev>` (Resend onboarding sender).
-- Admin notice: "New user registered" → `Resend:ContactToEmail` (canonical fallback: `support@sababisha.com` when configuration keys are unset — notice is always delivered, never skipped).
+- Admin notice: "New user registered" → `Resend:ContactToEmail` (canonical fallback: `info.donartkins.ke@gmail.com` when configuration keys are unset — notice is always delivered, never skipped).
 - Never throws: `HttpRequestException` / generic `Exception` → `_logger.LogWarning` + return `false`. No 500 crash on email network blip.
 
 **Why secure:**
@@ -476,9 +476,9 @@ Set these in `backend/appsettings.Local.json` (git-ignored) OR as env vars (Dock
 | `Otp:Pepper` | `Otp__Pepper` | `griot-dev-otp-pepper-change-me` | ⚠️ dev-only | HMAC pepper. **CHANGE IN PROD.** |
 | `Resend:ApiKey` | `RESEND_API_KEY` | none | no | Unset → OTP request returns 502; register still works. |
 | `Resend:FromEmail` | `RESEND_FROM_EMAIL` | `Griot <onboarding@resend.dev>` | no | Resend sending address. |
-| `Resend:ContactToEmail` | `CONTACT_TO_EMAIL` | `support@sababisha.com` (canonical fallback used when unset) | no | Admin inbox for new-user notices — canonical address `support@sababisha.com`. |
+| `Resend:ContactToEmail` | `CONTACT_TO_EMAIL` | `info.donartkins.ke@gmail.com` (canonical fallback used when unset) | no | Admin inbox for new-user notices — canonical address `info.donartkins.ke@gmail.com`. |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins` | localhosts only | ⚠️ prod required | Comma-separated origins (Vercel prod domains). |
-| `SITE_URL` | `SITE_URL` | `https://sababisha.com` | no | Used in branded email template footer links. |
+| `SITE_URL` | `SITE_URL` | `https://griot.app` | no | Used in branded email template footer links. |
 
 ---
 

@@ -57,7 +57,7 @@ scaffold response and must fail acceptance checks.
   the brand token + exact code only travel via Resend (customized template per purpose).
 - Resend email: API key `Resend:ApiKey` (fallbacks `RESEND_API_KEY`, `Resend__ApiKey`); sender
   address `Resend:FromEmail` (fallback `RESEND_FROM_EMAIL`; default `Griot <onboarding@resend.dev>`); admin
-  inbox `Resend:ContactToEmail` (fallback `CONTACT_TO_EMAIL`; canonical fallback `support@sababisha.com`
+  inbox `Resend:ContactToEmail` (fallback `CONTACT_TO_EMAIL`; canonical fallback `info.donartkins.ke@gmail.com`
   used when both configuration keys are unset — notice is always delivered, never skipped). Register
   also sends a branded admin "new user" notice to the ops inbox.
 
@@ -72,7 +72,7 @@ scaffold response and must fail acceptance checks.
 | `Otp__Pepper` | HMAC-SHA256 pepper for OTP code hashes; dev default only in ignored `appsettings.Local.json` |
 | `Resend__ApiKey` (`RESEND_API_KEY`) | Resend API key; when unset OTP/email delivery returns 502 (otp/request) bzw. register continues (201) with the code persisted for later manual resend |
 | `Resend__FromEmail` (`RESEND_FROM_EMAIL`) | Resend sending address; default `Griot <onboarding@resend.dev>` |
-| `Resend__ContactToEmail` (`CONTACT_TO_EMAIL`) | Admin inbox for new-user registration notices; canonical fallback `support@sababisha.com` used when both keys are unset — notice is always delivered, never skipped |
+| `Resend__ContactToEmail` (`CONTACT_TO_EMAIL`) | Admin inbox for new-user registration notices; canonical fallback `info.donartkins.ke@gmail.com` used when both keys are unset — notice is always delivered, never skipped |
 
 Runtime reads the ignored `appsettings.Local.json`; environment variables and
 command-line arguments override it. Secrets never belong in committed files.

@@ -42,6 +42,20 @@ railway variables --service griot-api --set 'ConnectionStrings__Default=...'  # 
 - Railway release command runs migrations against production SQL.
 - Render fallback + Azure App Service variant (az webapp up) documented but not defaulted.
 
+## Database Recovery & Restored-Service Cutover
+
+Operational recovery contract (full runbook: `docs/planning/RUNBOOK-ROLLBACK.md`):
+
+- Railway managed PostgreSQL PITR (pgBackRest) provisions an independent restored service named `<service>-restored-YYYYMMDD-HHMM` with its own NEW volume; env vars are copied from the source EXCLUDING archive credentials.
+- `POSTGRES_RECOVERY_TARGET_TIME` is set automatically on the restored service (the chosen recovery timestamp, which must fall within Railway's PITR retention window).
+- The restored service reads the source WAL archive in read-only mode and executes `pgbackrest restore --type=time --target=<timestamp>`; the source DB is never written by the recovery.
+- **Validate before cutover:** check last `AuditLogs`/`ActivityLogs` timestamp vs the recovery target, then run smoke tests against the restored connection string.
+- **Quiesce dependent-service writes** (maintenance/read-only mode) before switching `ConnectionStrings__Default` to the restored service, or document reconciliation of post-target writes — writes to the source after `POSTGRES_RECOVERY_TARGET_TIME` are NOT in the restored fork and are lost on cutover.
+- **Cutover** = update `ConnectionStrings__Default` on dependent Railway services (Vercel/Trigger env in the same step) and redeploy.
+- This recovery flow is **DISTINCT from normal SQL Server `ConnectionStrings__Default` configuration**; it applies only during a PITR recovery incident.
+- PITR must already be enabled with its first post-enable base backup complete — enabling it after an incident does NOT create a historical restore window.
+- **Self-managed (non-Railway) PostgreSQL:** recovery settings live in `postgresql.conf` (NOT `recovery.conf`, removed in PostgreSQL 12); targeted PITR = empty `recovery.signal` in the data directory + `recovery_target_time` in `postgresql.conf`.
+
 ## Separation of Concerns
 
 - Host choices documented; app code host-agnostic.

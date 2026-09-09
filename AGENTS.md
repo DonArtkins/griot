@@ -77,6 +77,18 @@ configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register( + `POST /api/auth/otp/verify` (200/401/429;; sets `Users.EmailVerified`; branded Resend template per purpose. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
+## Database rollback / recovery contract
+
+Railway managed PostgreSQL PITR recovery provisions an independent restored service named
+`<service>-restored-YYYYMMDD-HHMM`; `POSTGRES_RECOVERY_TARGET_TIME` is set automatically on it and the
+restored service replays the source WAL archive read-only up to the target time. Validate
+(`AuditLogs`/`ActivityLogs` timestamp + smoke tests), quiesce dependent-service writes (maintenance/
+read-only) or reconcile post-target writes, THEN switch `ConnectionStrings__Default` to the restored
+service and redeploy (Vercel/Trigger env in the same step). This cutover flow is DISTINCT from normal
+SQL Server `ConnectionStrings__Default` configuration. PITR must be enabled before an incident with its
+first post-enable base backup complete, or no historical restore window exists. Full runbook:
+`docs/planning/RUNBOOK-ROLLBACK.md`; owning spec: infra spec 06.
+
 Before committing or pushing implementation, run `python3 scripts/check-contract-sync.py` from
 the repository root. Synchronize the owning spec, dependent specs, planning,
 research, docs, contexts, agent instructions, diagram sources and progress notes

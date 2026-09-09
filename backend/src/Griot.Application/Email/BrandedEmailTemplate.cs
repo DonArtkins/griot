@@ -4,7 +4,7 @@ namespace Griot.Application.Email;
 
 /// <summary>
 /// Branded HTML email shell + per-purpose renderers (OTP codes, admin new-account notice).
-/// Faithful C# port of the Sababisha website's Resend templates — same brand tokens (bg/card/ink/muted/
+/// Faithful C# port of the Griot branded Resend templates — same brand tokens (bg/card/ink/muted/
 /// accent/border/soft), Inter + DM Serif Display, the accent-with-swervy heading stroke,and table-based
 /// layout for Outlook/Gmail. Every email type customizes preheader/eyebrow/title/accent word/body/
 /// footerNote —"customized for each and every email" (research/ai-features-research.md §1.6).
@@ -82,7 +82,7 @@ public static class BrandedEmailTemplate
         <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" border=""0"" style=""margin-top:32px;"">
         <tr><td style=""padding-top:24px;border-top:1px solid {Border};"">
             <p style=""margin:0 0 8px;font-family:{FontSans};font-size:12px;line-height:1.5;color:{Muted};"">{Esc(note)}</p>
-            <p style=""margin:0;font-family:{FontSans};font-size:12px;line-height:1.5;color:{Muted};""><a href=""{Esc(siteUrl)}"" style=""color:{Accent};text-decoration:none;font-weight:700;"">{Esc(siteUrl.Replace("https://", "").Replace("http://", "").TrimEnd('/'))}</a> &nbsp;·&nbsp; Sababisha Solutions Limited</p>
+            <p style=""margin:0;font-family:{FontSans};font-size:12px;line-height:1.5;color:{Muted};""><a href=""{Esc(siteUrl)}"" style=""color:{Accent};text-decoration:none;font-weight:700;"">{Esc(siteUrl.Replace("https://", "").Replace("http://", "").TrimEnd('/'))}</a> &nbsp;·&nbsp; Griot</p>
         </td></tr></table>";
 
     private static string Shell(string preheader, string eyebrow, string title, string? accentWord, string bodyHtml, string footerNote, string siteUrl)

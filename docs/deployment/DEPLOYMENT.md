@@ -32,6 +32,16 @@ EF migrations run as the **Railway release command** (never a local-first assump
 - Release command: `dotnet ef database update` (applies forward migrations only).
 - See `docs/planning/RUNBOOK-ROLLBACK.md` for tested database recovery procedure (backup restore, RPO checks).
 
+## Database recovery (PostgreSQL PITR) & connection cutover
+
+When restoring the database to a point-in-time target (Railway managed PostgreSQL PITR):
+
+- PITR must already be enabled on the source PostgreSQL service **and** its first post-enable base backup must be complete — enabling PITR after an incident provides NO historical restore window.
+- Railway provisions an independent restored service `<service>-restored-YYYYMMDD-HHMM`; `POSTGRES_RECOVERY_TARGET_TIME` is set automatically and the restored service replays the source WAL archive in read-only mode up to the target.
+- Validate (last `AuditLogs`/`ActivityLogs` timestamp + smoke tests), then **quiesce writes** (maintenance/read-only mode) BEFORE switching `ConnectionStrings__Default` to the restored service — or reconcile post-target writes.
+- Cutover = update `ConnectionStrings__Default` on dependent Railway services + Vercel/Trigger env, then redeploy. This is distinct from normal SQL Server `ConnectionStrings__Default` configuration.
+- Full procedure: `docs/planning/RUNBOOK-ROLLBACK.md` + infra spec 06.
+
 ## Verify after any deploy
 
 - [ ] `GET /health` 200 (backend)

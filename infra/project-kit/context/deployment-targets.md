@@ -10,6 +10,10 @@
 
 Host matrix rationale (from research): Railway chosen as Docker-native + one-click DB add-ons; Render as fallback; Azure documented as an optional stretch (`az webapp up`).
 
+## Database recovery (restored-service cutover)
+
+Recovery contract: `POSTGRES_RECOVERY_TARGET_TIME` (set automatically on the restored `<service>-restored-YYYYMMDD-HHMM` Railway PostgreSQL service), read-only source WAL replay, validate-then-quiesce-then-cutover via `ConnectionStrings__Default` — distinct from normal SQL Server configuration. PITR must be enabled before an incident (first post-enable base backup complete). See `docs/planning/RUNBOOK-ROLLBACK.md` + infra spec 06.
+
 ## Implemented authentication contract (Feature 07)
 
 Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
