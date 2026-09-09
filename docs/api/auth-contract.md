@@ -96,5 +96,7 @@ Without the opt-in flag, SQL tests are explicitly skipped, never reported as
 integration passes. Redis must also be reachable for HTTP login tests.
 
 The schema amendment is [RefreshTokens](../../diagrams/erd/auth-family-amendment.md).
-The operational repair and evidence are recorded in
-[the repair log](../planning/FEATURE-07-AUTH-REPAIR.md).
+Auth implementation source: `backend/src/Griot.Api/Controllers/AuthController.cs`,
+`backend/src/Griot.Application/Services/AuthService.cs`,
+`backend/src/Griot.Infrastructure/Repositories/AuthRepository.cs`.
+Unit tests: `backend/tests/Griot.Tests/Auth/AuthServiceTests.cs` (18 tests passing).

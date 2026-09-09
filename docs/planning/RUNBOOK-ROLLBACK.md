@@ -38,7 +38,7 @@
      - **Data loss:** Transactions between snapshot time and incident time are lost
      - **Transaction replay:** NOT feasible with current schema (AuditLogs contains state snapshots, not commands). Document data loss and coordinate with affected users.
   3. **Communication**: Notify team and users of data loss window and RPO.
-  4. **Future enhancement (if RPO >24h unacceptable):** Enable PostgreSQL PITR with WAL archiving to external storage (requires setup, see `docs/planning/CODERABBIT-REMAINING-ISSUES.md` §2.2).
+  4. **Future enhancement (if RPO >24h unacceptable):** Enable PostgreSQL PITR with WAL archiving to external storage (requires setup; configure `archive_mode=on` + `archive_command` + restore_command in recovery; test restore periodically).
 - **Prevention**: Test migrations in staging environment with production-like data volume before deploying to production.
 
 ## What notices before a user does

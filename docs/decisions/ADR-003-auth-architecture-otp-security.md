@@ -183,9 +183,9 @@ Component-by-component decision list (binary, testable):
 3. Auth contract (canonical routes + statuses + claims + env): `docs/api/auth-contract.md`
 4. API surface (auth routes table): `backend/project-kit/context/api-surface.md`
 5. Integration contracts (port 5064 / 7198 + CORS + service-token shape): `project-kit/context/integration-contracts.md`
-6. CodeRabbit remaining issues (auth-specific): `docs/planning/CODERABBIT-REMAINING-ISSUES.md`
-7. Bug fix report for this implementation pass: `docs/planning/FEATURE-07-AUTH-BUGFIX-REPORT.md`
-8. Repair log (earlier batch): `docs/planning/FEATURE-07-AUTH-REPAIR.md`
+6. Implementation tests: `backend/tests/Griot.Tests/Auth/` (AuthServiceTests — 18 unit tests; AuthSqlTests — SQL integration with opt-in `GRIOT_RUN_SQL_TESTS=1`)
+7. Implementation source: `backend/src/Griot.Api/Controllers/AuthController.cs` + `backend/src/Griot.Application/Services/AuthService.cs` + `backend/src/Griot.Infrastructure/Repositories/AuthRepository.cs`
+8. Planning context: `backend/project-kit/feature-specs/07-auth-jwt-argon2-redis.md`
 9. PHCH 2015 Argon2 specification: https://password-hashing.net/
 10. NIST SP 800-63B §5.2.2 (online guessing throttling) + §7.1 (token lifetime)
 11. OWASP CSRF Prevention Cheat Sheet (Bearer vs Cookie rationale): https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html

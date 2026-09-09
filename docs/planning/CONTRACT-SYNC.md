@@ -27,5 +27,6 @@ the human design approval required by AGENTS.md. Add checks for new contracts
 as they are introduced. Do not claim all repository features are implemented
 because the guard passes.
 
-Feature 07's review matrix and test evidence are in
-[the repair log](FEATURE-07-AUTH-REPAIR.md).
+Feature 07's auth implementation tests are in `backend/tests/Griot.Tests/Auth/`
+(AuthServiceTests, AuthSqlTests). Architectural decisions are documented in
+`docs/decisions/ADR-003-auth-architecture-otp-security.md`.
