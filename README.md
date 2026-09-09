@@ -133,6 +133,7 @@ Docker/env equivalents use `__` (e.g. `Brevo__ApiKey`, `BREVO_API_KEY`).
 > Rate limits: keep under 300/day total; each `/api/auth/otp/request` = 1 transactional email.
 
 Full detail + troubleshooting: `docs/security/AUTHENTICATION-GUIDE.md` §4.10/§7/§8 and `docs/api/auth-contract.md`.
+The full communication architecture — sender identities (no-reply/support/info/team/security/admin), SMS, WhatsApp, Brevo Automations wiring, rate-limit budget and Vercel/Railway env vars — lives in **`docs/communication/COMMUNICATION-GUIDE.md`** (spec 12).
 
 ### 4. Database — EF Core migrations & stored procedures — from `backend/`
 
