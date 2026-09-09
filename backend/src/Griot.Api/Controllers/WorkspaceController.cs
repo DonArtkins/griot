@@ -1,72 +1,89 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Griot.Application.DTOs;
+using Griot.Application.Interfaces.Services;
+using Griot.Application.Services;
 
 namespace Griot.Api.Controllers;
 
 [ApiController]
 [Route("api/workspaces")]
-public class WorkspaceController : ControllerBase
+[Authorize]
+public class WorkspaceController : DomainControllerBase
 {
+    private readonly IDomainService _domain;
+
+    public WorkspaceController(IDomainService domain) { _domain = domain; }
 
     [HttpGet]
-    public IActionResult GetWorkspaces()
+    public async Task<IActionResult> GetWorkspaces()
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return Ok(await _domain.GetWorkspacesAsync(CurrentUserId())); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpPost]
-    public IActionResult CreateWorkspace()
+    public async Task<IActionResult> CreateWorkspace([FromBody] CreateWorkspaceRequest request)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return StatusCode(StatusCodes.Status201Created, await _domain.CreateWorkspaceAsync(request, CurrentUserId())); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpGet("{id}")]
-    public IActionResult GetWorkspace(Guid id)
+    public async Task<IActionResult> GetWorkspace(Guid id)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return Ok(await _domain.GetWorkspaceAsync(id, CurrentUserId())); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpPut("{id}")]
-    public IActionResult UpdateWorkspace(Guid id)
+    public async Task<IActionResult> UpdateWorkspace(Guid id, [FromBody] UpdateWorkspaceRequest request)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return Ok(await _domain.UpdateWorkspaceAsync(id, request, CurrentUserId())); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpDelete("{id}")]
-    public IActionResult DeleteWorkspace(Guid id)
+    public async Task<IActionResult> DeleteWorkspace(Guid id)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return (await _domain.DeleteWorkspaceAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Workspace not found." }); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpGet("{id}/members")]
-    public IActionResult GetMembers(Guid id)
+    public async Task<IActionResult> GetMembers(Guid id)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return Ok(await _domain.GetMembersAsync(id, CurrentUserId())); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpPost("{id}/members")]
-    public IActionResult AddMember(Guid id)
+    public async Task<IActionResult> AddMember(Guid id, [FromBody] AddMemberRequest request)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return StatusCode(StatusCodes.Status201Created, await _domain.AddMemberAsync(id, request, CurrentUserId())); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpPatch("{id}/members/{userId}")]
-    public IActionResult UpdateMember(Guid id, Guid userId)
+    public async Task<IActionResult> UpdateMember(Guid id, Guid userId, [FromBody] UpdateMemberRoleRequest request)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return Ok(await _domain.UpdateMemberRoleAsync(id, userId, request, CurrentUserId())); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpDelete("{id}/members/{userId}")]
-    public IActionResult RemoveMember(Guid id, Guid userId)
+    public async Task<IActionResult> RemoveMember(Guid id, Guid userId)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return (await _domain.RemoveMemberAsync(id, userId, CurrentUserId())) ? NoContent() : NotFound(new { message = "Member not found." }); }
+        catch (DomainError e) { return Handle(e); }
     }
 
     [HttpPost("{id}/invites")]
-    public IActionResult CreateInvite(Guid id)
+    public async Task<IActionResult> CreateInvite(Guid id, [FromBody] CreateInviteRequest request)
     {
-        return StatusCode(StatusCodes.Status501NotImplemented, new { message = "Not implemented yet" });
+        try { return StatusCode(StatusCodes.Status201Created, await _domain.CreateInviteAsync(id, request, CurrentUserId())); }
+        catch (DomainError e) { return Handle(e); }
     }
-
 }

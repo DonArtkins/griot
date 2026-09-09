@@ -7,5 +7,6 @@ namespace Griot.Application.Interfaces.Services;
 
 public interface IWorkspaceService
 {
-    // Stub
+    Task<List<WorkspaceDto>> GetWorkspacesAsync(Guid userId);
+    Task<WorkspaceDto> CreateWorkspaceAsync(CreateWorkspaceRequest request, Guid ownerId);
 }

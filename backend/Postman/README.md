@@ -49,23 +49,20 @@ Required order so tokens and IDs chain:
 | 0 | `REST / Public / Health` | Confirms `/health` is reachable. No auth needed. |
 | 1 | `REST / Auth / Register` | Creates the test user; writes `accessToken`, `refreshToken`, `userId` to the env. |
 | 2 | `REST / Auth / Login` | Re-authenticates; rotates tokens; confirms 429 lockout works on repeated calls. |
-| 3 | `REST / Workspaces` through `REST / Webhooks` | Iterates every route in `api-surface.md`; scaffold routes return `501 Not Implemented` until their features ship. |
+| 3 | `REST / Workspaces` through `REST / Webhooks` | Iterates every route in `api-surface.md`; all routes are implemented; none return 501. |
 | 4 | `GraphQL / Queries` + `GraphQL / Mutations` | Same `accessToken` reused; `boardId`-scoped tasks; assertions on JSON shape and time. |
 
 ### 4. Expected status codes per implementation maturity
 
-| Surface | Implemented | Scaffold (pending specs 09–11) |
+| Surface | Implemented | Note |
 |---|---|---|
 | **Auth** (`/api/auth/*`) | `200 / 201 / 202 / 204` | — |
 | **Health** (`/health`) | `200 Healthy` | — |
-| **REST modules** (workspaces → webhooks) | — | `501 Not Implemented` |
+| **REST modules** (workspaces → webhooks) | `200 / 201 / 204` + role errors 401/403/404/409 | Implemented in specs 13–17 |
 | **GraphQL queries** (11) | `401 AUTH_NOT_AUTHENTICATED` without token; `200 OK` + payload with valid token for resolvers where data exists | — |
 | **GraphQL mutations** (11) | Same auth rules | — |
 
-The collection assertions accept the current status (auth passes, scaffold
-passes 501, GraphQL passes 200/401 correctly). As each feature spec lands,
-the corresponding request's assertions tighten from `pm.response.to.be.scaffold`
-to real schema checks.
+The collection assertions accept the current status: auth 200/201/204, REST modules 200/201/204 + 401/403/404/409, GraphQL 200/401. None return 501.
 
 ## Assertions (Tests tab) used
 
@@ -96,9 +93,8 @@ newman run Postman/Griot.postman_collection.json \
 Coverage notes:
 - **No LLM in CI.** The collection is deterministic; seed credentials are in
   the environment.
-- **Scaffold 501s are not CI failures.** Assertions match implementation
-  maturity. When a route graduates to real, update its Tests tab alongside
-  the feature PR and contract-sync the change.
+- **No route returns 501.** All REST routes are implemented (specs 13–17);
+  the Webhook HMAC and attachment metadata paths return real responses.
 
 ## Updating the collection (contract-sync gate)
 

@@ -51,20 +51,17 @@ public sealed class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
     private readonly IEmailService _emailService;
-    private readonly IContactSynchronizer _contactSynchronizer;
 
     public AuthService(
         IAuthRepository authRepository,
         IConfiguration configuration,
         ILogger<AuthService> logger,
-        IEmailService emailService,
-        IContactSynchronizer contactSynchronizer)
+        IEmailService emailService)
     {
         _authRepository = authRepository;
         _configuration = configuration;
         _logger = logger;
         _emailService = emailService;
-        _contactSynchronizer = contactSynchronizer;
     }
 
     // -----------------------------------------------------------------------------
@@ -104,12 +101,6 @@ public sealed class AuthService : IAuthService
         await CreateOtpChallengeAndEmailAsync(
             user.Id, user.Email, user.DisplayName, "email_verify", requestIp: null, CancellationToken.None).ConfigureAwait(false);
         await SendNewAccountAdminEmailAsync(user).ConfigureAwait(false);
-
-        // Synchronize the new user into Brevo as a contact (spec 12). This is the
-        // trigger hook for the Welcome / Onboarding automations. Best-effort: a
-        // Brevo outage must never fail registration.
-        await _contactSynchronizer.UpsertContactAsync(user.Email, user.DisplayName, false, CancellationToken.None)
-            .ConfigureAwait(false);
 
         return await IssueTokenPairAsync(user).ConfigureAwait(false);
     }
@@ -290,10 +281,6 @@ public sealed class AuthService : IAuthService
         {
             await _authRepository.MarkEmailVerifiedAsync(user.Id).ConfigureAwait(false);
             emailVerified = true;
-
-            // Flip the Brevo contact lifecycle attribute (ACCOUNT_STATUS=VERIFIED).
-            // Automations listening on the attribute change fire here (spec 12).
-            await _contactSynchronizer.MarkVerifiedAsync(user.Email, CancellationToken.None).ConfigureAwait(false);
         }
 
         _logger.LogInformation("OTP verified: {UserId} purpose={Purpose}", user.Id, request.Purpose);
