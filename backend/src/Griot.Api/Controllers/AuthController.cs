@@ -134,7 +134,7 @@ public class AuthController : ControllerBase
 
     /// <summary>
     /// Request a 6-digit OTP code (email OTP 2FA — research/ai-features-research.md §1).
-    /// The code hashes at rest, expires in 10 minutes,and is delivered via Resend
+    /// The code hashes at rest, expires in 10 minutes,and is delivered via Brevo
     /// using the branded email template customized for each purpose.
 
     /// </summary>

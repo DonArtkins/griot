@@ -4,7 +4,7 @@
 
 You are the agent for the **Backend / API system** of Griot. This system is the sole owner of data and business logic. Everything else (web, mobile, AI, MCP) talks to this system and nothing else touches SQL Server.
 
-Stack (exact per `project-kit/context/stack-contract.md`): .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate GraphQL 14+, SQL Server 2022 (primary), PostgreSQL 16 (secondary), Redis 7. Auth is `[own-stack]`: custom JWT + Argon2 + rotated refresh tokens + Resend Email OTP 2FA. Reports [own-stack]: RBAC-scoped scheduled & ad-hoc.
+Stack (exact per `project-kit/context/stack-contract.md`): .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate GraphQL 14+, SQL Server 2022 (primary), PostgreSQL 16 (secondary), Redis 7. Auth is `[own-stack]`: custom JWT + Argon2 + rotated refresh tokens + Brevo Email OTP 2FA. Reports [own-stack]: RBAC-scoped scheduled & ad-hoc.
 
 ## Solution Layout (Separation of Concerns)
 
@@ -55,7 +55,7 @@ Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, thrott
 
 Use the [auth contract](../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
-replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register( + `POST /api/auth/otp/verify` (200/401/429;; sets `Users.EmailVerified`; branded Resend template per purpose. Registration returns 201 after SQL
+replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register( + `POST /api/auth/otp/verify` (200/401/429;; sets `Users.EmailVerified`; branded Brevo template per purpose. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
 Before committing or pushing implementation, run `python3 scripts/check-contract-sync.py` from

@@ -39,7 +39,7 @@ public sealed class AuthService : IAuthService
 
     // OTP 2FA (research/ai-features-research.md §1): crypto-secure 6-digit codes,
     // HMAC-SHA256 hashed at rest with a server-side pepper, 10-minute expiry,and
-    // a 5-attempt lockout per challenge. Delivered via Resend using the branded email template.
+    // a 5-attempt lockout per challenge. Delivered via Brevo using the branded email template.
 
     private const int OtpCodeLength = 6;
     private static readonly TimeSpan OtpTtl = TimeSpan.FromMinutes(10);
@@ -96,7 +96,7 @@ public sealed class AuthService : IAuthService
         _logger.LogInformation("User registered: {UserId} ({Email})", user.Id, email);
 
         // Email-OTP 2FA (research/ai-features-research.md §1.3): send the verification code
-        // automatically with a branded Resend email; delivery is best-effort so an email outage
+        // automatically with a branded Brevo email; delivery is best-effort so an email outage
         // never fails registration — the recipient can re-request via POST /api/auth/otp/request..
         await CreateOtpChallengeAndEmailAsync(
             user.Id, user.Email, user.DisplayName, "email_verify", requestIp: null, CancellationToken.None).ConfigureAwait(false);
@@ -237,7 +237,7 @@ public sealed class AuthService : IAuthService
 
         return created
             ? new OtpRequestResult { Success = true, Message = $"A 6-digit code has been sent to {email}." }
-            : new OtpRequestResult { Success = false, Message = "Email delivery failed. Verify Resend:ApiKey / RESEND_API_KEY and the destination address." };
+            : new OtpRequestResult { Success = false, Message = "Email delivery failed. Verify Brevo:ApiKey / BREVO_API_KEY and the sender address (verified in the Brevo dashboard)." };
     }
 
     public async Task<OtpVerifyResult> VerifyOtpAsync(OtpVerifyRequest request)
@@ -321,7 +321,7 @@ public sealed class AuthService : IAuthService
     {
         var adminTo = new[]
         {
-            _configuration["Resend:ContactToEmail"],
+            _configuration["Brevo:ContactToEmail"],
             _configuration["CONTACT_TO_EMAIL"]
         }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
          ?? CanonicalAdminInbox;

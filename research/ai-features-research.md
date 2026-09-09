@@ -1,6 +1,6 @@
 # Research — OTP 2FA, System Reports & AI-Driven Automation for Griot
 
-> **Status: `[own-stack]` research doc.** The bootcamp PDF and `gtp-2026-prep.md` define no MFA mechanism, no reporting layer, and the AI layer described in `ai-integration.md` covers Copilot/MCP but not "AI executes any action across the system." This doc researches all three, grounded against the Lyncxs Industries knowledge base (Auth Services Guide, Communication Engineering, WCPSE Security, AI Systems Engineering), and reconciled against Griot's actual constraints: **custom JWT auth** (not Clerk/Auth0 — the KB's default recommendation), **.NET 8 + EF Core + SQL Server**, and **Resend** for email.
+> **Status: `[own-stack]` research doc.** The bootcamp PDF and `gtp-2026-prep.md` define no MFA mechanism, no reporting layer, and the AI layer described in `ai-integration.md` covers Copilot/MCP but not "AI executes any action across the system." This doc researches all three, grounded against the Lyncxs Industries knowledge base (Auth Services Guide, Communication Engineering, WCPSE Security, AI Systems Engineering), and reconciled against Griot's actual constraints: **custom JWT auth** (not Clerk/Auth0 — the KB's default recommendation), **.NET 8 + EF Core + SQL Server**, and **Brevo** for transactional email.
 
 ---
 
@@ -36,7 +36,7 @@ Pulled directly from two independent sections that agree with each other:
 - **WCPSE §7.2 JWT anti-patterns** (directly reusable for OTP-adjacent session tokens): short-lived tokens, full claim validation, no secrets in logs.
 - **WCPSE §9.2**: all queries touching the OTP table must be parameterized — never string-built SQL, even for something as small as an OTP lookup.
 
-**Reconciling this with "OTP 2FA" as you framed it**: the KB ranks *email OTP* below TOTP/passkeys in security terms, but email OTP is what fits your stack today — Resend is already your transactional email backbone, you have no push infrastructure, and TOTP requires added UI (QR code, secret storage) your Copilot doesn't need yet. Treat **email OTP as your MVP 2FA**, and design the data model so TOTP can be added later without a rewrite (see §1.5).
+**Reconciling this with "OTP 2FA" as you framed it**: the KB ranks *email OTP* below TOTP/passkeys in security terms, but email OTP is what fits your stack today — Brevo is your transactional email backbone (300 emails/day free, no recipient sandbox), you have no push infrastructure, and TOTP requires added UI (QR code, secret storage) your Copilot doesn't need yet. Treat **email OTP as your MVP 2FA**, and design the data model so TOTP can be added later without a rewrite (see §1.5).
 
 ### 1.2 Data model (EF Core / SQL Server)
 
@@ -67,7 +67,7 @@ POST /api/auth/otp/request
   → validate user exists + isn't rate-limited (see §1.4)
   → generate 6-digit code (crypto-secure RNG, not Math.random / Random)
   → hash it, INSERT OtpChallenge (expires now+10min)
-  → sendEmail() → Resend → OTP template (see §1.6)
+  → sendEmail() → Brevo → OTP template (see §1.6)
   → return 202, never echo the code back in the response
 
 POST /api/auth/otp/verify
@@ -105,7 +105,7 @@ public static bool VerifyOtp(string submittedCode, string storedHash, string pep
 
 The KB's rate-limiting example is Go/token-bucket; the *pattern* — not the language — is what to take: per-identity limiter, `Retry-After` header, 429 status. In .NET this maps to `Microsoft.AspNetCore.RateLimiting` (built into .NET 8, no third-party package needed):
 
-- **OTP request endpoint**: max 3 requests per phone/email per 15 minutes. This is the highest-value control — it's the difference between "OTP" and "free spam-email cannon pointed at Resend's API quota."
+- **OTP request endpoint**: max 3 requests per phone/email per 15 minutes. This is the highest-value control — it's the difference between "OTP" and "free spam-email cannon pointed at Brevo's API quota."
 - **OTP verify endpoint**: max 5 attempts per challenge, then invalidate the challenge and force a fresh request (this is the `AttemptCount` field in §1.2).
 - Layer this **on top of**, not instead of, whatever global API rate limiting Griot's `[own-stack]` JWT layer already does.
 
@@ -113,7 +113,7 @@ The KB's rate-limiting example is Go/token-bucket; the *pattern* — not the lan
 
 Since WCPSE ranks TOTP above email OTP, add a `TwoFactorMethod` enum to the `User` entity now (`EmailOtp`, `Totp`, `None`) even if only `EmailOtp` ships first. This avoids an awkward migration later and lets Griot present "Enable Authenticator App" as a settings-page upsell once there's demand — the Auth Services Guide §15.2 TOTP example (QR code + `otplib`-equivalent) is directly portable to a .NET library like `OtpNet` when you get there.
 
-### 1.6 Resend integration for the OTP email specifically
+### 1.6 Brevo integration for the OTP email specifically
 
 Griot doesn't have a Node/Next.js `sendEmail()` abstraction — it's .NET — so the KB's TypeScript provider-factory pattern (Communication Engineering §5) needs a direct .NET translation. The **shape** transfers exactly:
 
@@ -124,10 +124,10 @@ public interface IEmailProvider
     Task<EmailResult> SendAsync(EmailMessage message, CancellationToken ct);
 }
 
-// Griot.Infrastructure/Email/ResendEmailProvider.cs
-public class ResendEmailProvider : IEmailProvider
+// Griot.Infrastructure/Email/BrevoEmailProvider.cs
+public class BrevoEmailProvider : IEmailProvider
 {
-    private readonly HttpClient _http; // base address: https://api.resend.com, Bearer RESEND_API_KEY
+    private readonly HttpClient _http; // base address: https://api.brevo.com/v3/smtp/email, api-key BREVO_API_KEY
 
     public async Task<EmailResult> SendAsync(EmailMessage message, CancellationToken ct)
     {
@@ -139,17 +139,17 @@ public class ResendEmailProvider : IEmailProvider
         };
         var response = await _http.PostAsJsonAsync("/emails", payload, ct);
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<ResendResponse>(ct);
+        var body = await response.Content.ReadFromJsonAsync<BrevoResponse>(ct);
         return new EmailResult(body!.Id, "resend");
     }
 }
 ```
 
-Register `RESEND_API_KEY` via `dotnet user-secrets` locally and the standard secret store in production (per WCPSE §12.1 secrets hierarchy — never in `appsettings.json`, never committed).
+Register `BREVO_API_KEY` via `dotnet user-secrets` locally and the standard secret store in production (per WCPSE §12.1 secrets hierarchy — never in `appsettings.json`, never committed).
 
-**Apply the KB's environment-routing principle even without the Node abstraction:** in `Development`, either use Resend's free `onboarding@resend.dev` sender (Communication Engineering §6.1) or redirect all OTP emails to a single `DEV_EMAIL_OVERRIDE` address via config, so dev/test runs never accidentally email real inboxes.
+**Apply the KB's environment-routing principle even without the Node abstraction:** in `Development`, use a real verified Brevo sender (`Brevo:FromEmail`) or redirect all OTP emails to a single `DEV_EMAIL_OVERRIDE` address via config, so dev/test runs never accidentally email real inboxes.
 
-**Resend webhooks (Communication Engineering §6.3)** — subscribe to `email.bounced` and `email.complained` and mark that user's email as suppressed in the `Users` table. This matters specifically for OTP: if a user's email is bouncing, silently retrying OTP sends burns your Resend quota and never resolves their login — surface it as an actionable error instead ("we can't deliver to this address, contact support").
+**Brevo webhooks (Communication Engineering §6.3)** — subscribe to `email.bounced` and `email.complained` and mark that user's email as suppressed in the `Users` table. This matters specifically for OTP: if a user's email is bouncing, silently retrying OTP sends burns your Brevo quota and never resolves their login — surface it as an actionable error instead ("we can't deliver to this address, contact support").
 
 **DNS (Communication Engineering §12)**: SPF, DKIM, and DMARC records on your sending domain are not optional for OTP delivery — most corporate mail servers will quarantine or reject unauthenticated mail, meaning your login flow silently breaks for exactly the users you'd most want to onboard. Do this before shipping OTP, not after a support ticket.
 
@@ -161,7 +161,7 @@ Register `RESEND_API_KEY` via `dotnet user-secrets` locally and the standard sec
 - [ ] Constant-time comparison on verify
 - [ ] Crypto-secure RNG for code generation
 - [ ] Old/unconsumed challenges invalidated when a new one is requested for the same purpose
-- [ ] Resend bounce/complaint webhook wired to an email-suppression flag
+- [ ] Brevo bounce/complaint webhook wired to an email-suppression flag
 - [ ] SPF/DKIM/DMARC configured on the sending domain
 - [ ] Audit log entry per OTP request/verify (WCPSE §7.1 API security checklist: every auth event logged with actor, IP, outcome)
 
@@ -203,7 +203,7 @@ public class Report
 }
 ```
 
-Storing `ContentJson` (structured) rather than pre-rendered HTML lets the same report render in the web app, get emailed via Resend as a digest, or get summarized again by the Copilot — one source of truth, three surfaces.
+Storing `ContentJson` (structured) rather than pre-rendered HTML lets the same report render in the web app, get emailed via Brevo as a digest, or get summarized again by the Copilot — one source of truth, three surfaces.
 
 ### 2.4 Access control for reports specifically
 
@@ -314,9 +314,9 @@ Since the Copilot can now (per your request) act broadly across the system, make
 
 Extending `ai-integration.md` §9's existing DoD list:
 
-- [ ] Email-OTP 2FA: request/verify endpoints, hashed+expiring codes, rate-limited, Resend-delivered
+- [ ] Email-OTP 2FA: request/verify endpoints, hashed+expiring codes, rate-limited, Brevo-delivered
 - [ ] `TwoFactorMethod` field on `User` reserved for future TOTP support
-- [ ] Resend bounce/complaint webhook wired to email suppression
+- [ ] Brevo bounce/complaint webhook wired to email suppression
 - [ ] SPF/DKIM/DMARC configured on sending domain before OTP ships to real users
 - [ ] `Report` entity + workspace-scoped, RBAC-enforced report queries
 - [ ] Scheduled digests persisted as reports, not just fired notifications
@@ -327,4 +327,4 @@ Extending `ai-integration.md` §9's existing DoD list:
 
 ---
 
-**Sources**: LYNCXS-AUTH-SERVICES-GUIDE.md §15 (MFA), LYNCXS-COMMUNICATION-ENGINEERING.md §2, §5–6, §12, §48 (notification architecture, Resend, DNS, checklist), LYNCXS-WORLD-CLASS-PRODUCTION-SECURITY-ENGINEERING.md §7–9, §14 (API security, auth/authz, database security, cryptography), LYNCXS-AI-SYSTEMS-ENGINEERING.md (AI Maturity Levels 3–4, Tool Engineering Principles, AI Security, AI Decision Engine, Human Escalation), ai-integration.md (Griot's existing Copilot/MCP architecture), gtp-2026-prep.md (own-stack JWT auth contract).
+**Sources**: LYNCXS-AUTH-SERVICES-GUIDE.md §15 (MFA), LYNCXS-COMMUNICATION-ENGINEERING.md §2, §5–6, §12, §48 (notification architecture, Brevo, DNS, checklist), LYNCXS-WORLD-CLASS-PRODUCTION-SECURITY-ENGINEERING.md §7–9, §14 (API security, auth/authz, database security, cryptography), LYNCXS-AI-SYSTEMS-ENGINEERING.md (AI Maturity Levels 3–4, Tool Engineering Principles, AI Security, AI Decision Engine, Human Escalation), ai-integration.md (Griot's existing Copilot/MCP architecture), gtp-2026-prep.md (own-stack JWT auth contract).

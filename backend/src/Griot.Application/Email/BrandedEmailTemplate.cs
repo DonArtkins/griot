@@ -4,7 +4,7 @@ namespace Griot.Application.Email;
 
 /// <summary>
 /// Branded HTML email shell + per-purpose renderers (OTP codes, admin new-account notice).
-/// Faithful C# port of the Griot branded Resend templates — same brand tokens (bg/card/ink/muted/
+/// Faithful C# port of the Griot branded email templates — same brand tokens (bg/card/ink/muted/
 /// accent/border/soft), Inter + DM Serif Display, the accent-with-swervy heading stroke,and table-based
 /// layout for Outlook/Gmail. Every email type customizes preheader/eyebrow/title/accent word/body/
 /// footerNote —"customized for each and every email" (research/ai-features-research.md §1.6).
@@ -152,7 +152,7 @@ public static class BrandedEmailTemplate
         }
     }
 
-    /// <summary>Admin notification sent to <c>Resend:ContactToEmail</c> (CONTACT_TO_EMAIL( when a new account registers.</summary>
+    /// <summary>Admin notification sent to <c>Brevo:ContactToEmail</c> (CONTACT_TO_EMAIL( when a new account registers.</summary>
     public static string RenderNewAccountAdminEmail(string displayName, string email, string siteUrl)
     {
         var details = $@"<table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" border=""0"" style=""margin:0 0 24px;""><tbody>

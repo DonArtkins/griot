@@ -16,7 +16,7 @@ public class User
 
     /// <summary>
     /// True once the user has verified the email address with a 6-digit OTP code
-    /// delivered via Resend (purpose `email_verify`). Registration sends the code
+    /// delivered via Brevo (purpose `email_verify`). Registration sends the code
     /// automatically; `POST /api/auth/otp/verify` marks this true.
     /// </summary>
     public bool EmailVerified { get; set; }

@@ -251,7 +251,7 @@ public class AuthServiceTests
                 .ReturnsAsync((User u) => u);
         repoMock.Setup(r => r.InsertRefreshTokenAsync(It.IsAny<RefreshToken>()))
                 .ReturnsAsync((RefreshToken t) => t);
-        // OTP: registration persists the email-verify challenge (best-effort Resend send is not asserted here).
+        // OTP: registration persists the email-verify challenge (best-effort email send is not asserted here).
         repoMock.Setup(r => r.InvalidateOtpChallengesAsync(It.IsAny<Guid>(), "email_verify"))
                 .Returns(Task.CompletedTask);
         repoMock.Setup(r => r.InsertOtpChallengeAsync(It.IsAny<OtpChallenge>()))

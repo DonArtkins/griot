@@ -35,7 +35,7 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddHttpClient<IEmailService, ResendEmailService>(client =>
+builder.Services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
 })
