@@ -1,0 +1,17 @@
+{
+  "name": "griot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Griot — project-management web app (GTP 2026 Bootcamp monorepo root",
+  "scripts": {
+    "prepare": "husky",
+    "contract:sync": "python3 scripts/check-contract-sync.py",
+    "contract:sync:verbose": "python3 scripts/check-contract-sync.py --verbose"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

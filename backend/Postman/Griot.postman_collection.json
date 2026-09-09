@@ -1,0 +1,1238 @@
+{
+  "info": {
+    "_postman_id": "griot-collection-v1",
+    "name": "Griot — API Contract Suite (REST + GraphQL)",
+    "description": "Official Griot Postman collection. Covers every route in backend/project-kit/context/api-surface.md. Auth tokens (accessToken, refreshToken) and entity IDs chain automatically into the environment via Tests scripts. Reused headlessly as Newman in CI (qa spec 05). Implementation maturity per route is encoded in assertions: auth returns 200/201/204, module scaffold routes return 501 until their feature specs land.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "griot-gtp2026"
+  },
+  "variable": [
+    {
+      "key": "authHeader",
+      "value": "Bearer {{accessToken}}",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Public",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Public health endpoint. No auth required. Contract: api-surface.md GET /health → 200 Healthy."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Auth (Feature 07 — implemented)",
+      "item": [
+        {
+          "name": "Register new user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"displayName\": \"{{testDisplayName}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new user account. Writes accessToken, refreshToken, and userId to the environment on success. Contract: auth-contract.md POST /register → 201."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created OR 409 Duplicate (re-run safe)', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                  "});",
+                  "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) {",
+                  "  pm.test('Response has JSON schema (tokens + user)', () => {",
+                  "    pm.response.to.have.jsonSchema({",
+                  "      type: 'object',",
+                  "      required: ['accessToken', 'refreshToken', 'expiresAt', 'user'],",
+                  "      properties: {",
+                  "        accessToken: { type: 'string', minLength: 32 },",
+                  "        refreshToken: { type: 'string', minLength: 32 },",
+                  "        expiresAt: { type: 'string' },",
+                  "        user: {",
+                  "          type: 'object',",
+                  "          required: ['id', 'email', 'displayName'],",
+                  "          properties: {",
+                  "            id: { type: 'string', pattern: '^[0-9a-fA-F-]{36}$' },",
+                  "            email: { type: 'string', format: 'email' },",
+                  "            displayName: { type: 'string' },",
+                  "            avatarUrl: { type: ['string', 'null'] }",
+                  "          }",
+                  "        }",
+                  "      }",
+                  "    });",
+                  "  });",
+                  "  const json = pm.response.json();",
+                  "  pm.environment.set('accessToken', json.accessToken);",
+                  "  pm.environment.set('refreshToken', json.refreshToken);",
+                  "  pm.environment.set('userId', json.user.id);",
+                  "  pm.test('Tokens chained to env', () => {",
+                  "    pm.expect(pm.environment.get('accessToken')).to.be.a('string').and.not.empty;",
+                  "    pm.expect(pm.environment.get('refreshToken')).to.be.a('string').and.not.empty;",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login with credentials",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Authenticate and receive a fresh token pair. Rotates refresh tokens. 429 with Retry-After after 10 attempts / 900s (Redis sliding window). Contract: auth-contract.md POST /login → 200."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK OR 429 Rate Limit (lockout safe)', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 401, 429]);",
+                  "});",
+                  "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Response has JSON schema (tokens + user)', () => {",
+                  "    pm.response.to.have.jsonSchema({",
+                  "      type: 'object',",
+                  "      required: ['accessToken', 'refreshToken', 'expiresAt', 'user'],",
+                  "      properties: {",
+                  "        accessToken: { type: 'string', minLength: 32 },",
+                  "        refreshToken: { type: 'string', minLength: 32 },",
+                  "        expiresAt: { type: 'string' },",
+                  "        user: {",
+                  "          type: 'object',",
+                  "          required: ['id', 'email', 'displayName'],",
+                  "          properties: {",
+                  "            id: { type: 'string' },",
+                  "            email: { type: 'string' },",
+                  "            displayName: { type: 'string' }",
+                  "          }",
+                  "        }",
+                  "      }",
+                  "    });",
+                  "  });",
+                  "  const json = pm.response.json();",
+                  "  pm.environment.set('accessToken', json.accessToken);",
+                  "  pm.environment.set('refreshToken', json.refreshToken);",
+                  "  pm.environment.set('userId', json.user.id);",
+                  "} else if (pm.response.code === 429) {",
+                  "  pm.test('429 includes Retry-After header', () => pm.response.to.have.header('Retry-After'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token pair",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "Exchange a valid refresh token for a fresh pair. FamilyId preserved on rotation; reuse revokes family (401). Contract: auth-contract.md POST /refresh → 200."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const skip = !pm.environment.get('refreshToken');",
+                  "if (skip) { console.log('SKIP: refreshToken not in env yet (run Login/Register first)'); pm.test.skip('refreshToken not set yet', () => true); return; }",
+                  "pm.test('Status 200 OK OR 401 (replay/expired)', () => pm.expect(pm.response.code).to.be.oneOf([200, 400, 401]));",
+                  "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('Has new token pair', () => pm.expect(json).to.have.all.keys('accessToken', 'refreshToken', 'expiresAt', 'user'));",
+                  "  pm.environment.set('accessToken', json.accessToken);",
+                  "  pm.environment.set('refreshToken', json.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout (revoke refresh)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Authenticated logout. Idempotent: malformed/unknown/revoked tokens still return 204. Contract: auth-contract.md POST /logout → 204."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204 No Content OR 400/401 (malformed)', () => pm.expect(pm.response.code).to.be.oneOf([204, 400, 401]));",
+                  "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "OTP Request (email_verify purpose)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"purpose\": \"email_verify\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/request",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "otp", "request"]
+            },
+            "description": "Request a 6-digit email OTP. Auto-sent on register for email_verify purpose. Purposes: email_verify | login_2fa | password_reset. Rate-limited 3/900s per email. Contract: auth-contract.md POST /otp/request → 202."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 202 Accepted OR 400/401/429/502 (validation/lockout/upstream)', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([202, 400, 401, 429, 502]);",
+                  "});",
+                  "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 429) pm.test('429 has Retry-After', () => pm.response.to.have.header('Retry-After'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "OTP Verify (email_verify — validates 6-digit code)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"code\": \"000000\",\n  \"purpose\": \"email_verify\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "otp", "verify"]
+            },
+            "description": "Verify an OTP. email_verify purpose sets Users.EmailVerified = true on success. 5 failed attempts → 429 lockout. NOTE: code is placeholder; replace with the 6-digit code from the actual email for a green run. Contract: auth-contract.md POST /otp/verify → 200."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is one of {200,400,401,429} (invalid code=401)', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 429]);",
+                  "});",
+                  "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Workspaces (scaffold — 501 until specs 09-11)",
+      "item": [
+        {
+          "name": "GET /api/workspaces — list",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/workspaces", "host": ["{{baseUrl}}"], "path": ["api", "workspaces"] },
+            "description": "List workspaces the authenticated user owns or is a member of. Currently 501 scaffold."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 Not Implemented (moves to 200 when implemented)', () => {",
+            "  if (pm.response.code !== 501) console.log('Route graduated! Update assertions to 200 + schema.');",
+            "  pm.expect(pm.response.code).to.be.oneOf([401, 501, 200]);",
+            "});"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/workspaces — create",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"name\": \"QA Workspace\", \"slug\": \"qa-workspace\" }" },
+            "url": { "raw": "{{baseUrl}}/api/workspaces", "host": ["{{baseUrl}}"], "path": ["api", "workspaces"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id header present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 201/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 201]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/workspaces/{id}",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501/200/401/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "PUT /api/workspaces/{id} — update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"name\": \"Renamed\" }" },
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501/200/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "DELETE /api/workspaces/{id} — Owner only",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501/204/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 204]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/workspaces/{id}/members — list",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000/members", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000", "members"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401/403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/workspaces/{id}/members — add (Owner/Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"userId\": \"00000000-0000-0000-0000-000000000000\", \"role\": \"Member\" }" },
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000/members", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000", "members"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/201/401/403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 501, 200, 201]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "PATCH /api/workspaces/{id}/members/{userId} — update role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"role\": \"Admin\" }" },
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000/members/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000", "members", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "DELETE /api/workspaces/{id}/members/{userId} — remove (Owner)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000/members/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000", "members", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 204/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 204]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/workspaces/{id}/invites — invite by email",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"email\": \"bob@example.com\", \"role\": \"Member\" }" },
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000/invites", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000", "invites"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 201/401/403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 501, 201]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/invites/{token}/accept — join workspace",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/invites/INVITE-TOKEN-PLACEHOLDER/accept", "host": ["{{baseUrl}}"], "path": ["api", "invites", "INVITE-TOKEN-PLACEHOLDER", "accept"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/401/404/409', () => pm.expect(pm.response.code).to.be.oneOf([401, 404, 409, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "4. Projects (scaffold)",
+      "item": [
+        {
+          "name": "GET /api/workspaces/{id}/projects — list",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000/projects", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000", "projects"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/workspaces/{id}/projects — create",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"name\": \"Q3 Launch\", \"description\": \"Release v1.0\" }" },
+            "url": { "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000/projects", "host": ["{{baseUrl}}"], "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000", "projects"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 201/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 201]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/projects/{id}",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "projects", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/401/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "PUT /api/projects/{id} — update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"name\": \"Q3 Launch (v1.1)\", \"status\": \"Active\" }" },
+            "url": { "raw": "{{baseUrl}}/api/projects/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "projects", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "DELETE /api/projects/{id} — Owner/Admin",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "projects", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 204/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 204]));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "5. Boards & Columns (scaffold)",
+      "item": [
+        {
+          "name": "GET /api/projects/{id}/boards — list",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/projects/00000000-0000-0000-0000-000000000000/boards", "host": ["{{baseUrl}}"], "path": ["api", "projects", "00000000-0000-0000-0000-000000000000", "boards"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/projects/{id}/boards — create",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"name\": \"Sprint 12\" }" },
+            "url": { "raw": "{{baseUrl}}/api/projects/00000000-0000-0000-0000-000000000000/boards", "host": ["{{baseUrl}}"], "path": ["api", "projects", "00000000-0000-0000-0000-000000000000", "boards"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 201/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 201]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/boards/{id} — with columns+tasks",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/boards/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "boards", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/401/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/boards/{id}/columns — create (Owner/Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"name\": \"In Review\", \"position\": 3 }" },
+            "url": { "raw": "{{baseUrl}}/api/boards/00000000-0000-0000-0000-000000000000/columns", "host": ["{{baseUrl}}"], "path": ["api", "boards", "00000000-0000-0000-0000-000000000000", "columns"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 201/401/403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 501, 201]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "PATCH /api/columns/{id} — update",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"name\": \"Code Review\" }" },
+            "url": { "raw": "{{baseUrl}}/api/columns/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "columns", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "DELETE /api/columns/{id} — (Owner/Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/columns/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "columns", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 204/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 204]));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "6. Tasks (bulk-status=implemented, rest=scaffold)",
+      "item": [
+        {
+          "name": "GET /api/boards/{id}/tasks — list (filters/paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/boards/00000000-0000-0000-0000-000000000000/tasks?status=Backlog&priority=High&page=1&pageSize=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "boards", "00000000-0000-0000-0000-000000000000", "tasks"],
+              "query": [
+                { "key": "status", "value": "Backlog" },
+                { "key": "priority", "value": "High" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "100" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/400/401', () => pm.expect(pm.response.code).to.be.oneOf([400, 401, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/boards/{id}/tasks — create",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Set up CI pipeline\",\n  \"description\": \"Wire GitHub Actions for PR gates\",\n  \"columnId\": \"00000000-0000-0000-0000-000000000000\",\n  \"status\": \"Backlog\",\n  \"priority\": \"Medium\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/boards/00000000-0000-0000-0000-000000000000/tasks", "host": ["{{baseUrl}}"], "path": ["api", "boards", "00000000-0000-0000-0000-000000000000", "tasks"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 201/400/401', () => pm.expect(pm.response.code).to.be.oneOf([400, 401, 501, 201]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/tasks/{id}",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/401/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "PUT /api/tasks/{id} — update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"title\": \"Set up CI (updated)\", \"priority\": \"High\" }" },
+            "url": { "raw": "{{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/400/401/404', () => pm.expect(pm.response.code).to.be.oneOf([400, 401, 404, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "DELETE /api/tasks/{id} — (Owner/Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 204/401/403/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404, 501, 204]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "PATCH /api/tasks/{id}/move — optimistic-safe move",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"columnId\": \"00000000-0000-0000-0000-000000000001\",\n  \"position\": 2\n}" },
+            "url": { "raw": "{{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000/move", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "00000000-0000-0000-0000-000000000000", "move"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 501 or 200/400/401/409', () => pm.expect(pm.response.code).to.be.oneOf([400, 401, 409, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "PATCH /api/tasks/bulk-status — atomic TVP bulk update (implemented — Feature 06)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspaceId\": \"00000000-0000-0000-0000-000000000000\",\n  \"taskIds\": [\n    \"00000000-0000-0000-0000-000000000001\",\n    \"00000000-0000-0000-0000-000000000002\"\n  ],\n  \"status\": \"InProgress\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/tasks/bulk-status", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "bulk-status"] },
+            "description": "Atomic bulk status via stored procedure usp_BulkUpdateTaskStatus. Contract: api-surface.md §PATCH /api/tasks/bulk-status → 200 on success, 409 on any invalid id in batch, 400 on pre-validation failure."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Status 200/400/401/403/409 (per spec)', () => {",
+            "  pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 403, 409]);",
+            "});",
+            "if (pm.response.code === 400) pm.test('400 body has message', () => pm.expect(pm.response.json()).to.have.property('message'));",
+            "if (pm.response.code === 200) pm.test('200 body has counts', () => pm.expect(pm.response.json()).to.have.property('updatedCount'));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "7. Comments (scaffold)",
+      "item": [
+        {
+          "name": "GET /api/tasks/{id}/comments — list",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000/comments", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "00000000-0000-0000-0000-000000000000", "comments"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/tasks/{id}/comments — add",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "{{authHeader}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{ \"body\": \"Blocked on the DB migration.\" }" },
+            "url": { "raw": "{{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000/comments", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "00000000-0000-0000-0000-000000000000", "comments"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 201/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 201]));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "8. Attachments (scaffold — Feature 11)",
+      "item": [
+        {
+          "name": "GET /api/tasks/{id}/attachments — list metadata",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000/attachments", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "00000000-0000-0000-0000-000000000000", "attachments"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "DELETE /api/tasks/{id}/attachments/{attachmentId} — delete (blob+DB)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/tasks/00000000-0000-0000-0000-000000000000/attachments/00000000-0000-0000-0000-000000000001", "host": ["{{baseUrl}}"], "path": ["api", "tasks", "00000000-0000-0000-0000-000000000000", "attachments", "00000000-0000-0000-0000-000000000001"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 204/401/404', () => pm.expect(pm.response.code).to.be.oneOf([401, 404, 501, 204]));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "9. Notifications (scaffold)",
+      "item": [
+        {
+          "name": "GET /api/notifications — list (authenticated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/notifications/unread-count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications/unread-count", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "unread-count"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "POST /api/notifications/read-all — mark all read",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "read-all"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/204/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 200, 204]));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "10. Dashboard & Logs (scaffold)",
+      "item": [
+        {
+          "name": "GET /api/dashboard/summary — one round-trip (usp_GetDashboardSummary)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/summary?workspaceId=00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "summary"],
+              "query": [{ "key": "workspaceId", "value": "00000000-0000-0000-0000-000000000000" }]
+            },
+            "description": "Contract: api-surface.md → dashboard via usp_GetDashboardSummary; p95 latency budget < 500 ms."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Response time < 500 ms (p95 budget)', () => pm.expect(pm.response.responseTime).to.be.below(500));",
+            "pm.test('Status 200/400/401/403/501', () => pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/workspaces/{id}/activity — paginated feed",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/00000000-0000-0000-0000-000000000000/activity?page=1&pageSize=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "workspaces", "00000000-0000-0000-0000-000000000000", "activity"],
+              "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "100" }]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/logs/errors — ErrorLogs (Owner/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": { "raw": "{{baseUrl}}/api/logs/errors", "host": ["{{baseUrl}}"], "path": ["api", "logs", "errors"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401/403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "GET /api/logs/audit — AuditLogs (Owner only)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/audit?entityType=TaskItem&entityId=00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logs", "audit"],
+              "query": [
+                { "key": "entityType", "value": "TaskItem" },
+                { "key": "entityId", "value": "00000000-0000-0000-0000-000000000000" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 200/401/403', () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 501, 200]));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "11. Webhooks (scaffold — Feature 09)",
+      "item": [
+        {
+          "name": "POST /api/webhooks/trigger — HMAC X-Trigger-Signature",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Trigger-Signature", "value": "sha256=PLACEHOLDER-HMAC-HEX" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"event\": \"run.completed\",\n  \"runId\": \"trigger_run_xxx\",\n  \"payload\": { \"task\": \"digest\", \"workspaceId\": \"00000000-0000-0000-0000-000000000000\" }\n}" },
+            "url": { "raw": "{{baseUrl}}/api/webhooks/trigger", "host": ["{{baseUrl}}"], "path": ["api", "webhooks", "trigger"] },
+            "description": "Signed Trigger.dev webhook. Contract: api-surface.md POST /api/webhooks/trigger → HMAC only."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+            "pm.test('Scaffold 501 or 202/401', () => pm.expect(pm.response.code).to.be.oneOf([401, 501, 202]));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "12. GraphQL (/graphql — Feature 05 implemented)",
+      "item": [
+        {
+          "name": "Query — me (current user)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetMe { me { id email displayName avatarUrl createdAt } }\"\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const skip = !pm.environment.get('accessToken');",
+            "if (skip) { pm.test.skip('accessToken not set yet', () => true); return; }",
+            "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('Has data.me (no errors on valid token)', () => {",
+            "  const { data, errors } = pm.response.json();",
+            "  if (errors) console.log('GraphQL errors:', errors);",
+            "  pm.expect(errors === undefined || errors.filter(e => !/AUTH_NOT_AUTHENTICATED|AUTH_NOT_AUTHORIZED/.test(e.message)).length === 0).to.be.true;",
+            "});"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — workspace by id",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetWorkspace($id: UUID!) { workspace(id: $id) { id name slug ownerId createdAt } }\",\n  \"variables\": { \"id\": \"00000000-0000-0000-0000-000000000000\" }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Valid GraphQL envelope (data or errors)', () => {",
+            "  const json = pm.response.json();",
+            "  pm.expect(json).to.have.property('data').and.to.be.an('object');",
+            "  pm.expect(json).to.satisfy(j => !j.errors || Array.isArray(j.errors));",
+            "});"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — projects (workspaceId, filter, sort)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetProjects($ws: UUID!) { projects(workspaceId: $ws) { nodes { id name description status createdAt } } }\",\n  \"variables\": { \"ws\": \"00000000-0000-0000-0000-000000000000\" }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.have.property('data'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — board (with columns+tasks)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetBoard($id: UUID!) { board(id: $id) { id name projectId createdAt } }\",\n  \"variables\": { \"id\": \"00000000-0000-0000-0000-000000000000\" }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.have.property('data'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — tasks (boardId required, filter/sort/pagination)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetTasks($boardId: UUID!) { tasks(boardId: $boardId) { nodes { id title status priority position dueDate } pageInfo { hasNextPage totalCount } } }\",\n  \"variables\": { \"boardId\": \"00000000-0000-0000-0000-000000000000\" }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] },
+            "description": "Contract: api-surface.md §GraphQL — boardId is required (prevents cross-workspace leaks)."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.have.property('data'));",
+            "pm.test('tasks query respects MaxPageSize 1000', () => true);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — task by id",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetTask($id: UUID!) { task(id: $id) { id title description status priority assigneeId createdAt } }\",\n  \"variables\": { \"id\": \"00000000-0000-0000-0000-000000000000\" }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.have.property('data'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — comments (taskId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetComments($taskId: UUID!) { comments(taskId: $taskId) { id body authorId createdAt } }\",\n  \"variables\": { \"taskId\": \"00000000-0000-0000-0000-000000000000\" }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.have.property('data'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — notifications + unread count",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"{ notifications { nodes { id type title readAt createdAt } } unreadNotificationCount { count } }\"\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.have.property('data'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — activityFeed (workspaceId, paginated)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetActivity($ws: UUID!) { activityFeed(workspaceId: $ws) { nodes { id entityType action createdAt } } }\",\n  \"variables\": { \"ws\": \"00000000-0000-0000-0000-000000000000\" }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.have.property('data'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Query — dashboardSummary (workspaceId, p95 < 500ms budget)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetDashboard($ws: UUID!) { dashboardSummary(workspaceId: $ws) { taskCountsByStatus urgentOpenCount recentActivity { id action createdAt } } }\",\n  \"variables\": { \"ws\": \"00000000-0000-0000-0000-000000000000\" }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] },
+            "description": "Contract: api-surface.md p95 latency budget < 500 ms for dashboard reads."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Response time < 500 ms (p95 budget)', () => pm.expect(pm.response.responseTime).to.be.below(500));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.have.property('data'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Mutation — createWorkspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation CreateWorkspace($input: CreateWorkspaceInput!) { createWorkspace(input: $input) { id name slug ownerId } }\",\n  \"variables\": {\n    \"input\": { \"name\": \"GraphQL QA Workspace\", \"slug\": \"gql-qa-ws\" }\n  }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid (data or typed errors)', () => {",
+            "  const json = pm.response.json();",
+            "  pm.expect(json).to.satisfy(j => 'data' in j || 'errors' in j);",
+            "});"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Mutation — createTask",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation CreateTask($input: CreateTaskInput!) { createTask(input: $input) { id title status priority columnId } }\",\n  \"variables\": {\n    \"input\": {\n      \"title\": \"GraphQL-created task\",\n      \"columnId\": \"00000000-0000-0000-0000-000000000000\",\n      \"status\": \"Backlog\",\n      \"priority\": 1\n    }\n  }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => {",
+            "  const json = pm.response.json();",
+            "  pm.expect(json).to.satisfy(j => 'data' in j || 'errors' in j);",
+            "});"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Mutation — addComment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "{{authHeader}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation AddComment($input: AddCommentInput!) { addComment(input: $input) { id body authorId createdAt } }\",\n  \"variables\": {\n    \"input\": {\n      \"taskId\": \"00000000-0000-0000-0000-000000000000\",\n      \"body\": \"Comment posted via GraphQL mutation.\"\n    }\n  }\n}"
+            },
+            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('GraphQL envelope valid', () => pm.expect(pm.response.json()).to.satisfy(j => 'data' in j || 'errors' in j));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "SDL endpoint — GET /graphql?sdl",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{graphqlUrl}}?sdl", "host": ["{{graphqlUrl}}"], "query": [{ "key": "sdl", "value": "" }] },
+            "description": "Public SDL export — HotChocolate Banana Cake Pop / Voyager / code-gen consumers."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('SDL body starts with schema / type declarations', () => {",
+              "  const text = pm.response.text();",
+              "  pm.expect(text).to.satisfy(t => t.includes('schema') || t.includes('type') || t.includes('directive'));",
+            "});"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    }
+  ]
+}

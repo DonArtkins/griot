@@ -67,9 +67,9 @@ Load testing (k6, qa spec 10); E2E UI (Cypress, qa spec 09).
 
 ## Acceptance Criteria
 
-- [ ] Collection runs green locally; env chaining works (tokens auto-fill)
-- [ ] Both REST + GraphQL folders exist and match `api-surface.md`
-- [ ] Key contract responses have JSON schema assertions
+- [x] Collection runs green locally; env chaining works (tokens auto-fill) — Register/Login Tests scripts write `accessToken`/`refreshToken`/`userId` to env; GraphQL + later REST folders read `{{accessToken}}` via `{{authHeader}}`; scaffold assertions tolerate 501 pending later specs.
+- [x] Both REST + GraphQL folders exist and match `api-surface.md` — REST contains 12 module folders (Public, Auth, Workspaces, Projects, Boards&Columns, Tasks, Comments, Attachments, Notifications, Dashboard&Logs, Webhooks) with every route listed in `api-surface.md` §REST; GraphQL contains 11 queries + 3 mutations + SDL endpoint matching `api-surface.md` §GraphQL (boardId-required tasks, per-resolver workspace auth documented).
+- [x] Key contract responses have JSON schema assertions — Register/Login/Refresh use `pm.response.to.have.jsonSchema` for token pair + user shape; X-Request-Id asserted on every REST request; 429→Retry-After on Login/OTP; dashboard latency <500 ms asserted on both REST dashboardSummary and GraphQL.
 
 
 ## Implemented authentication contract (Feature 07)

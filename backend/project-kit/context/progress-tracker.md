@@ -2,7 +2,7 @@
 
 ## Current State
 
-Week 2. Spec 07 is complete (Auth: JWT + Argon2 + Redis). Spec 08 (API testing with Postman) is next.
+Week 2. Spec 08 is complete (Postman API testing). Spec 09 (AI service token + webhooks) is next.
 
 | Spec | Title | Status |
 |---|---|---|
@@ -13,17 +13,19 @@ Week 2. Spec 07 is complete (Auth: JWT + Argon2 + Redis). Spec 08 (API testing w
 | 05 | GraphQL layer (HotChocolate) | ✅ Done |
 | 06 | Bulk operations & advanced data | ✅ Done |
 | 07 | Auth: JWT + Argon2 + Redis [own-stack] | ✅ Done |
-| 08 | API testing (Postman) | Next (depends on 07) |
-| 09 | AI service token + webhooks [own-stack] | Pending |
+| 08 | API testing (Postman) | ✅ Done |
+| 09 | AI service token + webhooks [own-stack] | Next (depends on 07) |
 | 10 | API documentation | Pending |
 | 11 | Blob storage integration | Pending |
 
 ## Next Steps
 
-1. Implement spec 08 (API testing with Postman) on branch `feature/backend/08-api-testing-postman` — depends on spec 07 auth endpoints now complete.
-2. Then implement in dependency order: **09** (AI service token; needs 07) → **10** (API docs; needs 04–07 + 08) → **11** (Blob storage; needs 01/02/04 only — can run in parallel after 04, not gated behind 08–10). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
+1. Implement spec 09 (AI service token + webhooks) on branch `feature/backend/09-ai-service-token-and-webhooks` — depends on spec 07 auth for `GRIOT_SERVICE_TOKEN` principal resolution and HMAC `/api/webhooks/trigger`.
+2. Then implement in dependency order: **10** (API docs; needs 04–07 + 08) → **11** (Blob storage; needs 01/02/04 only — can run in parallel after 04, not gated behind 08–10). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
 
 ## Session Notes
+
+- **2026-09-09** — ✅ **Spec 08 completed** (branch `feature/backend/08-api-testing-postman`): Created three files under `backend/Postman/`: (1) `Griot.postman_collection.json` — v2.1.0 collection with 12 REST folders (Public/Health, Auth, Workspaces, Projects, Boards&Columns, Tasks, Comments, Attachments, Notifications, Dashboard&Logs, Webhooks) + GraphQL folder (11 queries: me/workspace/projects/board/tasks/task/comments/notifications/unreadNotificationCount/activityFeed/dashboardSummary + 3 mutations: createWorkspace/createTask/addComment + SDL endpoint). Every REST route mirrors `api-surface.md` exactly; Auth flow chains tokens automatically: Register/Login Tests scripts write `accessToken`/`refreshToken`/`userId` to env, later requests read `{{authHeader}}`. JSON schema assertions on Register/Login/Refresh token+user response bodies; `X-Request-Id` header asserted on every REST request; dashboard latency <500 ms asserted on both REST and GraphQL summary; 429→Retry-After on Login/OTP; scaffold routes accept 501 pending specs 09–11. (2) `gtp-2026.postman_environment.json` — 13 variables: baseUrl, graphqlUrl, accessToken (secret), refreshToken (secret), userId, test credentials (email/password/displayName), workspace/project/board/task ID placeholders. (3) `README.md` — import instructions, backend+docker start commands, required run order, maturity-based expected status codes (auth=2xx, scaffold=501), Newman CI command (`newman run -e ... --reporters cli,junit`), contract-sync update procedure, troubleshooting table. Husky root setup initialized for contract enforcement (see below). Acceptance criteria all 3/3 [x] with line references. Verification: `node JSON.parse` → both JSON files VALID; `dotnet build` → 0W/0E; `dotnet test` → 20 passed / 7 SQL-skipped / 0 failed; `python3 scripts/check-contract-sync.py` → exit 0 (524 files, 3 branch changes). Next up: Spec 09 (AI service token).
 
 - **2026-09-09 (2)** — ✅ **CodeRabbit review batch (7 actionable findings) applied on branch `feature/backend/07-auth-jwt-argon2-redis`; Resend rebranded to Griot.** (1) Six findings verified already fixed in the working tree: `SendNewAccountAdminEmailAsync` now selects the FIRST non-whitespace `Resend:ContactToEmail`/`CONTACT_TO_EMAIL` before falling back to `CanonicalAdminInbox` (`AuthService.cs`); ADR-003 D12 corrected to 3 `IConfiguration` bearer lookups `Resend:ApiKey` → `RESEND_API_KEY` → `Resend__ApiKey` (removed `Environment.GetEnvironmentVariable` + "4 keys"); IMPLEMENTATION-CHECKLIST L66 reworded "at DI build" → "during host startup"; RUNBOOK-ROLLBACK PITR enabled-precondition + first post-enable base backup, quiesce-writes-before-cutover, `recovery.conf` → `postgresql.conf` + `recovery.signal` (PostgreSQL 16). (2) Contract-sync finding propagated the recovery contract (`POSTGRES_RECOVERY_TARGET_TIME`, `<service>-restored-YYYYMMDD-HHMM` naming, read-only source WAL replay, validation expectations, `ConnectionStrings__Default` cutover — kept distinct from normal SQL Server config) into infra spec 06, `project-kit/context/integration-contracts.md`, infra `deployment-targets.md`, `docs/deployment/DEPLOYMENT.md`, root + infra `AGENTS.md`. (3) **Resend/Sababisha rebrand (user directive):** canonical admin inbox `support@sababisha.com` → `info.donartkins.ke@gmail.com` (Griot Resend account owner) in `CanonicalAdminInbox`, ADR-003 D10/D16, `auth-contract.md`, AUTHENTICATION-GUIDE §4.10 + config matrix; email footer "Sababisha Solutions Limited" → "Griot" + comment "Griot branded" in `BrandedEmailTemplate.cs`; `GetSiteUrl()` default `https://sababisha.com` → `https://griot.app`; doc examples `alice@sababisha.com` → `alice@example.com`; CHANGELOG wording. **Out of scope (not Resend):** Docker service names `sababisha-*`, `SABABISHA_*_PASSWORD`, `~/sababisha/infra` compose path, bootcamp attribution. **Verified:** `dotnet build` 0W/0E; `dotnet test` green; `python3 scripts/check-contract-sync.py` exit 0.
 

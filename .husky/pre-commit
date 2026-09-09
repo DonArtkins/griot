@@ -1,0 +1,12 @@
+echo "Griot: Running contract sync check (pre-commit gate)..."
+python3 scripts/check-contract-sync.py
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "❌ Contract sync check FAILED (exit code $EXIT_CODE)."
+  echo "   Fix the issues above, then re-stage and try again."
+  echo "   Reference: docs/planning/CONTRACT-SYNC.md"
+  exit 1
+fi
+echo "✅ Contract sync check PASSED."
+echo ""
