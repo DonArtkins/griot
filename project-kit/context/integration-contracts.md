@@ -25,6 +25,15 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | ai/mcp | `GRIOT_API_URL` `GRIOT_SERVICE_TOKEN` | API access |
 | ai | `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` | LLM keys ONLY in `ai/.env` |
 | infra | `SABABISHA_SA_PASSWORD` `SABABISHA_PG_PASSWORD` | local compose dev DB passwords |
+| backend (recovery only) | `POSTGRES_RECOVERY_TARGET_TIME` | PITR restore target, set automatically on the NEW restored Railway PostgreSQL service (`<service>-restored-YYYYMMDD-HHMM`); NOT part of normal configuration — see Database recovery contract below |
+
+## Database recovery contract (restored-service cutover)
+
+Owned by `docs/planning/RUNBOOK-ROLLBACK.md` + infra spec 06. Railway managed PostgreSQL PITR (pgBackRest) provisions an **independent restored service** named `<service>-restored-YYYYMMDD-HHMM` with a NEW volume; environment variables are copied from the source EXCLUDING archive credentials, and `POSTGRES_RECOVERY_TARGET_TIME` is set automatically (recovery timestamp must fall within Railway's PITR retention window). The restored service replays the source WAL archive in **read-only mode** up to the target timestamp (`pgbackrest restore --type=time`); the source database is never written by recovery.
+
+Validate before cutover: last `AuditLogs`/`ActivityLogs` timestamp vs the recovery target + smoke tests against the restored connection string. **Quiesce dependent-service writes** (maintenance/read-only mode) before switching `ConnectionStrings__Default` to the restored service — or document reconciliation of post-target writes — because any write to the source after `POSTGRES_RECOVERY_TARGET_TIME` is absent from the restored fork and is lost on cutover. Cutover then updates `ConnectionStrings__Default` on dependent Railway services (Vercel/Trigger env updated in the same step) and redeploys.
+
+This recovery flow is **DISTINCT from normal SQL Server `ConnectionStrings__Default` configuration** — it applies only during a PITR recovery incident. PITR must already be enabled with its first post-enable base backup complete; enabling it after an incident provides NO historical restore window.
 
 ## REST route contract (owned by backend spec 04)
 

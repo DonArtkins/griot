@@ -38,15 +38,17 @@
      - **Data loss:** Transactions between snapshot time and incident time are lost
      - **Transaction replay:** NOT feasible with current schema (AuditLogs contains state snapshots, not commands). Document data loss and coordinate with affected users.
   3. **Communication**: Notify team and users of data loss window and RPO.
-  4. **Future enhancement (if RPO >24h unacceptable):** Use Railway's managed PostgreSQL PITR (pgBackRest-backed):
-     - In Railway dashboard, select the PostgreSQL service → **Backups** → **Point-in-Time Recovery**
-     - Choose a target recovery timestamp (must be within Railway's PITR retention window)
-     - Railway provisions a NEW separate PostgreSQL service (typically named `<service>-restored-YYYYMMDD-HHMM`) with a new volume
-     - Environment variables are copied from the source (excluding archive credentials); `POSTGRES_RECOVERY_TARGET_TIME` is set automatically
-     - The restored service reads from the source WAL archive in read-only mode and executes `pgbackrest restore --type=time --target=<timestamp>`
-     - Validate the restored database: check last `AuditLogs`/`ActivityLogs` timestamp, run smoke tests against the new connection string
-     - Cut over connections: update `ConnectionStrings__Default` on dependent Railway services and redeploy; update Vercel/Trigger env vars
-     - **Self-managed PostgreSQL only (non-Railway):** Configure `archive_mode=on` + `archive_command` + `restore_command` in recovery.conf; test restore periodically against a staging instance.
+   4. **Future enhancement (if RPO >24h unacceptable):** Use Railway's managed PostgreSQL PITR (pgBackRest-backed):
+      - **Prerequisite:** PITR must already be enabled on the source PostgreSQL service **and** its first post-enable base backup must be complete. Enabling PITR after an incident does NOT retroactively provide a historical restore window — only timestamps after the first base backup are recoverable.
+      - In Railway dashboard, select the PostgreSQL service → **Backups** → **Point-in-Time Recovery**
+      - Choose a target recovery timestamp (must fall within Railway's available PITR retention window — approximately 4 weeks from the oldest retained full backup)
+      - Railway provisions a NEW separate PostgreSQL service (typically named `<service>-restored-YYYYMMDD-HHMM`) with a new volume
+      - Environment variables are copied from the source (excluding archive credentials); `POSTGRES_RECOVERY_TARGET_TIME` is set automatically
+      - The restored service reads from the source WAL archive in read-only mode and executes `pgbackrest restore --type=time --target=<timestamp>`
+      - Validate the restored database: check last `AuditLogs`/`ActivityLogs` timestamp, run smoke tests against the new connection string
+      - **Quiesce writes before cutover:** The restored database is an independent fork — any writes to the source database after `POSTGRES_RECOVERY_TARGET_TIME` are NOT present in the restored service and will be lost on cutover. Before switching `ConnectionStrings__Default`, either (a) put dependent services in maintenance/read-only mode to stop new writes, or (b) document the data-loss window and coordinate reconciliation of post-target writes with affected users.
+      - Cut over connections: update `ConnectionStrings__Default` on dependent Railway services and redeploy; update Vercel/Trigger env vars
+      - **Self-managed PostgreSQL only (non-Railway):** Configure `archive_mode=on`, `archive_command`, and `restore_command` in `postgresql.conf` (NOT `recovery.conf`, which was removed in PostgreSQL 12 and prevents startup if present). For targeted PITR, create an empty `recovery.signal` file in the data directory and set `recovery_target_time` in `postgresql.conf`; the server removes `recovery.signal` automatically upon completing recovery. Test restore periodically against a staging instance.
 - **Prevention**: Test migrations in staging environment with production-like data volume before deploying to production.
 
 ## What notices before a user does

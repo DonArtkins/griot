@@ -50,6 +50,14 @@ configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
+## Database recovery (restored-service cutover)
+
+Recovery contract: `POSTGRES_RECOVERY_TARGET_TIME` (set automatically on the restored
+`<service>-restored-YYYYMMDD-HHMM` Railway PostgreSQL service), read-only source WAL replay,
+validate-then-quiesce-then-cutover via `ConnectionStrings__Default` — distinct from normal SQL Server
+configuration. PITR must be enabled before an incident (first post-enable base backup complete). See
+`docs/planning/RUNBOOK-ROLLBACK.md` + infra spec 06.
+
 Before committing or pushing implementation, run `python3 scripts/check-contract-sync.py` from
 the repository root. Synchronize the owning spec, dependent specs, planning,
 research, docs, contexts, agent instructions, diagram sources and progress notes

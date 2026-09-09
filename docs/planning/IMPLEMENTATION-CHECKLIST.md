@@ -63,7 +63,7 @@ All specification/documentation issues are complete. See commit history for deta
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:212-213`  
 **Fix:** Add BlobStorageOptions validation with ValidateOnStart  
 **Effort:** 0.5 days  
-**Details:** Bind BlobStorageOptions with OptionsBuilder<BlobStorageOptions>, then call ValidateDataAnnotations().ValidateOnStart() to verify account name/container/SAS at DI build, not at first upload.
+**Details:** Bind BlobStorageOptions with OptionsBuilder<BlobStorageOptions>, then call ValidateDataAnnotations().ValidateOnStart() to verify account name/container/SAS during host startup, not at first upload.
 
 #### 8. Idempotency Keys Infrastructure
 **Location:** `docs/planning/NFR.md:73`  

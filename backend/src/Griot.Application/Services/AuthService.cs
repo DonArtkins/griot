@@ -319,9 +319,12 @@ public sealed class AuthService : IAuthService
 
     private async Task SendNewAccountAdminEmailAsync(User user)
     {
-        var adminTo = _configuration["Resend:ContactToEmail"]
-                      ?? _configuration["CONTACT_TO_EMAIL"]
-                      ?? CanonicalAdminInbox;
+        var adminTo = new[]
+        {
+            _configuration["Resend:ContactToEmail"],
+            _configuration["CONTACT_TO_EMAIL"]
+        }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+         ?? CanonicalAdminInbox;
 
         var html = BrandedEmailTemplate.RenderNewAccountAdminEmail(user.DisplayName, user.Email, GetSiteUrl());
         await _emailService.SendAsync(new EmailMessage(adminTo, "New user registered on Griot", html)).ConfigureAwait(false);
@@ -340,7 +343,7 @@ public sealed class AuthService : IAuthService
         => Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(pepper), Encoding.UTF8.GetBytes(code)));
 
     private string GetSiteUrl()
-        => (_configuration["SITE_URL"] ?? "https://sababisha.com").TrimEnd('/');
+        => (_configuration["SITE_URL"] ?? "https://griot.app").TrimEnd('/');
 
 
     // -----------------------------------------------------------------------------
@@ -394,7 +397,7 @@ public sealed class AuthService : IAuthService
     /// may have zero/multiple workspaces and workspace context is selected per-request (see api-surface.md).
     /// Validation (iss/aud/exp) is symmetrical with Program.cs JwtBearer setup.
     /// </remarks>
-    private const string CanonicalAdminInbox = "support@sababisha.com";
+    private const string CanonicalAdminInbox = "info.donartkins.ke@gmail.com";
 
     private (string Token, DateTime ExpiresAt) IssueJwt(User user)
     {
