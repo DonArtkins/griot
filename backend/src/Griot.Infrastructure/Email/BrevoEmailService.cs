@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Griot.Application.Interfaces.Services;
 using Microsoft.Extensions.Configuration;
@@ -9,10 +8,17 @@ namespace Griot.Infrastructure.Email;
 
 /// <summary>
 /// Brevo transactional email transport (https://api.brevo.com/v3/smtp/email).
-/// Reads `Brevo:ApiKey` (fallbacks: `BREVO_API_KEY`, `Brevo__ApiKey`),
-/// `Brevo:FromEmail` (fallback `BREVO_FROM_EMAIL`; REQUIRED — Brevo only delivers
-/// from a sender email/domain you verified in the Brevo dashboard),
-/// `Brevo:FromName` (fallback `BREVO_FROM_NAME`; default `Griot`).
+/// Reads `Brevo:ApiKey` (fallbacks: `BREVO_API_KEY`, `Brevo__ApiKey`).
+///
+/// Sender identity is resolved per message via `EmailMessage.SenderKey` from the
+/// `Brevo:Senders:<Key>:Email / :Name / :ReplyTo` profile map (e.g. NoReply,
+/// Support, Info, Team, Security, Admin). Fallbacks: `Brevo:FromEmail` /
+/// `BREVO_FROM_EMAIL` + `Brevo:FromName` / `BREVO_FROM_NAME` (default `Griot`).
+///
+/// ⚠️ Delivery requires a Brevo-verified custom domain: until you verify a domain,
+/// Brevo rewrites the From-domain to its shared `<account-id>.brevosend.com`
+/// address. Gmail/other public domains cannot be verified as sending domains.
+///
 /// Replaces the previous Resend transport (Resend sandbox restrictions blocked
 /// sending OTP to arbitrary test recipients on the free `vercel.app` domain;
 /// Brevo has no recipient sandbox and 300 emails/day on the free plan).
@@ -42,22 +48,24 @@ public sealed class BrevoEmailService : IEmailService
             return false;
         }
 
-        var (fromName, fromEmail) = ResolveSender(message.From);
+        var (fromName, fromEmail, replyToEmail) = ResolveSender(message);
         if (string.IsNullOrWhiteSpace(fromEmail))
         {
             _logger.LogWarning(
-                "Brevo sender is not configured (set Brevo:FromEmail / BREVO_FROM_EMAIL to an email you verified in the Brevo dashboard). Email to {To} skipped.",
+                "Brevo sender is not configured (set Brevo:FromEmail / BREVO_FROM_EMAIL to an email on a domain you verified in the Brevo dashboard). Email to {To} skipped.",
                 message.To);
             return false;
         }
 
+        var sender = new { name = fromName, email = fromEmail };
         var payload = new
         {
-            sender = new { name = fromName, email = fromEmail },
+            sender,
             to = new Object[] { new { email = message.To } },
             subject = message.Subject,
             htmlContent = message.HtmlBody,
-            textContent = PlainText(message.HtmlBody)
+            textContent = PlainText(message.HtmlBody),
+            replyTo = string.IsNullOrWhiteSpace(replyToEmail) ? null : new { email = replyToEmail }
         };
 
         try
@@ -85,27 +93,39 @@ public sealed class BrevoEmailService : IEmailService
     }
 
     /// <summary>
-    /// Resolve (name, email) for the sender. `message.From` may override the
-    /// configured default using the standard "Name &lt;email&gt;" shape.
-    /// Keyword syntax: `private (string? Name, string? Email) ResolveSender(string? from)`.
+    /// Resolve (name, email, replyTo) for the message's sender identity.
+    /// Precedence: explicit `Brevo:Senders:<SenderKey>` profile → `message.From`
+    /// ("Name &lt;email&gt;" shape or plain) → `Brevo:FromEmail`/`Brevo:FromName`.
     /// </summary>
-    private (string? Name, string? Email) ResolveSender(string? from)
+    private (string? Name, string? Email, string? ReplyTo) ResolveSender(EmailMessage message)
     {
+        var key = message.SenderKey;
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            var profileEmail = _config[$"Brevo:Senders:{key}:Email"] ?? _config[$"BREVO_SENDER_{key.ToUpperInvariant()}_EMAIL"];
+            if (!string.IsNullOrWhiteSpace(profileEmail))
+            {
+                var name = _config[$"Brevo:Senders:{key}:Name"] ?? _config[$"BREVO_SENDER_{key.ToUpperInvariant()}_NAME"] ?? DefaultFromName;
+                var replyTo = _config[$"Brevo:Senders:{key}:ReplyTo"] ?? _config[$"BREVO_SENDER_{key.ToUpperInvariant()}_REPLYTO"];
+                return (name, profileEmail, replyTo);
+            }
+        }
+
         var configured = _config["Brevo:FromEmail"] ?? _config["BREVO_FROM_EMAIL"];
         if (string.IsNullOrWhiteSpace(configured))
-            return (null, null);
+            return (null, null, null);
 
         var fromName = _config["Brevo:FromName"] ?? _config["BREVO_FROM_NAME"] ?? DefaultFromName;
-        var sender = from ?? configured;
+        var sender = message.From ?? configured;
 
         var m = Regex.Match(sender, @"^(.*?)\s*<([^>]+)>\s*$");
         if (m.Success)
         {
             var name = m.Groups[1].Value;
-            return (string.IsNullOrWhiteSpace(name) ? fromName : name.Trim(), m.Groups[2].Value.Trim());
+            return (string.IsNullOrWhiteSpace(name) ? fromName : name.Trim(), m.Groups[2].Value.Trim(), null);
         }
 
-        return (fromName, sender.Trim());
+        return (fromName, sender.Trim(), null);
     }
 
     /// <summary>Rough HTML→plaintext fallback for the email text part (code stays readable).</summary>

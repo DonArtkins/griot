@@ -21,11 +21,31 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | backend | `Redis__Connection` | `sababisha-redis:6379` |
 | backend | `GRIOT_SERVICE_TOKEN` | AI/MCP service calls (Bearer) |
 | backend | `Cors__AllowedOrigins` | Vercel origin prod; localhost dev |
+| backend | `BREVO_API_KEY` | Brevo SMTP/API key (`xkeysib-…`); also `Brevo__ApiKey` |
+| backend | `BREVO_FROM_EMAIL` `BREVO_FROM_NAME` | Fallback sender when no profile set |
+| backend | `BREVO_SENDER_<KEY>_EMAIL` `_NAME` `_REPLYTO` | Sender identities: SECURITY, ADMIN, NOREPLY, SUPPORT, INFO, TEAM |
+| backend | `BREVO_SMS_SENDER` `BREVO_SMS_TAG` | Transactional SMS defaults |
+| backend | `BREVO_WHATSAPP_SENDER_NUMBER` | WhatsApp Business number (country code, digits) |
 | web | `VITE_API_URL` | deployed API base |
 | ai/mcp | `GRIOT_API_URL` `GRIOT_SERVICE_TOKEN` | API access |
 | ai | `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` | LLM keys ONLY in `ai/.env` |
 | infra | `SABABISHA_SA_PASSWORD` `SABABISHA_PG_PASSWORD` | local compose dev DB passwords |
 | backend (recovery only) | `POSTGRES_RECOVERY_TARGET_TIME` | PITR restore target, set automatically on the NEW restored Railway PostgreSQL service (`<service>-restored-YYYYMMDD-HHMM`); NOT part of normal configuration — see Database recovery contract below |
+
+## Communication contracts (spec 12 — own-stack)
+
+All outbound channels owned by the backend through `ICommunicationService`
+(`docs/communication/COMMUNICATION-GUIDE.md`):
+
+| Channel | Brevo endpoint | Config | Redis guard |
+|---|---|---|---|
+| Email | `POST /v3/smtp/email` | `Brevo:ApiKey`, `Brevo:Senders:<Key>:Email/Name/ReplyTo` | `ratelimit:comm:email:{to}` 10/15min |
+| SMS | `POST /v3/transactionalSMS/send` | `Brevo:Sms:Sender` `Brevo:Sms:Tag` | `ratelimit:comm:sms:{phone}` 5/h |
+| WhatsApp | `POST /v3/whatsapp/sendMessage` | `Brevo:WhatsApp:SenderNumber` | `ratelimit:comm:whatsapp:{phone}` 5/h |
+| Contacts | `POST /v3/contacts`, `PUT /v3/contacts/{email}` | same API key | none (1–2 calls/user lifetime) |
+
+No REST route changes: AuthService emits email+contact signals internally; SMS/WhatsApp
+are ready for future Notification/AI services via the same facade.
 
 ## Database recovery contract (restored-service cutover)
 

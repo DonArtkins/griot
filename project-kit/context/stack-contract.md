@@ -49,6 +49,7 @@ Status codes: **exact** = bootcamp-mandated, use as-is. **[own-stack]** = the gu
 
 | Area | Choice | Owner kit |
 |---|---|---|
+| Communication | Brevo transactional Email (multi-sender identities `Brevo:Senders:*` + reply-to), SMS (`transactionalSMS/send`), WhatsApp (`whatsapp/sendMessage`), Contacts API (Automations hook), unified behind Redis-guarded `ICommunicationService` | backend |
 | Auth | Custom JWT (15-min access, rotated opaque refresh, Argon2, Redis sliding-window rate limit, Brevo Email OTP 2FA) | backend |
 | Perf/load testing | k6 | qa |
 | AI layer | Trigger.dev v3 Level-4 Autonomous Agents (reasoning loops, human-in-loop) + Griot MCP server + in-app Copilot | ai, mcp, web |

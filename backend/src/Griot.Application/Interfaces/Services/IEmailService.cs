@@ -20,5 +20,6 @@ public record EmailMessage(
     string Subject,
     string HtmlBody,
     string? From = null,
-    string? ReplyTo = null
+    string? ReplyTo = null,
+    string? SenderKey = null
 );

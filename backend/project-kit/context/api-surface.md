@@ -92,5 +92,13 @@ Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, 
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register) + `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; per-purpose branded Brevo template — `auth-contract.md` §Email. Registration returns 201 after SQL persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
+## Communication contracts (Spec 12 — own-stack)
+
+Outbound channels (no new REST routes): Email (sender identities per purpose),
+SMS, WhatsApp, Brevo Contacts (automation hook) — all behind `ICommunicationService`
+guarded by Redis windows (`ratelimit:comm:*`). Sender profiles: `Brevo:Senders:<Key>`
+(Key ∈ Security, Admin, NoReply, Support, Info, Team). Canonical:
+`docs/communication/COMMUNICATION-GUIDE.md`; owner spec `feature-specs/12-communication-channels-brevo.md`.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

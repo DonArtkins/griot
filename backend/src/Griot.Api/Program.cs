@@ -8,6 +8,7 @@ using Griot.Application.Services;
 using Griot.Infrastructure.Persistence;
 using Griot.Infrastructure.Redis;
 using Griot.Infrastructure.Email;
+using Griot.Infrastructure.Communication;
 using Griot.Infrastructure.Repositories;
 using HotChocolate.AspNetCore;
 using HotChocolate.Execution.Options;
@@ -43,6 +44,34 @@ builder.Services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
 {
     AllowAutoRedirect = false
 });
+
+// Communication layer (spec 12): SMS + WhatsApp + Brevo contact sync,
+// all behind the rate-guarded CommunicationService facade (Redis windows).
+builder.Services.AddHttpClient<ISmsService, BrevoSmsService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AllowAutoRedirect = false
+});
+builder.Services.AddHttpClient<IWhatsAppService, BrevoWhatsAppService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AllowAutoRedirect = false
+});
+builder.Services.AddHttpClient<IContactSynchronizer, BrevoContactSynchronizer>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AllowAutoRedirect = false
+});
+builder.Services.AddScoped<ICommunicationService, CommunicationService>();
 
 // Repositories (Infrastructure layer — Dapper for hot paths, EF Core via DbContext for regular ops).
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();

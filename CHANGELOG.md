@@ -2,6 +2,31 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-09-09 (Communication layer spec 12)
+
+### Added
+- **Communication layer [own-stack]** (`docs/communication/COMMUNICATION-GUIDE.md`):
+  `ICommunicationService` facade over Brevo with per-channel, per-recipient **Redis
+  sliding-window guards** (email 10/15min, SMS 5/h, WhatsApp 5/h) checked BEFORE Brevo —
+  Brevo's 300/day cap is unreachable from app code.
+- **Brevo email multi-sender identities**: `EmailMessage.SenderKey` → `Brevo:Senders:<Key>`
+  (Security/Admin/NoReply/Support/Info/Team) with per-profile reply-to. OTP uses
+  `security`, admin new-user notice uses `admin`. Fixes custom-brand From + reply-to per path.
+- **SMS** (`BrevoSmsService` → `POST /v3/transactionalSMS/send`) + **WhatsApp**
+  (`BrevoWhatsAppService` → `POST /v3/whatsapp/sendMessage`, text or template).
+- **Brevo Contacts sync** (`BrevoContactSynchronizer`): contact upsert on register,
+  ACCOUNT_STATUS=VERIFIED on email verify — the hook Brevo **Automations** (welcome,
+  onboarding, re-engagement) trigger on.
+- Integration: AuthService emits OTP/admin emails with identities + contact signals
+  (all best-effort — Brevo failure never fails auth). `Program.cs` wires the new clients.
+- Tests: `CommunicationServiceTests` (4) + updated `AuthServiceTests` — `dotnet test` green.
+
+### Changed
+- `auth-contract.md` config table and `AUTHENTICATION-GUIDE` §4.10/§7 extended with sender
+  identities + SMS/WhatsApp keys; `stack-contract.md` + `integration-contracts.md` +
+  `api-surface.md` + root/backend `AGENTS.md` document the communication contract;
+  root `README.md` §3 points at the new guide; new feature spec 12.
+
 ## [Unreleased] — 2026-09-08 (Feature 07 auth repair + Email-OTP 2FA)
 
 ### Added

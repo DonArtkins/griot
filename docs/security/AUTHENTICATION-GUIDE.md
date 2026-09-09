@@ -477,6 +477,12 @@ Set these in `backend/appsettings.Local.json` (git-ignored) OR as env vars (Dock
 | `Brevo:ApiKey` | `BREVO_API_KEY` | none | ✅ (to send) | Unset → OTP request returns 502; register still works. |
 | `Brevo:FromEmail` | `BREVO_FROM_EMAIL` | none | ✅ (to send) | Verified Brevo sender. REQUIRED — Brevo only delivers from a verified sender. |
 | `Brevo:FromName` | `BREVO_FROM_NAME` | `Griot` | no | Sender display name. |
+| `Brevo:Senders:<Key>:Email` | `BREVO_SENDER_<KEY>_EMAIL` | per-profile | ⚠️ for brand From | Sender identities: Key ∈ Security, Admin, NoReply, Support, Info, Team (OTP = `Security`; admin notice = `Admin`). Requires verified custom domain — else Brevo rewrites From to `<account-id>.brevosend.com`. |
+| `Brevo:Senders:<Key>:Name` | `BREVO_SENDER_<KEY>_NAME` | `Griot` | no | Per-profile display name. |
+| `Brevo:Senders:<Key>:ReplyTo` | `BREVO_SENDER_<KEY>_REPLYTO` | *(none)* | no | Per-profile reply-to (empty = no reply expected). |
+| `Brevo:Sms:Sender` | `BREVO_SMS_SENDER` | `Griot` | no | SMS sender name (≤11 alphanumeric). |
+| `Brevo:Sms:Tag` | `BREVO_SMS_TAG` | `griot-tx` | no | SMS tagging for stats/reports. |
+| `Brevo:WhatsApp:SenderNumber` | `BREVO_WHATSAPP_SENDER_NUMBER` | none | ✅ (to WA-send) | WhatsApp Business number, country code, digits only. |
 | `Brevo:ContactToEmail` | `CONTACT_TO_EMAIL` | `info.donartkins.ke@gmail.com` (canonical fallback used when unset) | no | Admin inbox for new-user notices — canonical address `info.donartkins.ke@gmail.com`. |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins` | localhosts only | ⚠️ prod required | Comma-separated origins (Vercel prod domains). |
 | `SITE_URL` | `SITE_URL` | `https://griot.app` | no | Used in branded email template footer links. |
