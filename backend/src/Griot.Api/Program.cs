@@ -8,7 +8,6 @@ using Griot.Application.Services;
 using Griot.Infrastructure.Persistence;
 using Griot.Infrastructure.Redis;
 using Griot.Infrastructure.Email;
-using Griot.Infrastructure.Communication;
 using Griot.Infrastructure.Repositories;
 using HotChocolate.AspNetCore;
 using HotChocolate.Execution.Options;
@@ -45,38 +44,27 @@ builder.Services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
     AllowAutoRedirect = false
 });
 
-// Communication layer (spec 12): SMS + WhatsApp + Brevo contact sync,
-// all behind the rate-guarded CommunicationService facade (Redis windows).
-builder.Services.AddHttpClient<ISmsService, BrevoSmsService>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(15);
-})
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    AllowAutoRedirect = false
-});
-builder.Services.AddHttpClient<IWhatsAppService, BrevoWhatsAppService>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(15);
-})
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    AllowAutoRedirect = false
-});
-builder.Services.AddHttpClient<IContactSynchronizer, BrevoContactSynchronizer>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(15);
-})
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    AllowAutoRedirect = false
-});
-builder.Services.AddScoped<ICommunicationService, CommunicationService>();
-
 // Repositories (Infrastructure layer — Dapper for hot paths, EF Core via DbContext for regular ops).
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+
+// Generic repositories (specs 13-17): one per domain entity, injected into DomainService.
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.User>, GenericRepository<Griot.Domain.Entities.User>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Workspace>, GenericRepository<Griot.Domain.Entities.Workspace>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.WorkspaceMember>, GenericRepository<Griot.Domain.Entities.WorkspaceMember>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Invite>, GenericRepository<Griot.Domain.Entities.Invite>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Project>, GenericRepository<Griot.Domain.Entities.Project>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Board>, GenericRepository<Griot.Domain.Entities.Board>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Column>, GenericRepository<Griot.Domain.Entities.Column>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.TaskItem>, GenericRepository<Griot.Domain.Entities.TaskItem>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Comment>, GenericRepository<Griot.Domain.Entities.Comment>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Attachment>, GenericRepository<Griot.Domain.Entities.Attachment>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Notification>, GenericRepository<Griot.Domain.Entities.Notification>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ActivityLog>, GenericRepository<Griot.Domain.Entities.ActivityLog>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ErrorLog>, GenericRepository<Griot.Domain.Entities.ErrorLog>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.AuditLog>, GenericRepository<Griot.Domain.Entities.AuditLog>>();
+builder.Services.AddScoped<IDomainService, DomainService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

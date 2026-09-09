@@ -41,20 +41,11 @@ public class AuthServiceTests
 
     }
 
-    private static IContactSynchronizer BuildContactSynchronizer()
-    {
-        var mock = new Mock<IContactSynchronizer>();
-        mock.Setup(m => m.UpsertContactAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-        mock.Setup(m => m.MarkVerifiedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        return mock.Object;
-    }
-
     private static AuthService BuildService(Mock<IAuthRepository> repoMock) =>
-        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildContactSynchronizer());
+        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService());
 
     private static AuthService BuildService(Mock<IAuthRepository> repoMock, IEmailService emailService) =>
-        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), emailService, BuildContactSynchronizer());
+        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), emailService);
 
     /// <summary>Builds a raw opaque token (64-char hex of 32 random bytes) the same way AuthService does.</summary>
     private static string MakeRawToken() =>

@@ -17,7 +17,12 @@ Week 2. Spec 08 is complete (Postman API testing). Spec 09 (AI service token + w
 | 09 | AI service token + webhooks [own-stack] | Next (depends on 07) |
 | 10 | API documentation | Pending |
 | 11 | Blob storage integration | Pending |
-| 12 | Communication channels (Brevo Email/SMS/WhatsApp/Contacts) [own-stack] | ✅ Code done; dashboard setup outstanding |
+| 12 | Communication channels (Brevo Email senders only; SMS/WhatsApp/Contacts removed per user) | ✅ Email kept |
+| 13 | Workspaces, Members & Invites | ✅ Done |
+| 14 | Projects, Boards & Columns | ✅ Done |
+| 15 | Tasks & Comments | ✅ Done |
+| 16 | Notifications, Dashboard & Logs | ✅ Done |
+| 17 | Attachments (metadata) & Webhooks | ✅ Done |
 
 ## Next Steps
 
