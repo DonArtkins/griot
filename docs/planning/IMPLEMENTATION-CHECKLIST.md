@@ -44,7 +44,7 @@ All specification/documentation issues are complete. See commit history for deta
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:301,347,354`  
 **FIXME:** Add workspace membership checks in upload/list/delete  
 **Effort:** 2 days  
-**Details:** Before upload/list/delete, verify caller's ClaimsPrincipal sub (userId) has WorkspaceMembership row with at least Viewer role for the target workspaceId.
+**Details:** Before upload/list/delete, verify caller's ClaimsPrincipal sub (userId) has a WorkspaceMembership row for the target workspaceId with at least Member role (defined workspace roles: Owner, Admin, Member).
 
 **Blob Security Total:** 7 days
 
@@ -63,7 +63,7 @@ All specification/documentation issues are complete. See commit history for deta
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:212-213`  
 **Fix:** Add BlobStorageOptions validation with ValidateOnStart  
 **Effort:** 0.5 days  
-**Details:** Use IOptions<BlobStorageOptions>.ValidateOnStart with DataAnnotationsValidator to verify account name/container/SAS at DI build, not at first upload.
+**Details:** Bind BlobStorageOptions with OptionsBuilder<BlobStorageOptions>, then call ValidateDataAnnotations().ValidateOnStart() to verify account name/container/SAS at DI build, not at first upload.
 
 #### 8. Idempotency Keys Infrastructure
 **Location:** `docs/planning/NFR.md:73`  
@@ -75,13 +75,13 @@ All specification/documentation issues are complete. See commit history for deta
 **Location:** `docs/planning/CACHING-REFRESH-SYNC-STRATEGY.md:341-346`  
 **Fix:** Share single in-flight refresh promise to prevent concurrent calls  
 **Effort:** 1 day  
-**Details:** Web (TanStack Query) + Mobile (GraphQL Flutter) share a single in-flight refresh-token Promise/Future; concurrent callers await the same result to avoid double-rotation race.
+**Details:** Web (TanStack Query) and Mobile (GraphQL Flutter) each maintain one in-flight refresh-token Promise/Future; concurrent callers within each client await the same result to avoid double rotation.
 
 #### 10. Concurrent Refresh Token Rotation
 **Location:** `docs/planning/CACHING-REFRESH-SYNC-STRATEGY.md:733-735`  
 **Fix:** Atomic claim with @@ROWCOUNT check in single transaction  
 **Effort:** 2 days  
-**Details:** AuthRepository.RotateRefreshTokenAsync uses RepeatableRead transaction + conditional ExecuteUpdate WHERE RevokedAt IS NULL; 0 rows affected = reuse evidence = family-scoped RevokeFamilyAsync.
+**Details:** AuthRepository.RotateRefreshTokenAsync uses provider-default transaction (parameterless BeginTransactionAsync) + conditional ExecuteUpdate WHERE RevokedAt IS NULL; 0 rows affected = reuse evidence = family-scoped RevokeFamilyAsync.
 
 **Architecture Total:** 8.5 days
 

@@ -319,9 +319,9 @@ public sealed class AuthService : IAuthService
 
     private async Task SendNewAccountAdminEmailAsync(User user)
     {
-        var adminTo = _configuration["Resend:ContactToEmail"] ?? _configuration["CONTACT_TO_EMAIL"];
-        if (string.IsNullOrWhiteSpace(adminTo))
-            return;
+        var adminTo = _configuration["Resend:ContactToEmail"]
+                      ?? _configuration["CONTACT_TO_EMAIL"]
+                      ?? CanonicalAdminInbox;
 
         var html = BrandedEmailTemplate.RenderNewAccountAdminEmail(user.DisplayName, user.Email, GetSiteUrl());
         await _emailService.SendAsync(new EmailMessage(adminTo, "New user registered on Griot", html)).ConfigureAwait(false);
@@ -394,14 +394,20 @@ public sealed class AuthService : IAuthService
     /// may have zero/multiple workspaces and workspace context is selected per-request (see api-surface.md).
     /// Validation (iss/aud/exp) is symmetrical with Program.cs JwtBearer setup.
     /// </remarks>
+    private const string CanonicalAdminInbox = "support@sababisha.com";
+
     private (string Token, DateTime ExpiresAt) IssueJwt(User user)
     {
-        var key = _configuration["JWT:Key"]
-            ?? throw new InvalidOperationException("JWT:Key is not configured.");
+        var key = _configuration["JWT:Key"];
+        if (string.IsNullOrWhiteSpace(key))
+            throw new InvalidOperationException("JWT:Key is not configured.");
+        var keyBytes = Encoding.UTF8.GetBytes(key);
+        if (keyBytes.Length < 32)
+            throw new InvalidOperationException($"JWT:Key must be at least 32 UTF-8 bytes (HS256 minimum); configured key is {keyBytes.Length} bytes. Set a longer JWT__Key.");
         var issuer = _configuration["JWT:Issuer"] ?? "Griot";
         var audience = _configuration["JWT:Audience"] ?? "GriotClients";
 
-        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+        var signingKey = new SymmetricSecurityKey(keyBytes);
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
         var expiresAt = DateTime.UtcNow.Add(AccessTokenTtl);
