@@ -33,7 +33,7 @@ Query recipes: `LOGGING-AUDIT-REPORT.md` §5.
 4. **Activity feed writer** — `DomainService` mutations additionally insert `ActivityLogs` (workspace, actor, action, entity) so `GET /api/workspaces/{id}/activity` returns real data for the first time.
 5. **Retention** — `usp_PruneObservabilityLogs` (idempotent SQL file under `Griot.Infrastructure/Sql/`): deletes `ApiLogs` > 90 days, `ErrorLogs` > 90 days after `FixedAt`, `AuditLogs` > 365 days (compliance tail), `ActivityLogs` > 180 days. Wired as a documented release/CI-offline step (no cron in-app v1).
 6. **Auth events** — login success/fail, refresh rotate, replay-revoke, logout write `AuditLogs` (`Action ∈ {Auth.Login, Auth.Refresh, Auth.RefreshReplayRevoked, Auth.Logout}`) so security incidents are reconstructable.
-7. **AI/MCP calls** — service-token requests are just authenticated requests; `ApiLogs.UserId` records the `ai-agent` principal id (post spec 09), giving AI attribution for free. `ai/`'s verification gate ("audit log rows present for every tool call") becomes testable.
+7. **AI/MCP calls** — service-token requests are just authenticated requests; `ApiLogs.UserId` records the real OBO user id (post spec 09 — `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of`, role `ai-on-behalf-of`), giving AI attribution for free. `ai/`'s verification gate ("audit log rows present for every tool call") becomes testable.
 
 ## Routes (owned by spec 16, consumed here)
 
@@ -52,6 +52,17 @@ No compose change. `usp_PruneObservabilityLogs.sql` applied by the same release 
 ## Failure isolation (hard rule)
 
 A failing log write must **never** break the user request: every log write is wrapped, swallowed-with-log, and itself surfaced as an `ErrorLogs` row when possible. Tested by unit test.
+
+## Bumped — async writers, middleware order & the new audit events (2026-09-11 user wave)
+
+The runtime behavior of this spec is explained end-to-end in `docs/observability/HOW-LOGGING-WORKS.md`. The incident-answer matrix above stays the contract. This bump makes the pipeline implementation-ready:
+
+1. **Async writer design.** One in-process channel + worker per table in `Griot.Infrastructure/Logging/` (`ApiLogWriter`, `ErrorLogWriter`, `AuditLogWriter`, `ActivityLogWriter`): bounded queue (1000) with 5 s flush and flush-on-shutdown; beyond the bound → drop-with-warning and surface an `ErrorLogs` row when possible; the request thread NEVER joins the write.
+2. **Middleware order (Program.cs).** `RequestIdMiddleware` → `ApiLoggingMiddleware` → auth → MVC → exception handler. ApiLogging records the `X-Request-Id` the client actually saw; duration is wall-clock; IP is masked at write time (/24 IPv4, /64 IPv6); `QueryString` truncated 500.
+3. **Audit events added by this wave (specs 23/24).** Every spec 23 auth/step-up event (`Auth.Otp.Request/Verify/Failed`, `Auth.StepUp.Issued/Used`) and every spec 24 report action (`Report.Create/Download/Delete`) calls `IAuditService` — recovery, deletes, guarded ops and artifacts are all on the trail.
+4. **AI attribution.** Spec 09 OBO users land in `ApiLogs.UserId`; the ai runId is a structured column so Trigger.run ↔ request ↔ rows join; the ai 06 auditor's `GET /api/workspaces/{id}/audit-summary` reads the tables read-only (Owner).
+5. **Dev seeding.** Dev-only seed writes representative ApiLogs/AuditLogs rows so Postman folder 14 and the dashboard have data before real traffic; production seeds nothing.
+6. **Index validation.** Confirm ADR-002 indexes serve the incident queries (`ApiLogs(RequestId)`, `ApiLogs(CreatedAt)`, `AuditLogs(EntityType,EntityId,CreatedAt)`, `ErrorLogs(RequestId)`) in the spec-20 migration.
 
 ## Acceptance Criteria (all pending)
 

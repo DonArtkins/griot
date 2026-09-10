@@ -30,5 +30,8 @@ public class CommentController : DomainControllerBase
 
     [HttpDelete("{commentId}")]
     public async Task<IActionResult> DeleteComment(Guid taskId, Guid commentId)
-    { try { return (await _domain.DeleteCommentAsync(taskId, commentId, CurrentUserId())) ? NoContent() : NotFound(new { message = "Comment not found." }); } catch (DomainError e) { return Handle(e); } }
+    {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
+        try { return (await _domain.DeleteCommentAsync(taskId, commentId, CurrentUserId())) ? NoContent() : NotFound(new { message = "Comment not found." }); } catch (DomainError e) { return Handle(e); }
+    }
 }

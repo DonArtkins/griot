@@ -68,7 +68,7 @@ _Rule that never changes: **AI (`ai/` + `mcp/`) only talks to the backend API** 
 
 ### 3.2 AI copilot read/write
 1. User asks Copilot in web → Trigger realtime WS → `ai/` agent.
-2. Agent tool-calls → backend GraphQL with `GRIOT_SERVICE_TOKEN` → `ai-agent` principal.
+2. Agent tool-calls → backend GraphQL with `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → real-user **OBO** principal (role `ai-on-behalf-of`, 4 scopes, no deletes/invites).
 3. Trivial lookups short-circuit; LLM only where needed; cost cap checked (Redis).
 4. Writes: agent returns a **proposed action** → web renders approval card → user approves → **web app** calls REST → backend writes → caches update. The agent NEVER writes directly.
 5. Agent operates a **Level 4 reasoning loop**: observes state, plans multi-step actions (e.g. "close overdue tasks, notify owners"), and requires human approval before executing destructive or multi-step writes. Also generates System Reports.
@@ -99,7 +99,7 @@ Flutter app → same REST + GraphQL endpoints; refresh token in `flutter_secure_
 | Refresh | opaque 256-bit, SHA-256 at rest, **rotation + family-revoke on reuse** |
 | Rate limit | Redis sliding window `/auth/login` + GraphQL query-cost guard |
 | CORS | allow-list (Vercel origin) |
-| AI | `GRIOT_SERVICE_TOKEN` → `ai-agent` principal (no deletes/invites); HMAC webhook |
+| AI | `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → real-user OBO principal (no deletes/invites); HMAC webhook |
 | Ownership | 404 not 403 (never disclose existence) |
 | Audit | `AuditLogs` before/after snapshots on every state change; `ApiLogs`/`ErrorLogs` full trace |
 | Secrets | .env git-ignored; runtime env injection; no keys in images |

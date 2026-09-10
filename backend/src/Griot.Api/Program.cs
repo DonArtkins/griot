@@ -2,17 +2,21 @@ using System.Text.Json.Serialization;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics;
+using Griot.Api.Auth;
 using Griot.Api.GraphQL;
 using Griot.Api.GraphQL.DataLoaders;
+using Griot.Api.Middleware;
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
+using Griot.Infrastructure.Integrations;
 using Griot.Infrastructure.Persistence;
 using Griot.Infrastructure.Redis;
 using Griot.Infrastructure.Email;
 using Griot.Infrastructure.Repositories;
 using HotChocolate.AspNetCore;
 using HotChocolate.Execution.Options;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -110,6 +114,10 @@ var redisConnection = ConnectionMultiplexer.Connect(redisEndpoint);
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ => redisConnection);
 builder.Services.AddScoped<IRedisRateLimiter, RedisRateLimiter>();
 
+// Spec 09: Trigger.dev enqueue client (server-to-server; enqueue-after-persist pattern).
+// Typed HttpClient — never exposed to web/mobile; failures never roll back domain writes.
+builder.Services.AddHttpClient<TriggerDevClient>();
+
 // GraphQL server (HotChocolate 14+) — code-first schema, DataLoaders, filtering, sorting, auth,
 // query-cost guard (parser field/node caps + max execution depth + execution timeout).
 builder.Services
@@ -176,7 +184,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(jwtKeyBytes)
         };
+    })
+    // Spec 09: AI service token scheme — GRIOT_SERVICE_TOKEN bearer → restricted ai-agent principal.
+    .AddScheme<AuthenticationSchemeOptions, ServiceTokenHandler>(
+        ServiceTokenHandler.SchemeName, _ => { })
+    // Spec 09 fix: With JwtBearer as the DEFAULT scheme, app.UseAuthentication() only runs
+    // JwtBearerHandler — the ServiceToken scheme above was registered but never executed in
+    // the live pipeline, so a valid GRIOT_SERVICE_TOKEN would still receive 401. (Unit tests
+    // passed because they invoke the handler directly, bypassing the pipeline.)
+    //
+    // Fix = policy scheme forward selector (canonical "multi-auth" pattern): inspect the
+    // Authorization header and forward to the right handler. A JWT-shaped bearer
+    // (header.payload.signature = exactly two dots) goes to JwtBearer; any other bearer
+    // goes to ServiceToken. Nothing else changes — JWT remains the default for challenges.
+    .AddPolicyScheme("MultiAuth", "MultiAuth (JWT or Griot service token)", options =>
+    {
+        options.ForwardDefaultSelector = ctx =>
+            ServiceTokenHandler.SelectScheme(ctx.Request.Headers.Authorization.ToString());
     });
+
+// The default scheme becomes the policy scheme, so UseAuthentication runs the selector
+// and forwards each request to the correct concrete handler.
+builder.Services.Configure<AuthenticationOptions>(options =>
+{
+    options.DefaultScheme            = "MultiAuth";
+    options.DefaultAuthenticateScheme = "MultiAuth";
+    options.DefaultChallengeScheme    = "MultiAuth";
+});
+
 builder.Services.AddAuthorization();
 
 // Rate limiting (per-client fixed window; refined in spec 06 auth and bulk paths).
@@ -245,6 +280,11 @@ app.Use(async (context, next) =>
 app.UseHttpsRedirection();
 app.UseCors("DefaultCorsPolicy");
 app.UseRateLimiter();
+
+// Spec 09: Verify Trigger.dev HMAC signature before auth middleware runs on the webhook route.
+// Must be before UseAuthentication so bad signatures are rejected without leaking auth details.
+app.UseMiddleware<WebhookHmacMiddleware>();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

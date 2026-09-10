@@ -39,7 +39,17 @@
         └─────────────────────────────┘
 ```
 
-Data flow: **Copilot prompt → `ai/` agent → (tool calls) → .NET GraphQL → SQL Server → results streamed back.** Trivial lookups short-circuit: rule-based agents answer from a cached snapshot; only genuinely generative turns call the LLM (cost control).
+Data flow: **Copilot prompt → `ai/` agent → (tool calls) → .NET GraphQL → SQL Server → results streamed back.**
+
+## 2b. AI Superpowers (2026-09-11 user wave — all PLANNED)
+
+Beyond the Copilot single-tool calls, the AI layer gains three user-commanded superpowers, each as a scoped, typed, audited capability:
+
+1. **Knowledge agent + system auditor (ai 06)** — ask anything about the system (answers grounded in real API rows with citations) and run whole-system audits (2FA coverage, stale invites, error floods, bulk-action spikes) that persist as Report rows. Read-only data plane; RBAC respected; never touches auth/OTP.
+2. **Report generation (ai 07)** — typed reports (`sprint_digest`, `task_summary`, `velocity`, `workload`, `ai_action_summary`, `custom`) as **CSV always + PDF (A4, brand tokens, text layer)**; numbers are deterministic aggregations in Node — the LLM writes only narrative; artifacts stored via blob (backend 11) and surfaced through backend 24; RBAC-exclusion lines are explicit.
+3. **Advanced executor (ai 08)** — Level-4 planning loop (PLAN → human gate → ACT → OBSERVE → summarize-as-report) for everything a logged-in user can do, with full-plan approval, idempotency keys, typed tool-output validation, confidence thresholds (clarify instead of guess), step observability, and prompt-injection-neutralized board content.
+
+**Boundaries that scaling does not move:** no OTP/auth/MFA/delete/invite/member tools ever (backend 23 is human-only; the OBO principal is 403); report-row creation rides the new scoped `CreateReport` capability (backend 24) — the OBO grant is never loosened; every run lands in ApiLogs/AuditLogs with the real user id + runId (backend 20). MCP exposes the same tools to external clients (mcp 06). Trivial lookups short-circuit: rule-based agents answer from a cached snapshot; only genuinely generative turns call the LLM (cost control).
 
 ### 2a. Orchestration contract — Trigger.dev as a separate service, orchestrated by .NET (authoritative)
 
@@ -173,7 +183,7 @@ server.tool("create_task", { title: z.string(), columnId: z.string() }, async (i
 
 ## 7. Security & cost guardrails (also the Week-6 OWASP surface)
 
-- **Service-to-service auth**: static long-lived `GRIOT_SERVICE_TOKEN` validated on the .NET side → resolved to a **dedicated "ai-agent" workspace member with restricted role** (`CanReadWorkspace`, `CanCreateTask`, `CanComment`, `CanNotify` — no deletes, no invites).
+- **Service-to-service auth**: static long-lived `GRIOT_SERVICE_TOKEN` validated on the .NET side → with the `X-On-Behalf-Of: {real User.Id}` header it resolves to a **real-user On-Behalf-Of (OBO) principal** (role `ai-on-behalf-of`; scope claims `ReadWorkspace`, `CreateTask`, `AddComment`, `CreateNotification` — no deletes, no invites, no member management), NOT a virtual `ai-agent` member. Contract: `docs/api/ai-service-token-contract.md`.
 - **Prompt-injection mitigation**: user text is treated as **data, not instructions**; tools apply their own project/workspace scoping; the agent system prompt bans tool-call modification of unrelated entities.
 - **Level 4 Reasoning & Mutation confirmation**: the agent operates a Level 4 reasoning loop, capable of planning multi-step actions. It returns a *proposed* action plan; the Copilot UI renders it ("Create task *…* in column *…*?") for the human to approve. Deterministic paths (digest/reminders) skip this.
 - **Token/cost caps**: daily token budget per workspace recorded in Redis; alarms on over-budget runs.

@@ -17,6 +17,14 @@ ai/
 
 ## Data flow
 
+The planned shared API client must accept the authorized real user's ID for each
+call and send `X-On-Behalf-Of` alongside Bearer `GRIOT_SERVICE_TOKEN`. Obtain the
+identity from trusted execution context, never model-generated text. This applies
+to scheduled runs and service-token REST write-back as well as GraphQL. Backend
+spec 09 issues role `ai-on-behalf-of` and exactly four scopes:
+ReadWorkspace/CreateTask/AddComment/CreateNotification; it creates no synthetic
+workspace member. Client implementation remains planned for this system's own branch.
+
 Copilot prompt -> `ai/` agent -> (tool calls) -> backend GraphQL -> SQL Server -> results streamed to web via Trigger realtime.
 
 ## Orchestration contract (research/ai-integration.md §2a — authoritative)
@@ -39,6 +47,9 @@ Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, 
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+
+**Superpowers (specs 06–08, PLANNED):** the Copilot gains a knowledge agent + system auditor (ai 06, read-only, RBAC-scoped, cites sources), report generation to PDF/CSV (ai 07, deterministic aggregation in Node, artifacts via backend 11/24), and a Level-4 planning executor (ai 08, PLAN → human gate → ACT → OBSERVE, full-plan approval + idempotency). All through `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of`; NEW scoped capability `CreateReport` (backend 24) for report rows; NEVER auth/OTP/delete/invite/member tools.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

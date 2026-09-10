@@ -1,5 +1,7 @@
 # Week 02 · Diagram 13 — Sequence: End-to-End (All Systems)
 
+> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`.
+
 **Master spec + Figma Make paste prompts.** The **master sequence diagram** that ties the entire system together — one page, five labelled frames, every lifeline that matters: the human journey (auth → board → task → fan-out), the AI Copilot propose-before-write round-trip, the external MCP client flow, and the scheduled AI digest. Where 07/08/09 zoom into single API flows, this diagram shows **cross-system choreography** (web ↔ ai ↔ mcp ↔ backend ↔ SQL Server) in one view.
 
 > **Contract source of truth:** `docs/ARCHITECTURE.md` §3 (request flows 3.1–3.4) · `project-kit/context/system-map.md` (boundaries) · `project-kit/context/integration-contracts.md` (tokens) · the approved ERD. Stay synced.
@@ -30,7 +32,7 @@
 User → Copilot panel → Trigger WS (stream) → ai/ reads via GraphQL (service token, ReadWorkspace) → proposal (diff card) → web approval UI (chrome-ink confirm) → **user approves** → **web app** calls REST as the user → backend writes + ActivityLogs/AuditLogs → cache refetch. Agent NEVER writes directly; every tool call logged (workspaceId, tool, payloadHash, runId).
 
 **FRAME D — MCP external client** (per 14):
-External client → mcp/: `get_board` / `update_task_status` / `add_comment` (stdio | Streamable HTTP Bearer `GRIOT_MCP_TOKEN`) → API GraphQL with `GRIOT_SERVICE_TOKEN` (ai-agent; UpdateTaskStatus/AddComment scope, else 403) → SQL Server write + audit → result JSON.
+External client → mcp/: `get_board` / `update_task_status` / `add_comment` (stdio | Streamable HTTP Bearer `GRIOT_MCP_TOKEN`) → API GraphQL with `GRIOT_SERVICE_TOKEN` (ai-on-behalf-of; UpdateTaskStatus/AddComment scope, else 403) → SQL Server write + audit → result JSON.
 
 **FRAME E — Scheduled digest / reminder**:
 ## 3. The prompt (single, extensive — no length limit)
@@ -45,9 +47,9 @@ FRAME A (LOGIN + READ): User → Web: POST /api/auth/login {email,password} → 
 
 FRAME B (TASK FANOUT): Web → API: createTask {title, columnId, assigneeId?} → API: BEGIN TX; SELECT MAX(Position) UPDLOCK/HOLDLOCK; INSERT TaskItems + ActivityLogs + Notifications + AuditLogs; COMMIT → Trigger realtime → assignee client (realtime if subscribed, else next load) → 201.
 
-FRAME C (COPILOT PROPOSE-BEFORE-WRITE, green frame): User → Web Copilot panel: "what should I finish?" → Web → ai/ WS: prompt (streaming) → ai/ → API (GRIOT_SERVICE_TOKEN): read board + tasks → API: verify ai-agent ReadWorkspace (else 403) → SQL Server → ai/: draft proposal (diff card) → Web: render approval card (chrome-ink confirm button) → USER approves → WEB APP: PATCH /api/tasks/{id} as user → SQL Server write + ActivityLogs + AuditLogs → web: refetch cache. Annotation: "AGENT NEVER WRITES DIRECTLY — the web app executes the approved proposal as the user."
+FRAME C (COPILOT PROPOSE-BEFORE-WRITE, green frame): User → Web Copilot panel: "what should I finish?" → Web → ai/ WS: prompt (streaming) → ai/ → API (GRIOT_SERVICE_TOKEN): read board + tasks → API: verify ai-on-behalf-of ReadWorkspace (else 403) → SQL Server → ai/: draft proposal (diff card) → Web: render approval card (chrome-ink confirm button) → USER approves → WEB APP: PATCH /api/tasks/{id} as user → SQL Server write + ActivityLogs + AuditLogs → web: refetch cache. Annotation: "AGENT NEVER WRITES DIRECTLY — the web app executes the approved proposal as the user."
 
-FRAME D (MCP EXTERNAL): External client → mcp/: update_task_status, add_comment, get_board → mcp/ (Bearer GRIOT_MCP_TOKEN) → API: GraphQL GRIOT_SERVICE_TOKEN (ai-agent; UpdateTaskStatus/AddComment scopes; else 403) → SQL Server → result JSON → external client + ActivityLog row (tool, payloadHash, runId).
+FRAME D (MCP EXTERNAL): External client → mcp/: update_task_status, add_comment, get_board → mcp/ (Bearer GRIOT_MCP_TOKEN) → API: GraphQL GRIOT_SERVICE_TOKEN (ai-on-behalf-of; UpdateTaskStatus/AddComment scopes; else 403) → SQL Server → result JSON → external client + ActivityLog row (tool, payloadHash, runId).
 
 FRAME E (SCHEDULED): Trigger cron → ai/: dueReminders/sprintDigest → ai/ → API: GraphQL notifications → SQL Server → email provider: weekly digest → user inbox.
 

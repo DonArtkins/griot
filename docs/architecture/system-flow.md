@@ -37,7 +37,7 @@ Atomic TX; all-or-nothing. Fan-out decision: web realtime; mobile next-load (see
 ```
 [Web] Copilot "what's blocked?"
   → Trigger realtime WS → ai/ griotCopilot agent
-  → tool call get_board(boardId) → POST /graphql (GRIOT_SERVICE_TOKEN → ai-agent principal)
+  → tool call get_board(boardId) → POST /graphql (GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → real-user OBO principal)
   → SQL Server → results → agent (LLM reasoning) → streamed answer to web
   → if a write is needed: agent returns PROPOSAL → web renders approval card
   → user approves → WEB calls POST /api/tasks (normal REST path) → caches update
@@ -56,7 +56,7 @@ Trigger cron (daily) → sprintDigest agent → GraphQL (service token) → Acti
 
 ```
 Claude/Cursor/Cline → mcp/ (stdio local or Streamable HTTP) → tool get_board / create_task / ...
-  → POST /graphql (GRIOT_SERVICE_TOKEN → ai-agent principal)
+  → POST /graphql (GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → real-user OBO principal)
   → SQL Server → JSON content → client
 ```
 

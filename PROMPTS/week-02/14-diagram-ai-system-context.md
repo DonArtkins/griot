@@ -1,5 +1,7 @@
 # Week 02 · Diagram 10 — AI System Context (Web · AI · MCP · Backend)
 
+> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`. **2026-09-11 wave (PLANNED):** a FIFTH scope `CreateReport` (backend 24) powers report/audit superpowers — knowledge agent + system auditor (ai 06), reports PDF/CSV (ai 07), advanced executor (ai 08); auth/OTP step-up (backend 23) is human-only and AI is 403 there.
+
 **Master spec + Figma Make paste prompts.** This diagram captures the ENTIRE AI flow: web Copilot → Trigger agents → GraphQL (service token) → backend → SQL Server, plus external AI clients through MCP. Everything the AI layer touches, in one detailed diagram.
 
 ---
@@ -9,7 +11,7 @@
 - **Web Copilot panel** (app shell right rail) — streams answers + renders approval cards; mutations approved → app calls REST itself.
 - **AI Agents (Trigger.dev v3)** — `griotCopilot` agent + scheduled tasks (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`); streaming to web via realtime WS.
 - **MCP Server** (`mcp/`) — tools `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`; stdio + Streamable HTTP.
-- **Backend API** — GraphQL surface with `GRIOT_SERVICE_TOKEN` → `ai-agent` principal (ReadWorkspace, CreateTask, **UpdateTaskStatus**, AddComment, CreateNotification — no deletes, no invites; the `update_task_status` MCP tool maps to the `UpdateTaskStatus` Write grant; the `add_comment` MCP tool maps to the `AddComment` Write grant; **`update_task_status` is an explicitly supported MCP tool — `GRIOT_SERVICE_TOKEN` MUST carry the `UpdateTaskStatus` scope or the mutation will be rejected 403**; in-app Copilot writes remain propose-only and execute as the user via REST after approval); HMAC `/api/webhooks/trigger`.
+- **Backend API** — GraphQL with Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of: {real User.Id}` resolves a real-user OBO principal (`ai-on-behalf-of`). Exactly four scopes are issued: ReadWorkspace, CreateTask, AddComment, CreateNotification; there is no `UpdateTaskStatus` scope. Status updates use existing task APIs and real-user RBAC; bulk status, deletes, invites and member management are denied to AI OBO callers. In-app Copilot writes remain propose-only and execute as the user after approval. HMAC protects `/api/webhooks/trigger`.
 - **SQL Server** — source of truth; **AI never touches directly**.
 - **External AI clients** — Claude Desktop / Cursor / Cline / any MCP client.
 - **ActivityLogs/AuditLogs** — the AI audit trail (every tool call).
@@ -33,7 +35,7 @@ COMPONENTS:
 - Left group "WEB": box "Web Copilot panel (app-shell right rail, chat UI)"; box "External AI clients (Claude Desktop / Cursor / Cline)".
 - Center group "ai/ (Trigger.dev v3)": box "griotCopilot agent" + box "scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder"; small box "token budget (Redis)" attached.
 - Lower-left group "mcp/": box "Griot MCP server" listing the 9 tools: list_projects, list_boards, get_board, get_task, create_task, update_task_status, add_comment, get_activity_feed, summarize_project.
-- Right group "backend": box "API — GraphQL + /api/webhooks/trigger" with badges "GRIOT_SERVICE_TOKEN → ai-agent principal: ReadWorkspace, CreateTask, UpdateTaskStatus, AddComment, CreateNotification (no deletes, no invites)" and "HMAC X-Trigger-Signature". Note: update_task_status is a fully supported MCP tool — UpdateTaskStatus is an explicit Write grant in the token scope.
+- Right group "backend": box "API — GraphQL + /api/webhooks/trigger" with badges "GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → real-user OBO principal (ai-on-behalf-of): ReadWorkspace, CreateTask, AddComment, CreateNotification" and "HMAC X-Trigger-Signature". Show no synthetic member and no fifth scope; bulk status, deletes, invites and member management are denied.
 - Far right: box "SQL Server 2022 (source of truth)" with a BIG RED X annotation "AI NEVER writes to SQL Server directly — every read/write through the API".
 
 ARROWS (label each):
@@ -65,6 +67,6 @@ STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills
 ## Definition of Done
 
 - [ ] Copilot chat, scheduled agents, MCP, backend, SQL Server all visible
-- [ ] Service-token + ai-agent scope + HMAC drawn; SQL Server has "no direct AI write" mark
+- [ ] Service-token + ai-on-behalf-of scope + HMAC drawn; SQL Server has "no direct AI write" mark
 - [ ] Propose-before-write + audit annotations present
 - [ ] Approved → PNG → `diagrams/architecture/ai-system-context.png`

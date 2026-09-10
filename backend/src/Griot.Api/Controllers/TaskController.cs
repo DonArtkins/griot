@@ -45,7 +45,10 @@ public class TaskController : DomainControllerBase
     [HttpDelete]
     [Route("api/tasks/{id}")]
     public async Task<IActionResult> DeleteTask(Guid id)
-    { try { return (await _domain.DeleteTaskAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Task not found." }); } catch (DomainError e) { return Handle(e); } }
+    {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
+        try { return (await _domain.DeleteTaskAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Task not found." }); } catch (DomainError e) { return Handle(e); }
+    }
 
     [HttpPatch]
     [Route("api/tasks/{id}/move")]
@@ -56,6 +59,7 @@ public class TaskController : DomainControllerBase
     [Route("api/tasks/bulk-status")]
     public async Task<IActionResult> BulkStatusUpdate([FromBody] BulkUpdateTaskStatusRequest request)
     {
+        if (ForbidIfAiCall() is IActionResult forbidAi) return forbidAi;
         if (request == null || request.WorkspaceId == Guid.Empty || request.TaskIds == null || request.TaskIds.Count == 0)
             return BadRequest(new { message = "Request must include valid workspace ID and non-empty task IDs array" });
         if (string.IsNullOrWhiteSpace(request.Status))

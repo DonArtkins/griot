@@ -12,27 +12,29 @@ This file answers one question: **after finishing the current spec, which layer'
 ## Phase Map (canonical sequence)
 
 ```
-P0  Backend close-out   backend 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10   [Week 2 close-out]
+P0  Backend close-out   backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 24 → 10   [Week 2 close-out + 2026-09-11 AI-superpowers/2FA wave]
 P1  Web core            web 01 → 02 → … → 09                     [Week 3]
-P2  AI hop + Copilot    ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05   [own-stack]
+P2  AI hop + Copilot    ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08   [own-stack + superpowers wave]
 P3  Mobile              mobile 01 → 02 → … → 07                  [Week 4]
 P4  Infra / DevOps      infra 01 → 02 → … → 07                   [Week 5]
-P5  MCP                 mcp 01 → 02 → 03 → 04 → 05               [own-stack]
+P5  MCP                 mcp 01 → 02 → 03 → 04 → 05 → 06               [own-stack; 06 = v2 report/audit tools]
 P6  Quality Engineering qa 01 → 02 → … → 13                     [Weeks 6–7]
 ```
 
-### P0 — Backend 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10 (gateway specs + the 2026-09-10 observability/hardening wave)
+### P0 — Backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 24 → 10 (gateway specs + the 2026-09-10 observability/hardening wave + the 2026-09-11 critical-action-OTP/reports wave)
 
 | Next | Why it must be first |
 |---|---|
-| **09 AI service token + webhooks** | The single most-blocking remaining spec. `GRIOT_SERVICE_TOKEN` (restricted `ai-agent` principal) + HMAC `/api/webhooks/trigger` is the *only* door AI agents (ai 01–05) and MCP tools (mcp 03) may walk through. Nothing in `ai/` or `mcp/` can meet acceptance criteria without it. Depends only on spec 07 (done). |
+| **09 AI service token + webhooks** | ✅ **DELIVERED** on `feature/backend/09-ai-service-token-and-webhooks` (2026-09-11). `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {real User.Id}` → real-user OBO principal (role `ai-on-behalf-of`, 4 scopes, no deletes/invites) + HMAC `POST /api/webhooks/trigger` (`WebhookHmacMiddleware`). The A→.NET door AI agents (ai 01–05) and MCP tools (mcp 03) walk through is now open. Contract: `docs/api/ai-service-token-contract.md`. |
 | **20 Observability & logging pipeline** | The 2026-09-10 audit proved `ApiLogs`/`ErrorLogs`/`AuditLogs`/`ActivityLogs` have **zero writers** (spec + ADR-004). Every later layer reads these tables: infra 07 alerts, qa 04/05 assertions, ai's audit gate, the incident runbook. Filling them is the first hardening gate. No schema change (ADR-002 tables already exist). |
 | **18 Search, filter, paginate, sort** | Uniform capped/whitelisted query contract over all list endpoints — the read plane that 19's cache keys and 21's scale-out assume. Builds directly on 20's log routes. |
 | **19 Caching & rate limiting** | Redis cache-aside (dashboard/board/unread) + per-route limiter partitions (auth/webhook/GraphQL) + GraphQL cost caps. Protects everything 20–18 built; uses 18's query shapes for cache keys. |
 | **22 Notification fan-out (in-app + email)** | Needs 20's event hooks (audit/activity writes) and 19's limiter partitions; reuses spec-12 email infra. Gives web 09 / mobile 07 a live producer instead of empty reads. |
 | **21 DB triggers, backups, restore readiness** | Audit triggers write the same `AuditLogs` table 20 fills — triggers land **after** 20 so dedupe conventions exist. Backup chain + restore drill are the "attack/crash cannot render us useless" guarantee. Infra-side compose sync rides infra 03/06 (P4). |
-| **11 Blob storage** | Needs only 01/02/04 (all ✅). Web 07 (task attachments) and mobile parity want real file upload/download URLs; shipping it before P1 means the Web phase never stops for a backend detour. |
-| **10 API documentation** | Needs 04–08 + the hardened surface (18–22) documented. Last backend spec; freezes the API surface into reference docs right before Web consumes it — and is the contract artifact QA 04/05 polish against. |
+| **23 Critical-action OTP & step-up [own-stack]** | User-directed security wave (2026-09-11): login 2FA enforcement (202-on-challenge), forgot/reset password, delete account, guarded-op step-up (`RequireStepUp`). **Human-only — AI OBO callers are 403, permanently.** Needs 07 (OTP), 12 (Brevo `security` sender), 20 (audit rows), 16 (guarded routes). |
+| **11 Blob storage** | Needs only 01/02/04 (all ✅). Web 07 (task attachments) and mobile parity want real file upload/download URLs; shipping it before P1 means the Web phase never stops for a backend detour. It also hosts spec-24 report artifacts. |
+| **24 AI reports & export surface [own-stack]** | Report rows + PDF/CSV artifacts (blob 11) + `audit-summary`; FIFTH OBO scope `CreateReport` (new scoped, auditable capability — never a loosened grant). Unblocks ai 07, web 11, mcp 06. Needs 11 (blob), 20 (audit), 16 (reads), 09 (OBO). |
+| **10 API documentation** | Needs 04–08 + the hardened surface (18–24) documented. Last backend spec; freezes the API surface into reference docs right before Web consumes it — and is the contract artifact QA 04/05 polish against. |
 
 ### P1 — Web 01–09 (Week 3 system, no AI needed)
 
@@ -40,9 +42,11 @@ Order: 01 (Vite setup) → 02 (MUI) → 03 (REST) → 04 (GraphQL) → 05 (secur
 
 Why Web next (not AI or MCP): 9 of 10 web specs depend **only** on backend specs that are all ✅ (04–08, 13–17, 07 auth). Web is the bootcamp's next graded week, the primary demo surface, and the theme work is already ahead of schedule (`web/src/theme.ts` exists from the design-system pass). Web 10 is deliberately *excluded* — see P2.
 
-### P2 — AI hop: ai 01 → ai 02 → **web 10** → ai 03 → ai 04 → ai 05
+### P2 — AI hop: ai 01 → ai 02 → **web 10** → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → **web 11** → ai 08
 
 This phase resolves the one circular dependency in the repo:
+
+**2026-09-11 superpowers wave** — after ai 05 → ai **06** (Copilot knowledge agent + system auditor, needs backend 20/24 reads) → ai **07** (report generation PDF + CSV, needs backend 24) → **web 11** (AI Reports & Audit Center — award-grade UX bar, `inspo/`) → ai **08** (advanced Level-4 executor). No AI spec ever touches auth/OTP (backend 23 is human-only); report-row creation rides the new scoped `CreateReport` capability.
 
 - **web 10 (Copilot panel) needs ai 02** (agent + Trigger realtime stream exposed) → implement ai 01–02 *first*.
 - **ai 02 lists "web feature 10" as a dependency** — read that as a *contract-design* dependency (the panel is the stream's consumer), not a build-order one. `ai/project-kit/feature-specs/02-copilot-agent-streaming.md` carries this clarification.
@@ -65,7 +69,7 @@ Infra runs after web + mobile so CI (infra 05) can build/test/deploy *every* sur
 
 ### P5 — MCP 01–05 [own-stack]
 
-Order: 01 (server setup) → 02 (tool roster) → 03 (service-token GraphQL client) → 04 (Docker + Railway deploy) → 05 (contract tests + Inspector).
+Order: 01 (server setup) → 02 (tool roster) → 03 (service-token GraphQL client) → 04 (Docker + Railway deploy) → 05 (contract tests + Inspector) → 06 (v2 report/audit tools — needs backend 20/24 + ai 06/07).
 
 MCP 03 needs backend 09 + 05 (✅ after P0). MCP 04 needs infra 02–04/06 (✅ after P4) — that is the *only* reason MCP sits behind infra, and it is why finishing infra first lets the whole MCP phase run against a deployed, stable API. mcp 01–02 are technically unblocked at any time (Node 20 only) and may be pulled forward into an idle gap.
 

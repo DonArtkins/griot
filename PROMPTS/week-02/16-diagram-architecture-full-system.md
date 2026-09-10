@@ -1,5 +1,7 @@
 # Week 02 · Diagram 12 — Full-System Architecture
 
+> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`.
+
 **Master spec + Figma Make paste prompts.** The **one big-picture architecture diagram for the ENTIRE system** — all 7 systems, all boundaries, all runtimes, all protocols on one page. Where the C4 context (04) shows actors and the C4 container (05) shows deployable boxes, this diagram shows the **layered logical architecture + the communication contracts** drawn together. Read it as the visual index of `docs/ARCHITECTURE.md` and `project-kit/context/system-map.md`.
 
 > **Contract source of truth:** `project-kit/context/system-map.md` (7 systems + communication boundaries) · `docs/ARCHITECTURE.md` (big picture + request flows 3.1–3.4) · `project-kit/context/integration-contracts.md` (ports, env, tokens) · `project-kit/context/stack-contract.md` (exact stack + `[own-stack]` markers). Stay synced with those files.
@@ -24,7 +26,7 @@ Auth [own-stack]: JWT + Argon2 + Redis. AI writes never touch SQL Server directl
 
 1. **Presentation** — Web App (React 18 + Vite 5 + MUI v6: Public shell · App shell · Copilot panel); Mobile App (Flutter 3.19: Android companion).
 2. **Edge** — Vercel (static CDN only — assets + env; **not** an API proxy; browser/mobile call the API directly).
-3. **API** — ASP.NET Core 8, one process: REST `/api/*` + GraphQL `/graphql` (HotChocolate) + `/health` (port 8080); `Griot.Application` shared service layer; `Griot.Domain`; infrastructure (EF Core 8 repos + Dapper 2 procs `usp_BulkUpdateTaskStatus` / `usp_GetDashboardSummary`); DataLoader (N+1 prevention); Auth middleware (JWT → principal `sub`/`email`/`jti`; `GRIOT_SERVICE_TOKEN` → `ai-agent`); WebhookRelayService (`POST /api/webhooks/trigger`, HMAC `X-Trigger-Signature`).
+3. **API** — ASP.NET Core 8, one process: REST `/api/*` + GraphQL `/graphql` (HotChocolate) + `/health` (port 8080); `Griot.Application` shared service layer; `Griot.Domain`; infrastructure (EF Core 8 repos + Dapper 2 procs `usp_BulkUpdateTaskStatus` / `usp_GetDashboardSummary`); DataLoader (N+1 prevention); Auth middleware (JWT → principal `sub`/`email`/`jti`; `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ai-on-behalf-of`); WebhookRelayService (`POST /api/webhooks/trigger`, HMAC `X-Trigger-Signature`).
 4. **Data** — SQL Server 2022 (primary, source of truth, host port 14333); PostgreSQL 16 (secondary/test, 5433); Redis 7 (rate limit + refresh metadata + token budgets, 6380). Compose service keys: `sababisha-sqlserver`, `sababisha-postgres`, `sababisha-redis`.
 5. **Intelligence** — `ai/` Trigger.dev v3 agents (`griotCopilot` + `dueReminders`/`sprintDigest`/`staleBoard`/`standupBuilder`); `mcp/` server (9 tools; stdio local + Streamable HTTP 3001; Bearer `GRIOT_MCP_TOKEN`).
 6. **External AI clients** — Claude Desktop / Cursor / Cline (MCP).
@@ -37,7 +39,7 @@ Auth [own-stack]: JWT + Argon2 + Redis. AI writes never touch SQL Server directl
 |---|---|---|---|
 | web | backend | REST `/api/*` + GraphQL `/graphql` | JWT access token (Bearer) |
 | mobile | backend | REST + GraphQL (same endpoints) | JWT access token |
-| ai | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` (ai-agent) |
+| ai | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` (ai-on-behalf-of) |
 | mcp | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` |
 | backend | ai | `POST /api/webhooks/trigger` (HMAC) | `X-Trigger-Signature` |
 | web | ai | Trigger realtime (WS) | Trigger access token |
@@ -52,7 +54,7 @@ Full-system architecture diagram for Griot — one page, layered top-to-bottom. 
 
 ZONE 1 — PRESENTATION (top): box "Web App — React 18 · Vite 5 · MUI v6 (Public shell · App shell · Copilot panel)" with light-canvas design-system badge (#F7F8FA, chrome-ink CTA #1E2022); box "Mobile App — Flutter 3.19 / Dart 3 (Android companion)".
 ZONE 2 — EDGE: box "Vercel — static CDN ONLY (assets + env; NOT an API proxy)". Annotation: "Browser/Mobile call the Railway API DIRECTLY — Vercel never proxies API calls."
-ZONE 3 — API: ONE wide box "backend/ — ASP.NET Core 8": REST /api/* + GraphQL /graphql (HotChocolate) + /health :8080; inside sub-blocks: "Griot.Application (shared service layer — Auth, Workspace, Project, Board, Task, Comment, Attachment, Notification, Dashboard, WebhookRelay)"; "Griot.Domain"; "Infrastructure — EF Core 8 repos + Dapper 2 (usp_BulkUpdateTaskStatus, usp_GetDashboardSummary)"; "DataLoader (N+1 prevention)"; "Auth middleware (JWT → sub/email/jti; GRIOT_SERVICE_TOKEN → ai-agent)"; "WebhookRelayService (HMAC X-Trigger-Signature)".
+ZONE 3 — API: ONE wide box "backend/ — ASP.NET Core 8": REST /api/* + GraphQL /graphql (HotChocolate) + /health :8080; inside sub-blocks: "Griot.Application (shared service layer — Auth, Workspace, Project, Board, Task, Comment, Attachment, Notification, Dashboard, WebhookRelay)"; "Griot.Domain"; "Infrastructure — EF Core 8 repos + Dapper 2 (usp_BulkUpdateTaskStatus, usp_GetDashboardSummary)"; "DataLoader (N+1 prevention)"; "Auth middleware (JWT → sub/email/jti; GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → ai-on-behalf-of)"; "WebhookRelayService (HMAC X-Trigger-Signature)".
 ZONE 4 — DATA: three boxes with compose service-key badges: "sababisha-sqlserver — SQL Server 2022 (primary, source of truth, host 14333)"; "sababisha-postgres — PostgreSQL 16 (secondary/test, 5433)"; "sababisha-redis — Redis 7 (rate limit + refresh metadata + token budgets, 6380)".
 ZONE 5 — INTELLIGENCE: box "ai/ — Trigger.dev v3: griotCopilot + scheduled dueReminders, sprintDigest, staleBoard, standupBuilder"; box "mcp/ — Griot MCP server (Node 20): 9 tools (list_projects … summarize_project); stdio + Streamable HTTP :3001".
 ZONE 6 — EXTERNAL AI CLIENTS: box "Claude Desktop / Cursor / Cline (MCP clients)".
@@ -63,7 +65,7 @@ ARROWS (label every one — protocol + auth):
 - web → API: HTTPS REST + GraphQL, JWT Bearer
 - mobile → API: HTTPS REST + GraphQL, JWT Bearer
 - web → ai/: Trigger realtime WebSocket (Trigger access token)
-- ai/ → API: GraphQL, GRIOT_SERVICE_TOKEN → ai-agent principal
+- ai/ → API: GraphQL, GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → ai-on-behalf-of principal
 - mcp/ → API: GraphQL, GRIOT_SERVICE_TOKEN
 - backend → ai/: POST /api/webhooks/trigger, HMAC X-Trigger-Signature (dashed)
 - External AI clients → mcp/: MCP stdio / Streamable HTTP (Bearer GRIOT_MCP_TOKEN)

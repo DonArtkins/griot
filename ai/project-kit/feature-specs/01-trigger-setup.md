@@ -46,6 +46,7 @@ CREATE: `ai/agents.ts` stub, `ai/tasks/health.ts` (runnable scheduled task), `ai
 
 - Lock env so LLM keys never leave this folder (isolation contract).
 - Tool manifest/lockfiles separate from web.
+- The planned GraphQL client accepts an authorized real-user ID from trusted task context and sends `X-On-Behalf-Of` with Bearer `GRIOT_SERVICE_TOKEN`; scheduled runs follow the same rule. Missing identity must fail closed. Backend 09 uses real-user OBO (`ai-on-behalf-of`, exactly four scopes), not a synthetic AI member.
 
 ## Separation of Concerns
 

@@ -22,5 +22,8 @@ public class InviteController : DomainControllerBase
     [HttpPost]
     [Route("api/invites/{token}/accept")]
     public async Task<IActionResult> AcceptInvite(string token)
-    { try { return (await _domain.AcceptInviteAsync(token, CurrentUserId())) ? Ok(new { message = "Invite accepted." }) : Conflict(new { message = "Invite not valid." }); } catch (DomainError e) { return Handle(e); } }
+    {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
+        try { return (await _domain.AcceptInviteAsync(token, CurrentUserId())) ? Ok(new { message = "Invite accepted." }) : Conflict(new { message = "Invite not valid." }); } catch (DomainError e) { return Handle(e); }
+    }
 }

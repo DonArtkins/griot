@@ -18,7 +18,7 @@ You'll get an acknowledgment within **48 hours**. We'll confirm, fix, test, and 
 ## Security posture (what we build toward)
 
 - **Auth**: Argon2 password hashing; 15-min JWT access; opaque rotated refresh tokens (SHA-256 at rest, family revoke on reuse); Redis sliding-window rate limits.
-- **AI boundary**: Two distinct AI write paths — both go through the backend with a scoped `GRIOT_SERVICE_TOKEN` (restricted `ai-agent` principal, no deletes/invites):
+- **AI boundary**: Two distinct AI write paths — both go through the backend with a scoped `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` header (real-user OBO principal, role `ai-on-behalf-of`, 4 scopes — no deletes/invites):
   1. **Copilot mutations (propose-before-write)**: The Copilot agent _proposes_ mutations (`create_task`, `update_task_status`, `add_comment`) as structured approval cards; the **web app executes the mutation via REST after explicit user approval** — the agent itself never writes. This is the only path for Copilot-initiated state changes (features ai/04 + backend/09; see `ai/project-kit/feature-specs/04-propose-before-write-workflow.md`).
   2. **Deterministic/scheduled writes** (due reminders, sprint digests, stale-board notifications): these bypass the approval step by design and write directly via backend REST. They are workspace-scoped and audit-logged (feature ai/03).
   - **No direct DB access by AI.** No GraphQL mutation path for Copilot writes — REST only, after approval, to preserve the audit trail and `AuditLogs`/`ActivityLogs` rows.

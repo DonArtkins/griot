@@ -1,0 +1,55 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+set -e
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+echo "========================================"
+echo " Griot: Pre-push verification gates"
+echo " Branch: $(git rev-parse --abbrev-ref HEAD)"
+echo "========================================"
+echo ""
+
+echo "[1/3] Griot backend: dotnet build..."
+cd backend
+if ! dotnet build --no-incremental --nologo -v minimal > /tmp/griot-prepush-build.log 2>&1; then
+  echo ""
+  echo "❌ Backend build FAILED."
+  echo "   Full log: /tmp/griot-prepush-build.log"
+  echo "   Tip: run 'cd backend && dotnet build' for errors."
+  exit 1
+fi
+echo "✅ Backend build PASSED."
+
+echo ""
+echo "[2/3] Griot backend: dotnet test (non-SQL suite)..."
+if ! dotnet test --no-build --nologo -v minimal > /tmp/griot-prepush-test.log 2>&1; then
+  echo ""
+  echo "❌ Backend test FAILED."
+  echo "   Full log: /tmp/griot-prepush-test.log"
+  echo "   Tip: run 'cd backend && dotnet test --verbosity normal' for details."
+  exit 1
+fi
+echo "✅ Backend tests PASSED."
+cd "$ROOT"
+
+echo ""
+echo "[3/3] Griot cross-system: contract sync check..."
+if ! python3 scripts/check-contract-sync.py > /tmp/griot-prepush-contract.log 2>&1; then
+  echo ""
+  echo "❌ Contract sync check FAILED."
+  echo "   Full log: /tmp/griot-prepush-contract.log"
+  echo "   Tip: run 'python3 scripts/check-contract-sync.py' for details."
+  echo "   Reference: docs/planning/CONTRACT-SYNC.md"
+  exit 1
+fi
+echo "✅ Contract sync check PASSED."
+
+echo ""
+echo "========================================"
+echo " All pre-push gates PASSED."
+echo " Safe to push."
+echo "========================================"
+echo ""

@@ -1,5 +1,7 @@
 # Week 02 · Prompt 03 — REST + GraphQL API Surface — EXTENSIVE MASTER
 
+> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`.
+
 **Tool:** Any agent (Cline/Claude) + Postman. **When:** After the ERD is approved and the backend schema exists.
 **Research:** `research/week-02-backend-api-development.md` §4–5 + `backend/project-kit/context/api-surface.md`.
 
@@ -11,7 +13,7 @@
 
 - Every route and GraphQL type names entities/fields **exactly** as in `diagrams/erd/`.
 - REST + GraphQL share the **same service layer** (`Griot.Application`); controllers/resolvers are thin.
-- Auth: JWT bearer; `GRIOT_SERVICE_TOKEN` → `ai-agent` principal for AI/MCP; HMAC webhooks.
+- Auth: JWT bearer; `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ai-on-behalf-of` principal for AI/MCP; HMAC webhooks.
 - Errors: **404 for not-found/not-owned** (never disclose existence), 400 validation, 401 auth, 403 role, 409 conflict/state, 429 rate limit.
 - Hot-path latency budgets (p95): board read < 500 ms, dashboard < 500 ms, login < 300 ms, bulk-status < 800 ms.
 
@@ -70,7 +72,7 @@
 Build the backend API exactly per `backend/project-kit/context/api-surface.md` and this list. Verify every route/type against the approved ERD at `diagrams/erd/`; update the spec if the ERD differs. Enforce:
 - Separation of concerns: thin controllers/resolvers to `Griot.Application` services to repos (EF 95% + Dapper for `usp_BulkUpdateTaskStatus` + `usp_GetDashboardSummary` only). Zero business logic in controllers.
 - Auth: Argon2, 15-min JWT (claims sub/email/jti), rotated opaque refresh (SHA-256 at rest, FamilyId for scoped family-revoke on replay), Redis sliding-window rate limit on login + query-cost guard on /graphql, CORS allow-list. Refresh-token transport: web via `Set-Cookie: HttpOnly; Secure; SameSite=Strict` (never in JSON body); mobile via JSON body + secure storage; Postman via JSON body. The `/api/auth/refresh` endpoint accepts Cookie (web) or JSON body (mobile/Postman). Single-transaction rotation: `WHERE RevokedAt IS NULL` is the sole gate; any miss is a replay → revoke `WHERE FamilyId = @familyId`.
-- Service-token principal: GRIOT_SERVICE_TOKEN to restricted ai-agent (no deletes/invites). HMAC on /api/webhooks/trigger.
+- Service-token principal: GRIOT_SERVICE_TOKEN to restricted ai-on-behalf-of (no deletes/invites). HMAC on /api/webhooks/trigger.
 - Errors: 404 on ownership miss (never disclose existence), 400 validation, 401 unauthenticated, 403 forbidden, 409 conflict/illegal state (incl. illegal task transition + bulk atomic rollback), 429 rate limit.
   - **`PATCH /api/tasks/bulk-status` specific rule:** the entire batch runs inside `usp_BulkUpdateTaskStatus` as a single TVP transaction. If **any** `taskId` in the batch is invalid (not found, wrong workspace, or wrong state), the proc rolls back the entire transaction and the endpoint returns **409** (not 404 or 400). Do not return 404 for individual missing task ids in a batch, and do not return 400 for a state mismatch — both are 409 to keep the atomic contract unambiguous. Pre-validation (empty array, malformed input) is 400 before the proc is even called.
 - Pagination: fixed page size, stable order (e.g. tasks by (ColumnId, Position)); cursor or skip/take.

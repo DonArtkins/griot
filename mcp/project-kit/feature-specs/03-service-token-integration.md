@@ -6,7 +6,7 @@ NEW FEATURE ([own-stack])
 
 ## What This Delivers
 
-The real GraphQL client wired with `GRIOT_SERVICE_TOKEN`, so every tool executes against the backend as the restricted `ai-agent` principal.
+The real GraphQL client wired with `GRIOT_SERVICE_TOKEN` + the `X-On-Behalf-Of` header, so every tool executes against the backend as the restricted **real-user On-Behalf-Of (OBO)** principal (role `ai-on-behalf-of` — spec 09).
 
 ## Dependencies
 
@@ -22,7 +22,7 @@ The real GraphQL client wired with `GRIOT_SERVICE_TOKEN`, so every tool executes
 
 ## Files
 
-CREATE: typed GraphQL client with Bearer `GRIOT_SERVICE_TOKEN`, query/mutation helpers, error mapping.
+CREATE: typed GraphQL client with Bearer `GRIOT_SERVICE_TOKEN` plus per-request `X-On-Behalf-Of` from trusted caller context, query/mutation helpers, and error mapping. Reject missing real-user identity before dispatch; never take it from model-generated tool arguments.
 
 ## Implementation Notes
 
@@ -39,7 +39,7 @@ CREATE: typed GraphQL client with Bearer `GRIOT_SERVICE_TOKEN`, query/mutation h
 
 ## Acceptance Criteria
 
-- [ ] Tools execute against the backend with the service token; write tools respect ai-agent scope
+- [ ] Tools execute against the backend with the service token + `X-On-Behalf-Of` (real-user OBO principal); write tools respect the four scopes (ReadWorkspace/CreateTask/AddComment/CreateNotification — no deletes/invites)
 - [ ] Failed auth surfaces clean MCP errors
 
 

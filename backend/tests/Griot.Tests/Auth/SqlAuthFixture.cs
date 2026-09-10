@@ -50,8 +50,10 @@ public sealed class SqlAuthFixture : IAsyncLifetime
         await using var context = CreateContext();
         await context.GetService<IMigrator>().MigrateAsync("20260907195152_AddOtpAndReports");
         var user = new User { Email = $"migration-{Guid.NewGuid():N}@example.com", DisplayName = "Migration test", PasswordHash = "test" };
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
+        await context.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO dbo.Users (Id, Email, DisplayName, PasswordHash, CreatedAt, UpdatedAt, TwoFactorMethod)
+            VALUES ({user.Id}, {user.Email}, {user.DisplayName}, {user.PasswordHash}, {user.CreatedAt}, {user.UpdatedAt}, {user.TwoFactorMethod.ToString()});
+            """);
         // Seed the pre-migration schema without referring to the new FamilyId column.
         await context.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO dbo.RefreshTokens (Id, UserId, TokenHash, ExpiresAt, RevokedAt, ReplacedByTokenId, CreatedAt)

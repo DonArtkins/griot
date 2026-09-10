@@ -7,6 +7,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | Method | Route | Purpose | Role gate |
 |---|---|---|---|
 | POST | `/api/auth/register` · `/login` · `/refresh` · `/logout` · `/otp/request` · `/otp/verify` | auth lifecycle + email-OTP 2FA | public / authenticated |
+| POST | `/api/auth/forgot-password` · `/reset-password`; DELETE `/api/auth/account`; `otp/request` purposes `delete_account` / `step_up` — **spec 23 PLANNED** | critical-action OTP & step-up (login 2FA challenge, forgot/reset, delete account, guarded ops) | public / bearer + step-up |
 | GET/POST | `/api/workspaces` | list/create | authenticated |
 | GET/PUT/DELETE | `/api/workspaces/{id}` | read/update/delete | DELETE = Owner only |
 | GET/POST | `/api/workspaces/{id}/members` | member list/add | Owner/Admin |
@@ -37,6 +38,8 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET | `/api/dashboard/summary?workspaceId=` | dashboard via `usp_GetDashboardSummary` (one round-trip; Phase 1: Redis 60s cache) | workspace member |
 | GET | `/api/logs/errors` | error log — persisted by backend spec 20 (PLANNED; Owner/Admin) | Owner/Admin |
 | GET | `/api/logs/audit?entityType=&entityId=` | audit log — persisted by backend spec 20 (PLANNED; Owner) | Owner |
+| GET/POST/DELETE | `/api/workspaces/{id}/reports…` + `GET …/reports/{id}/download?format=pdf\|csv` — **spec 24 PLANNED** | AI/human reports + PDF/CSV artifacts | workspace member (delete Owner/Admin) |
+| GET | `/api/workspaces/{id}/audit-summary?window=&severity=` — **spec 24 PLANNED** | Owner-only log rollup feeding the ai 06 auditor | Owner |
 | POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) | HMAC only |
 | GET | `/health` | liveness (health checks) | public |
 
@@ -63,7 +66,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 - **Response caching (Phase 2)**: Board queries cached in Redis by `(boardId, workspaceId, userId, timestamp)` key. Invalidated on writes. Configured via `.AddQueryCachePipeline().AddRedisQueryStorage()`. **Impact:** Hot boards served from Redis (~1ms) instead of SQL (~50–200ms).
 - **Filters/sorts**: tasks (status, priority, assignee, dueDate), notifications (readAt). **Pagination**: MaxPageSize = 1,000.
 - **Authorization**: `[Authorize]` authenticates only; every workspace-scoped resolver and mutation additionally enforces caller ownership/membership per resource (`Workspaces.OwnerId` or a `WorkspaceMembers` row) before reading/mutating. Cross-workspace resource IDs are rejected. Destructive ops (delete workspace/project/task) require Owner/Admin. No global filter — enforcement is per-resolver.
-- **Guards**: parser caps 256 fields / 512 nodes + max execution depth 10 (introspection excluded) + 30 s execution timeout + global rate limiter; same JWT bearer; `GRIOT_SERVICE_TOKEN` → ai-agent scope (no deletes/invites).
+- **Guards**: parser caps 256 fields / 512 nodes + max execution depth 10 (introspection excluded) + 30 s execution timeout + global rate limiter; same JWT bearer; `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → real-user OBO principal (role `ai-on-behalf-of`, scopes ReadWorkspace/CreateTask/AddComment/CreateNotification; deletes/invites/member ops/bulk-status → 403).
 
 ## Controller topology
 
@@ -83,7 +86,7 @@ All CRUD orchestration (specs 13–17) lives in `IDomainService`/`DomainService`
 | AttachmentController | `/api/tasks/{id}/attachments` | DomainService |
 | NotificationController | `/api/notifications*` | DomainService |
 | DashboardController | `/api/dashboard/summary`, `/api/workspaces/{id}/activity`, `/api/logs/*` | DomainService |
-| WebhookController | `/api/webhooks/trigger` | HMAC verification only |
+| WebhookController | `/api/webhooks/trigger` | thin relay — HMAC verified upstream by `WebhookHmacMiddleware` (401 mismatch/absent, 503 unconfigured) → 202 |
 
 ## Conventions
 
@@ -102,7 +105,7 @@ Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, 
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register) + `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; per-purpose branded Brevo template — `auth-contract.md` §Email. Registration returns 201 after SQL persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
-## Observability & protection contracts (specs 18–22 — PLANNED)
+## Observability & protection contracts (specs 18–24 — PLANNED)
 
 | Spec | Contract summary |
 |---|---|
@@ -111,6 +114,8 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 | **19** | Redis cache-aside (`cache:dashboard:{ws}` 60s, `cache:board:{id}` 30s, `cache:notif:unread:{user}` 15s; `X-Cache: HIT/MISS`; fail-open) + limiter partitions auth 10/min/IP, webhook 60/min, GraphQL mutations 30/min, depth 10 / complexity 1000 (unchanged global 100/min) |
 | **21** | `AFTER INS/UPD/DEL` triggers on TaskItems/WorkspaceMembers/Invites/Attachments → `AuditLogs` (`DB.`-prefixed actions; app rows unprefixed); FULL nightly + DIFF 15min + LOG 10min backups on `sababisha_mssql_backup` + restore drill runbook |
 | **22** | fan-out matrix (Assignment/Mention/DueDate/System → sender keys noreply/support/noreply/team+admin); new `NotificationPreferences` (1:1 Users) + `GET/PUT /api/notifications/preferences` + service-token-only `POST /api/notifications/fanout`; email best-effort (failure → `ErrorLogs`, request still succeeds) |
+| **23** | critical-action OTP & step-up: login 202-challenge (EmailOtp), purposes `delete_account`/`step_up`, forgot/reset-password, `DELETE /api/auth/account`, `RequireStepUp(action)` guards on the curated risk list — human-only, AI OBO 403 |
+| **24** | report surface `GET/POST/DELETE /api/workspaces/{id}/reports…` + `download?format=pdf\|csv`; `GET /api/workspaces/{id}/audit-summary` (Owner); FIFTH OBO scope `CreateReport` |
 
 Audit + incident runbook: `docs/observability/LOGGING-AUDIT-REPORT.md` (what/where/why/when/trigger/spillover/user-count query recipes); decision: `docs/decisions/ADR-004-observability-pipeline-and-db-resilience.md`.
 

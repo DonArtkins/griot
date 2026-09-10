@@ -59,6 +59,19 @@ shared-IP testing) can still exhaust it. When it does, `/api/auth/otp/request` r
 Backend env: `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_SENDER_<KEY>_EMAIL/_NAME/_REPLYTO`, `SITE_URL`. Web
 (Vercel) never holds Brevo keys (only `VITE_API_URL`).
 
+## Sender validation & the Vercel domain question (2026-09-11 FAQ)
+
+**Q: "Sending has been rejected because the sender you used noreply@griot.app is not valid. Validate your sender or authenticate your domain"**
+
+**A:** The From-domain `griot.app` is **not verified in Brevo**, so Brevo rejects the send. Two remedies:
+
+1. **Authenticate a domain you own** (recommended): Brevo → Senders → "I want to send from my own domain" → add the `brevo-code` TXT record (+ optional DKIM/SPF) → verify → all profile senders on that domain (e.g. `noreply@<your-domain>`) become valid and stop being rewritten to `brevosend.com`.
+2. **Interim:** use Brevo's dashboard default sender (the `<account-id>@<account-id>.brevosend.com` address) — valid today, but not your brand.
+
+**Will hosting the frontend on `griot.vercel.app` fix it?** **No.** Vercel owns `*.vercel.app` (a shared wildcard domain); you cannot add Brevo's TXT records to it and it is not a domain you control. Verify a domain **you own** (e.g. `griot.app` or `mail.<your-domain>`). Sending domains need no MX records — SPF/DKIM alignment (provided by Brevo's TXT records) is what mailboxes check. `SITE_URL=https://griot.vercel.app` stays correct as the email-footer origin; it is unrelated to the sender domain.
+
+**Best sender format that works for ALL Griot email:** one authenticated domain + the six fixed identities (`Brevo:Senders:<Key>`): `security` → OTP/2FA (no reply-to), `noreply` → system notices, `admin` → ops notices (reply-to support), `support`/`info`/`team` per audience. Never introduce new From-domains per feature.
+
 ## Acceptance Criteria
 
 - [x] Sender-identity map resolves per `SenderKey` with reply-to control (`BrevoEmailService.cs`)
@@ -68,7 +81,7 @@ Backend env: `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_SENDER_<KEY>_EMAIL/_NAM
       integration-contracts, api-surface, README, COMMUNICATION-GUIDE, AUTHENTICATION-GUIDE)
 - [x] Redis OTP window gates email sends before Brevo
 - [x] Unit tests green (`dotnet test`)
-- [ ] Verify a custom domain in Brevo dashboard -> sends with your own From-domain (no `brevosend.com`)
+- [ ] (operator) Verify a domain YOU own in Brevo (DNS TXT: `brevo-code`, optional DKIM/SPF) so `noreply@<your-domain>` profile senders deliver — `griot.vercel.app` cannot be verified (Vercel-owned wildcard; see FAQ above)
 - [ ] In-app notifications (web/mobile + AI copilot) inside the Notifications domain (next spec)
 
 ## Verification

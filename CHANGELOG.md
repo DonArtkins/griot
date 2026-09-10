@@ -2,6 +2,40 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-09-11 (AI superpowers & critical-action OTP planning wave [own-stack])
+
+### Added
+- **PLANNED specs (planning artifacts only — no production code yet):** backend **23** (critical-action OTP & step-up: login 2FA enforcement, forgot/reset password, delete account, guarded-op step-up via `RequireStepUp`, human-only surface — AI OBO 403), backend **24** (AI reports & export surface: `Report` rows, PDF/CSV artifacts via blob spec 11, `audit-summary`, planned FIFTH OBO scope `CreateReport`), ai **06** (Copilot knowledge agent + system auditor), ai **07** (report generation PDF + CSV), ai **08** (advanced Level-4 executor), web **11** (AI Reports & Audit Center — award-grade UX), mcp **06** (v2 report/audit tools).
+- **`docs/observability/HOW-LOGGING-WORKS.md`** — how logging works end-to-end: request lifecycle → four tables, correlation (`X-Request-Id` + ai runId), retention, worked example, AI attribution.
+- **Backend spec 20 bumped** — async writers (bounded queue + workers), middleware order, spec-23/24 audit events, dev seeding, index validation.
+- **Brevo sender-validation Q&A** (`COMMUNICATION-GUIDE` §7b + spec 12): `noreply@griot.app` fails because the From-domain is not verified; `griot.vercel.app` is Vercel-owned and cannot be authenticated; verify a domain YOU own (TXT `brevo-code`, optional DKIM/SPF; no MX needed); best format = one authenticated domain + the six fixed sender identities.
+- **Contract sync:** roadmap P0 (… → 21 → 23 → 11 → 24 → 10) and P2 (ai 06–08 + web 11) and P5 (mcp 06), DEPENDENCY-AUDIT, root + backend/ai/mcp/web AGENTS + trackers, system-map, stack-contract, integration-contracts, api-surface, auth-contract (PLANNED section), research/ai-integration + ai-features-research.
+
+### Changed
+- **AI superpowers boundaries codified:** reports/audits ride a NEW scoped capability `CreateReport` (backend 24) — never a loosened OBO grant; **auth/OTP is human-only forever** (specs 23, ai 06/07/08, mcp 06).
+
+
+## [Unreleased] — 2026-09-11 (Backend spec 09: AI service token + OBO principal + webhook HMAC)
+
+### Added
+- **Backend spec 09 implemented** on `feature/backend/09-ai-service-token-and-webhooks`:
+  - `ServiceTokenHandler` (scheme `ServiceToken`, AI OBO): validates `Authorization: Bearer {GRIOT_SERVICE_TOKEN}` + `X-On-Behalf-Of: {Guid}` → looks up REAL USER in Users table → issues ClaimsPrincipal with the user's own identity (NameIdentifier = user.Id, Name = DisplayName, Email = Email, role `ai-on-behalf-of`, 4 scopes: ReadWorkspace · CreateTask · AddComment · CreateNotification; constant-time token comparison; per-call `IServiceScopeFactory` for user repo resolution.
+  - `MultiAuth` policy scheme with `ForwardDefaultSelector` (Program.cs L200-213): JWT-shaped bearer → JwtBearer; anything else → ServiceToken; missing → JwtBearer so 401 challenges keep JWT shape.
+  - `DomainControllerBase.ForbidIfAiCall()` / `IsAiCall` guard: checks role `ai-on-behalf-of` → returns 403 before any destructive endpoint.
+  - GraphQL mirrors in GriotQuery/GriotMutation: IsAiCall on all DeleteWorkspace/DeleteProject/DeleteTask + RequireWorkspaceAdminOrOwnerAsync + RequireWorkspaceOwnerAsync.
+  - `WebhookHmacMiddleware`: buffers body + HMAC-SHA256 compare against `WEBHOOK_SECRET`; runs BEFORE UseAuthentication; 401 on mismatch; downstream never sees forged payloads.
+  - `TriggerDevClient` typed HttpClient + `TRIGGER_SECRET_KEY` Bearer auth for server→Trigger enqueue direction.
+- **Unit tests:** `ServiceTokenHandlerTests` (9 tests, incl. OBO-header failure paths), `OboMembershipBoundaryTests` (pure IsMember), `AiAgentControllerGuardTests` (5 `ForbidIfAiCall` coverage)).
+
+### Changed
+- **Runtime bug fix:** `PATCH api/tasks/bulk-status` added AI guard at top of handler (TaskController.BulkStatusUpdate was the ONLY bulk-destructive endpoint without scope restriction).
+- **Test file fixes:** `ServiceTokenAndWebhookTests.cs` fully rewritten for OBO; old virtual-ai-agent-GUID tests replaced/deleted (well-known fixed GUID virtual-member hack removed from runtime).
+- **`.husky/pre-push` syntax bug fixed** (parenthesis).
+- Hardcoded-GUID audit: 0 matches in application runtime code (seed/migrations/test fixtures are grandfathered).
+
+### Fixed
+- Pre-push SQL fixture: seed historical `Users` columns through parameterized SQL before applying `AddRefreshTokenFamilyId`, avoiding the premature `EmailVerified` insert. Extended the migration regression; verified 71 passing SQL-enabled tests, zero failures/skips, a clean build, and a healthy local API on 2026-09-10. No production schema or auth behavior changed in this repair.
+
 ## [Unreleased] — 2026-09-10 (Observability & audit system audit + hardening wave specs 18–22)
 
 ### Added

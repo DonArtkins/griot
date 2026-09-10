@@ -10,6 +10,8 @@ Stack: `@modelcontextprotocol/sdk` + zod, Node 20 (own lockfile). Transports: st
 
 `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`.
 
+**v2 (PLANNED, mcp 06):** `list_reports`, `get_report`, `generate_report`, `download_report`, `system_audit`, `get_audit_log`, `get_metrics` — need backend 20/24 + `CreateReport` scope + ai 06/07. V1 ids are unchanged until mcp 02 ships.
+
 ## Reading Order
 
 1. Root `AGENTS.md` + root `integration-contracts.md` (AI/MCP tool contract).
@@ -23,7 +25,7 @@ Root shared skills + `mcp/.agents/skills/` (`mcp-sdk-tools`, `mcp-contract-testi
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P5 —** after infra (P4), because spec 04 deploys to Railway/Docker (needs infra 02–04/06) and spec 03 needs backend 09's service token. Nothing downstream waits on MCP, so the late slot costs nothing. Own order: **01 → 02 → 03 → 04 → 05** (01–02 technically unblocked anytime — Node 20 only). Entry branch: `feature/mcp/01-mcp-server-setup`. Track state in `mcp/project-kit/context/progress-tracker.md`.
+**Phase P5 —** after infra (P4), because spec 04 deploys to Railway/Docker (needs infra 02–04/06) and spec 03 needs backend 09's service token. Nothing downstream waits on MCP, so the late slot costs nothing. Own order: **01 → 02 → 03 → 04 → 05 → 06** (01–02 technically unblocked anytime — Node 20 only; 06 = report/audit v2 tools after backend 20/24 + ai 06/07). Entry branch: `feature/mcp/01-mcp-server-setup`. Track state in `mcp/project-kit/context/progress-tracker.md`.
 
 ## Verification Gates
 
@@ -33,8 +35,8 @@ Root shared skills + `mcp/.agents/skills/` (`mcp-sdk-tools`, `mcp-contract-testi
 
 ## Hard Rules
 
-1. Tools never bypass the backend API.
-2. Write tools mirror the approve-gate: they execute only what the backend allows (ai-agent principal).
+1. Tools never bypass the backend API. Send Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of: {real User.Id}` from trusted caller context; never use a synthetic member or a model-supplied identity.
+2. Write tools mirror the approve-gate: they execute only what the backend allows (real-user OBO principal — 4 scopes, no deletes/invites).
 3. MCP is a data/tool surface, not an orchestration trigger: external MCP clients get data through the backend GraphQL only — they never enqueue Trigger.dev tasks or receive Trigger.dev credentials (orchestration contract: `research/ai-integration.md` §2a).
 
 **Engineering Excellence. Production Mindset. Professional Impact. Rocket**

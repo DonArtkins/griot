@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Griot.Api.Auth;
 using Griot.Api.GraphQL.Types;
 using Griot.Infrastructure.Persistence;
 using HotChocolate.Authorization;
@@ -8,6 +9,17 @@ namespace Griot.Api.GraphQL;
 
 public class GriotMutation
 {
+    /// <summary>
+    /// True when the ClaimsPrincipal originated from the AI GRIOT_SERVICE_TOKEN
+    /// On-Behalf-Of flow. Detected via the "ai-on-behalf-of" role or the explicit
+    /// "auth_method=service_token_obo" claim. Used to gate destructive GraphQL
+    /// mutations ON TOP OF the OBO user's own RBAC permissions — an Owner user
+    /// acting through the AI path still cannot delete workspaces.
+    /// </summary>
+    private static bool IsAiCall(ClaimsPrincipal cp)
+        => cp.IsInRole(ServiceTokenHandler.AiOnBehalfOfRole)
+        || cp.HasClaim("auth_method", "service_token_obo");
+
     /// <summary>
     /// Create a new workspace
     /// </summary>
@@ -19,9 +31,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
-        var userId = claimsPrincipal.FindFirst("sub")?.Value;
-        if (userId == null || !Guid.TryParse(userId, out var userGuid))
-            throw new UnauthorizedAccessException();
+        var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var workspace = new Griot.Domain.Entities.Workspace
         {
@@ -92,6 +102,9 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        if (IsAiCall(claimsPrincipal))
+            throw new UnauthorizedAccessException("Destructive operations are not allowed via AI service-token OBO.");
+
         var workspace = await dbContext.Workspaces
             .FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
 
@@ -192,6 +205,9 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        if (IsAiCall(claimsPrincipal))
+            throw new UnauthorizedAccessException("Destructive operations are not allowed via AI service-token OBO.");
+
         var project = await dbContext.Projects
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
@@ -259,9 +275,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
-        var userId = claimsPrincipal.FindFirst("sub")?.Value;
-        if (userId == null || !Guid.TryParse(userId, out var userGuid))
-            throw new UnauthorizedAccessException();
+        var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         // Reject out-of-range priorities before the enum cast reaches persistence (CWE-20).
         var priorityValue = ValidatePriority(priority);
@@ -355,6 +369,9 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        if (IsAiCall(claimsPrincipal))
+            throw new UnauthorizedAccessException("Destructive operations are not allowed via AI service-token OBO.");
+
         var task = await dbContext.TaskItems
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
@@ -381,9 +398,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
-        var userId = claimsPrincipal.FindFirst("sub")?.Value;
-        if (userId == null || !Guid.TryParse(userId, out var userGuid))
-            throw new UnauthorizedAccessException();
+        var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var task = await dbContext.TaskItems
             .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
@@ -420,12 +435,15 @@ public class GriotMutation
     }
 
     /// <summary>
-    /// Get the currently authenticated user id from the JWT principal, or reject
-    /// the request when the token has no usable subject claim.
+    /// Resolve the authenticated user Guid from either JWT "sub" claim or the
+    /// XML-SOAP NameIdentifier claim (used by the OBO ServiceToken handler).
+    /// Throws <see cref="UnauthorizedAccessException"/> when neither is present
+    /// on the request when the token has no usable subject claim.
     /// </summary>
     private static Guid AuthenticatedUserId(ClaimsPrincipal claimsPrincipal)
     {
-        var userId = claimsPrincipal.FindFirst("sub")?.Value;
+        var userId = claimsPrincipal.FindFirst("sub")?.Value
+                  ?? claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
             throw new UnauthorizedAccessException();
 
@@ -519,6 +537,9 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        if (IsAiCall(claimsPrincipal))
+            throw new UnauthorizedAccessException("Admin-or-owner destructive operations are not allowed via AI service-token OBO.");
+
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var workspace = await dbContext.Workspaces
@@ -546,6 +567,9 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        if (IsAiCall(claimsPrincipal))
+            throw new UnauthorizedAccessException("Owner-only destructive operations are not allowed via AI service-token OBO.");
+
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var workspace = await dbContext.Workspaces
