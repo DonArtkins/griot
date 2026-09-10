@@ -11,10 +11,13 @@
 | 03 | Scheduled agents (dueReminders/sprintDigest/staleBoard/standupBuilder) | Pending | ai 02, backend notifications (04/16 ✅) |
 | 04 | Propose-before-write workflow | Pending | ai 02, **web 10** |
 | 05 | Golden transcripts + cost budgets | Pending | ai 01–04 |
+| 06 | Copilot knowledge agent + system auditor | Pending (**P2 wave**) | ai 02/05, backend 16/20/24 |
+| 07 | Report generation (PDF + CSV) | Pending (**P2 wave**) | ai 02/03/05, backend 11/24 |
+| 08 | Advanced executor (Level-4 planning loop) | Pending (**P2 wave**) | ai 02/04/05/06/07, backend 09/20/23/24 |
 
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P2)
 
-`ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05`
+`ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08`
 
 **Why web 10 sits inside this phase (circular-dependency resolution):** web 10 (Copilot panel) needs ai 02's realtime stream, while ai 02's spec lists "web feature 10" — that reference is a *contract-design* dependency (the panel is the stream's consumer), not a build-order one. ai 04 genuinely needs the panel's approval cards, so web 10 must land before ai 04. Build ai 01–02 first, then web 10, then finish ai 03–05.
 
@@ -25,6 +28,8 @@
 3. Verification gates: `npm run lint && npm run typecheck && npm test` green (mocked LLM, no network in CI).
 
 ## Session Notes
+
+- **2026-09-11 (superpowers wave sync)** — Added PLANNED specs ai 06 (knowledge agent + system auditor), ai 07 (report generation PDF + CSV) and ai 08 (advanced Level-4 executor) to the P2 order; web 11 (Reports & Audit Center) sits between ai 07 and ai 08. Boundaries codified: reports/audit ride the scoped `CreateReport` capability (backend 24); auth/OTP is human-only (backend 23, AI OBO 403). No production code; contract-sync run.
 
 - **2026-09-10 (backend 09 sync)** — Backend OBO authentication is delivered: planned AI clients must send the service token and an authorized real-user `X-On-Behalf-Of` identity, including scheduled runs. Architecture and setup spec record the four-scope contract. No AI production code was implemented; P2 still waits for P1. Backend verification: 71 SQL-enabled tests passed with no skips/failures after the approved historical-fixture repair.
 

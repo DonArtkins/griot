@@ -2,6 +2,19 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-09-11 (AI superpowers & critical-action OTP planning wave [own-stack])
+
+### Added
+- **PLANNED specs (planning artifacts only — no production code yet):** backend **23** (critical-action OTP & step-up: login 2FA enforcement, forgot/reset password, delete account, guarded-op step-up via `RequireStepUp`, human-only surface — AI OBO 403), backend **24** (AI reports & export surface: `Report` rows, PDF/CSV artifacts via blob spec 11, `audit-summary`, planned FIFTH OBO scope `CreateReport`), ai **06** (Copilot knowledge agent + system auditor), ai **07** (report generation PDF + CSV), ai **08** (advanced Level-4 executor), web **11** (AI Reports & Audit Center — award-grade UX), mcp **06** (v2 report/audit tools).
+- **`docs/observability/HOW-LOGGING-WORKS.md`** — how logging works end-to-end: request lifecycle → four tables, correlation (`X-Request-Id` + ai runId), retention, worked example, AI attribution.
+- **Backend spec 20 bumped** — async writers (bounded queue + workers), middleware order, spec-23/24 audit events, dev seeding, index validation.
+- **Brevo sender-validation Q&A** (`COMMUNICATION-GUIDE` §7b + spec 12): `noreply@griot.app` fails because the From-domain is not verified; `griot.vercel.app` is Vercel-owned and cannot be authenticated; verify a domain YOU own (TXT `brevo-code`, optional DKIM/SPF; no MX needed); best format = one authenticated domain + the six fixed sender identities.
+- **Contract sync:** roadmap P0 (… → 21 → 23 → 11 → 24 → 10) and P2 (ai 06–08 + web 11) and P5 (mcp 06), DEPENDENCY-AUDIT, root + backend/ai/mcp/web AGENTS + trackers, system-map, stack-contract, integration-contracts, api-surface, auth-contract (PLANNED section), research/ai-integration + ai-features-research.
+
+### Changed
+- **AI superpowers boundaries codified:** reports/audits ride a NEW scoped capability `CreateReport` (backend 24) — never a loosened OBO grant; **auth/OTP is human-only forever** (specs 23, ai 06/07/08, mcp 06).
+
+
 ## [Unreleased] — 2026-09-11 (Backend spec 09: AI service token + OBO principal + webhook HMAC)
 
 ### Added

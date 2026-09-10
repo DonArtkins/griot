@@ -126,6 +126,10 @@ scheduler (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`).
 - [x] Web/mobile never receive any Trigger.dev credential (no `TRIGGER_SECRET_KEY` outside backend env)
 - [ ] All AI tool calls are traceable to an ActivityLog row — **PLANNED**: writers arrive in backend spec 20; the surface is open (no new tables); callers log via `ILogger<T>` correlated to `X-Request-Id`.
 
+## 5b. PLANNED evolution — the FIFTH scope `CreateReport` (backend spec 24, NOT implemented)
+
+AI superpowers (user wave 2026-09-11, PLANNED): the report/audit capabilities (ai 06 knowledge+system auditor, ai 07 reports PDF+CSV, mcp 06 v2 tools, web 11 Reports & Audit Center) are carried by a **new, narrow, auditable FIFTH scope `CreateReport`** — a scoped capability added by backend spec 24, never a loosening of the existing grant. Today the OBO principal still issues exactly four scopes (ReadWorkspace/CreateTask/AddComment/CreateNotification); nothing in this file changes until spec 24 ships. Corollary of backend spec 23: **auth/OTP is human-only forever — service-token callers are 403 on all OTP/step-up/account routes, and `RequireStepUp` is never reachable by an AI principal.**
+
 ## 6. Verification and SQL fixture repair (2026-09-10)
 
 The pre-push SQL run initially reported 64 passed and seven failed tests. All seven

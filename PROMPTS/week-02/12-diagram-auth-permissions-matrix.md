@@ -1,6 +1,6 @@
 # Week 02 · Diagram 08 — Auth/Permissions Matrix
 
-> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`.
+> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`. **2026-09-11 (PLANNED, spec 23):** critical actions (login 2FA, forgot/reset password, delete account, guarded ops) require a step-up email OTP — human-only; AI never appears in the step-up column. A FIFTH OBO scope `CreateReport` (spec 24) is planned for report/audit tools.
 
 **Table + Figma Make prompts.** Rows = roles (Owner/Admin/Member); columns = actions. Catches "wait, can a Member delete someone else's task?" before it's a bug report.
 

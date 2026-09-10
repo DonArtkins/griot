@@ -10,6 +10,8 @@ Stack: `@modelcontextprotocol/sdk` + zod, Node 20 (own lockfile). Transports: st
 
 `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`.
 
+**v2 (PLANNED, mcp 06):** `list_reports`, `get_report`, `generate_report`, `download_report`, `system_audit`, `get_audit_log`, `get_metrics` — need backend 20/24 + `CreateReport` scope + ai 06/07. V1 ids are unchanged until mcp 02 ships.
+
 ## Reading Order
 
 1. Root `AGENTS.md` + root `integration-contracts.md` (AI/MCP tool contract).
@@ -23,7 +25,7 @@ Root shared skills + `mcp/.agents/skills/` (`mcp-sdk-tools`, `mcp-contract-testi
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P5 —** after infra (P4), because spec 04 deploys to Railway/Docker (needs infra 02–04/06) and spec 03 needs backend 09's service token. Nothing downstream waits on MCP, so the late slot costs nothing. Own order: **01 → 02 → 03 → 04 → 05** (01–02 technically unblocked anytime — Node 20 only). Entry branch: `feature/mcp/01-mcp-server-setup`. Track state in `mcp/project-kit/context/progress-tracker.md`.
+**Phase P5 —** after infra (P4), because spec 04 deploys to Railway/Docker (needs infra 02–04/06) and spec 03 needs backend 09's service token. Nothing downstream waits on MCP, so the late slot costs nothing. Own order: **01 → 02 → 03 → 04 → 05 → 06** (01–02 technically unblocked anytime — Node 20 only; 06 = report/audit v2 tools after backend 20/24 + ai 06/07). Entry branch: `feature/mcp/01-mcp-server-setup`. Track state in `mcp/project-kit/context/progress-tracker.md`.
 
 ## Verification Gates
 

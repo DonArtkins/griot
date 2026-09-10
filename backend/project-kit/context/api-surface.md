@@ -7,6 +7,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | Method | Route | Purpose | Role gate |
 |---|---|---|---|
 | POST | `/api/auth/register` · `/login` · `/refresh` · `/logout` · `/otp/request` · `/otp/verify` | auth lifecycle + email-OTP 2FA | public / authenticated |
+| POST | `/api/auth/forgot-password` · `/reset-password`; DELETE `/api/auth/account`; `otp/request` purposes `delete_account` / `step_up` — **spec 23 PLANNED** | critical-action OTP & step-up (login 2FA challenge, forgot/reset, delete account, guarded ops) | public / bearer + step-up |
 | GET/POST | `/api/workspaces` | list/create | authenticated |
 | GET/PUT/DELETE | `/api/workspaces/{id}` | read/update/delete | DELETE = Owner only |
 | GET/POST | `/api/workspaces/{id}/members` | member list/add | Owner/Admin |
@@ -37,6 +38,8 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET | `/api/dashboard/summary?workspaceId=` | dashboard via `usp_GetDashboardSummary` (one round-trip; Phase 1: Redis 60s cache) | workspace member |
 | GET | `/api/logs/errors` | error log — persisted by backend spec 20 (PLANNED; Owner/Admin) | Owner/Admin |
 | GET | `/api/logs/audit?entityType=&entityId=` | audit log — persisted by backend spec 20 (PLANNED; Owner) | Owner |
+| GET/POST/DELETE | `/api/workspaces/{id}/reports…` + `GET …/reports/{id}/download?format=pdf\|csv` — **spec 24 PLANNED** | AI/human reports + PDF/CSV artifacts | workspace member (delete Owner/Admin) |
+| GET | `/api/workspaces/{id}/audit-summary?window=&severity=` — **spec 24 PLANNED** | Owner-only log rollup feeding the ai 06 auditor | Owner |
 | POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) | HMAC only |
 | GET | `/health` | liveness (health checks) | public |
 
@@ -102,7 +105,7 @@ Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, 
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register) + `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; per-purpose branded Brevo template — `auth-contract.md` §Email. Registration returns 201 after SQL persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
-## Observability & protection contracts (specs 18–22 — PLANNED)
+## Observability & protection contracts (specs 18–24 — PLANNED)
 
 | Spec | Contract summary |
 |---|---|
@@ -111,6 +114,8 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 | **19** | Redis cache-aside (`cache:dashboard:{ws}` 60s, `cache:board:{id}` 30s, `cache:notif:unread:{user}` 15s; `X-Cache: HIT/MISS`; fail-open) + limiter partitions auth 10/min/IP, webhook 60/min, GraphQL mutations 30/min, depth 10 / complexity 1000 (unchanged global 100/min) |
 | **21** | `AFTER INS/UPD/DEL` triggers on TaskItems/WorkspaceMembers/Invites/Attachments → `AuditLogs` (`DB.`-prefixed actions; app rows unprefixed); FULL nightly + DIFF 15min + LOG 10min backups on `sababisha_mssql_backup` + restore drill runbook |
 | **22** | fan-out matrix (Assignment/Mention/DueDate/System → sender keys noreply/support/noreply/team+admin); new `NotificationPreferences` (1:1 Users) + `GET/PUT /api/notifications/preferences` + service-token-only `POST /api/notifications/fanout`; email best-effort (failure → `ErrorLogs`, request still succeeds) |
+| **23** | critical-action OTP & step-up: login 202-challenge (EmailOtp), purposes `delete_account`/`step_up`, forgot/reset-password, `DELETE /api/auth/account`, `RequireStepUp(action)` guards on the curated risk list — human-only, AI OBO 403 |
+| **24** | report surface `GET/POST/DELETE /api/workspaces/{id}/reports…` + `download?format=pdf\|csv`; `GET /api/workspaces/{id}/audit-summary` (Owner); FIFTH OBO scope `CreateReport` |
 
 Audit + incident runbook: `docs/observability/LOGGING-AUDIT-REPORT.md` (what/where/why/when/trigger/spillover/user-count query recipes); decision: `docs/decisions/ADR-004-observability-pipeline-and-db-resilience.md`.
 

@@ -91,6 +91,19 @@ register + sets `Users.EmailVerified`), `login_2fa`, `password_reset`; branded B
 (see `Griot.Application/Email/BrandedEmailTemplate.cs`), admin new-account notice → `Brevo:ContactToEmail`.
 Service-token flows remain separate planned work (spec 09).
 
+## PLANNED — critical-action OTP & step-up (backend spec 23, NOT yet implemented)
+
+The following is the PLANNED extension of the email-OTP contract (owner: `backend/project-kit/feature-specs/23-critical-action-otp-step-up.md`). It will move up into the implemented tables when spec 23 ships:
+
+- `POST /api/auth/login` with `Users.TwoFactorMethod = EmailOtp` → **202** `{twoFactorRequired:true, purpose:"login_2fa"}` (no tokens) instead of 200.
+- New OTP purposes: `delete_account`, `step_up` (the latter with an optional `action` param).
+- `POST /api/auth/otp/verify` with `login_2fa` success → issues the token pair (single round-trip login); with `step_up`/`delete_account` success → `200 {verified:true, stepUpAccessToken}` — a 5-minute JWT carrying `stepup=true`, `purpose`, `action`, `challengeId`.
+- New routes: `POST /api/auth/forgot-password` (uniform 202), `POST /api/auth/reset-password` (verify code → Argon2 re-hash → revoke **all** refresh families → 200), `DELETE /api/auth/account` (bearer + step-up → 204; sets `Users.DeletedAt`; revokes all refresh tokens and memberships).
+- Guarded routes (spec 23 action allow-list) require the step-up claim via `RequireStepUp(action)` — 403 without it, 409 on mismatch.
+- **AI OBO callers (spec 09) are 403 on the entire surface** — auth/OTP is human-only, permanently.
+
+Brevo senders for all OTP purposes come from the verified `security` sender identity (see `docs/communication/COMMUNICATION-GUIDE.md` §2/§7b).
+
 ## Verification
 
 From `backend/`, run `dotnet build --no-incremental` and

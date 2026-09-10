@@ -130,6 +130,16 @@ Frontend (Vercel): the **web app never calls Brevo** -- it only calls the .NET A
 - In-app notifications (web push, mobile push, AI copilot messages) are the NEXT layer:
   they will ship on the Notifications domain + GraphQL (spec 16) without adding new channels.
 
+## 7b. Q&A — "sender is not valid" and the Vercel domain question (2026-09-11)
+
+**Q: "Sending has been rejected because the sender you used noreply@griot.app is not valid. Validate your sender or authenticate your domain"**
+
+The From-domain (`griot.app`) is **not verified in Brevo**, so Brevo rejects the send at the API. Hosting the frontend on **`griot.vercel.app` does NOT fix it**: Vercel owns `*.vercel.app` (shared wildcard) — you cannot add Brevo's DKIM/SPF TXT records there, and it is not a domain you control.
+
+**The fix that works:** verify a domain **you own** (e.g. `griot.app` or `mail.griot.app`): Brevo dashboard → Senders → authenticate your domain → add the `brevo-code` TXT (`v=spf1` + DKIM selector records as Brevo shows) → verify. Once verified, every sender on that domain (`noreply@...`, `security@...`, `support@...`, `team@...`, `info@...`) is valid and delivers as your brand (no more `brevosend.com` rewrite). Sending domains need **no MX records** — SPF/DKIM alignment is what mailboxes check.
+
+**Best format for all Griot email** — one authenticated domain + the six identities (`Security`, `NoReply`, `Admin`, `Support`, `Info`, `Team`): `security` for OTP/2FA (reply-to none), `noreply` for system notices, `admin` for ops (reply-to support), plus the audience profiles. Keep `SITE_URL=https://griot.vercel.app` for email-footer links (separate concept; correct as-is). Interim until DNS is ready: Brevo's default sender (`<account-id>@<account-id>.brevosend.com`) still delivers — it just isn't your brand.
+
 ## 8. Roadmap (email + in-app notifications)
 
 | Form | Channel | Status |

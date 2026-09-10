@@ -1,6 +1,6 @@
 # Week 02 · Diagram 10 — AI System Context (Web · AI · MCP · Backend)
 
-> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`.
+> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`. **2026-09-11 wave (PLANNED):** a FIFTH scope `CreateReport` (backend 24) powers report/audit superpowers — knowledge agent + system auditor (ai 06), reports PDF/CSV (ai 07), advanced executor (ai 08); auth/OTP step-up (backend 23) is human-only and AI is 403 there.
 
 **Master spec + Figma Make paste prompts.** This diagram captures the ENTIRE AI flow: web Copilot → Trigger agents → GraphQL (service token) → backend → SQL Server, plus external AI clients through MCP. Everything the AI layer touches, in one detailed diagram.
 

@@ -5,6 +5,8 @@
 
 > **2026-09-10:** This file audits *within-system* spec ordering. The **cross-system layer order** (which system's which spec comes next, and why) is now canonical in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — P0 backend 09→20→18→19→22→21→11→10 (2026-09-10 observability/hardening wave inserted; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` §3 + ADR-004) → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa. It also resolves the web 10 ↔ ai 02 circular reference (see the roadmap P2 section and the build-order note added to `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`).
 
+> **2026-09-11:** New PLANNED specs — backend **23** (critical-action OTP/step-up), backend **24** (AI reports & export surface + FIFTH OBO scope `CreateReport`), ai **06–08** (knowledge+auditor · reports PDF/CSV · advanced executor), web **11** (Reports & Audit Center), mcp **06** (v2 report/audit tools). Roadmap P0: … → 21 → 23 → 11 → 24 → 10; P2 adds ai 06 → ai 07 → web 11 → ai 08; P5 adds mcp 06. No AI spec touches auth/OTP (backend 23).
+
 ## Critical Findings
 
 ### ✅ **Backend: Specs 07 and 08 — Ordering Violation Found and Fixed by ID Swap**
@@ -43,6 +45,8 @@
 | 20 | Observability pipeline | 02 (log tables exist), 04-08 (write paths) | ✅ Yes (**first hardening spec after 09**) |
 | 21 | DB triggers + backups | 02 (schema), 20 (AuditLogs dedupe) | ✅ Yes (after 20) |
 | 22 | Notification fan-out | 16 (routes), 12 (email), 20 (event hooks) | ✅ Yes (after 20) |
+| 23 | Critical-action OTP & step-up | 07 (OTP), 12 (email), 20 (audit), 16 (guarded routes) | ✅ Yes (after 21) |
+| 24 | AI reports & export surface | 07/09 (auth/OBO), 11 (blob), 16/20 (reads/audit), 23 (AI boundary) | ✅ Yes (after 11 + 20) |
 
 **Corrected Implementation Order (canonical):**
 1. 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 ✅ (done, unchanged); 12–17 ✅ (done)
@@ -97,6 +101,9 @@
 | 03 | Scheduled agents | 02, Backend notifications | ✅ Yes |
 | 04 | Propose-before-write | 02, Web 10 | ✅ Yes |
 | 05 | Golden transcripts | 01-04 | ✅ Yes |
+| 06 | Knowledge agent & system auditor | 02, 05, Backend 16/20/24 | ✅ Yes (P2 wave) |
+| 07 | Report generation (PDF + CSV) | 02/03/05, Backend 11/24 | ✅ Yes (P2 wave) |
+| 08 | Advanced executor (Level 4) | 02/04/05/06/07, Backend 09/20/23/24 | ✅ Yes (P2 wave) |
 
 **Status:** ✅ All dependencies correct. AI specs correctly reference Backend 09 (service token).
 
@@ -111,6 +118,7 @@
 | 03 | Service token | 02, Backend 09+05 | ✅ Yes |
 | 04 | Container & deploy | 03, Infra 02-04/06 | ✅ Yes |
 | 05 | Contract testing | 01-03 | ✅ Yes |
+| 06 | Report & audit tools (v2 roster) | 02, Backend 20/24, ai 06/07 | ✅ Yes (P5 wave) |
 
 **Status:** ✅ All dependencies correct. MCP spec 03 correctly references Backend 09 (service token).
 

@@ -32,6 +32,8 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | ai | `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` | LLM keys ONLY in `ai/.env` |
 | backend | `TRIGGER_SECRET_KEY` | Backend → Trigger.dev REST enqueue (server-to-server; never exposed to web/mobile) |
 | backend | `WEBHOOK_SECRET` | Trigger.dev → backend HMAC callbacks (`X-Trigger-Signature`; read by `WebhookHmacMiddleware` as `Webhook:Secret` ?? `WEBHOOK_SECRET`) |
+| backend | `Security:StepUpTtlSeconds` / `Security:StepUpActions` | Critical-action step-up TTL + action allow-list (spec 23, PLANNED) |
+| backend | `SITE_URL` | Deployed origin (e.g. https://griot.vercel.app) used in brand email footers — NOT the sender domain (verify a domain you own; §7b) |
 | web | `VITE_TRIGGER_ACCESS_TOKEN` | Realtime WS access token — read-only Copilot stream delivery only |
 | infra | `SABABISHA_SA_PASSWORD` `SABABISHA_PG_PASSWORD` | local compose dev DB passwords |
 | backend (recovery only) | `POSTGRES_RECOVERY_TARGET_TIME` | PITR restore target, set automatically on the NEW restored Railway PostgreSQL service (`<service>-restored-YYYYMMDD-HHMM`); NOT part of normal configuration — see Database recovery contract below |

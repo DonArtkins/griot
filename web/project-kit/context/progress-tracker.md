@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10). Kit written (10 specs). **Not started.** 9 of 10 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Spec 10 is deliberately held out of P1: it needs ai 01–02 (see P2 in the roadmap).
+**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 24 → 10). Kit written (11 specs). **Not started.** 9 of 10 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Specs 10–11 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|
@@ -16,14 +16,17 @@
 | 08 | Kanban board interactions (drag-drop) | Pending | w 07, backend 06 ✅ |
 | 09 | Notifications & activity feed UI | Pending | w 07, backend 04–06 ✅ |
 | 10 | Copilot panel integration | Pending (**P2**) | w 05+07, **ai 01–02** |
+| 11 | AI Reports & Audit Center (award-grade UX) | Pending (**P2**) | w 10, **ai 06–07 + backend 24** |
 
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P1–P2)
 
-`web 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09` → *(AI hop: ai 01 → ai 02)* → `web 10`
+`web 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09` → *(AI hop: ai 01 → ai 02)* → `web 10` → *(ai 06 → ai 07, after backend 24)* → `web 11`
 
 **Why web is the next layer after backend:** it is the bootcamp's next graded week (Week 3), the primary demo surface, and every dependency is already green. **The web10↔ai02 cycle is resolved in the roadmap:** ai 02's spec references web 10 as its *consumer* (contract-design dependency, not build-order) — build ai 01–02 first, then web 10, then ai 04's propose-before-write wraps the panel's approval cards.
 
 ## Session Notes
+
+- **2026-09-11 (superpowers wave sync)** — Added web spec 11 (AI Reports & Audit Center: reports gallery + audit explorer + Copilot deep-links; award-grade UX bar: design-system tokens, WCAG AA, skeleton/empty/error states, virtualization, Lighthouse ≥ 90, `inspo/` Foundrie pass). P2 slot after ai 07/backend 24. No production code; contract-sync run.
 
 - **2026-09-10 (2)** — Layer-order audit (docs-only): tracker rebuilt — stale "no implementation until backend 04–06 live" removed (those are ✅); each spec now carries its blocker; web 10 explicitly deferred to roadmap phase P2 behind ai 01–02; canonical order `01→…→09`, AI hop, then `10` per `docs/planning/IMPLEMENTATION-ROADMAP.md`.
 - **2026-09-03** — Web kit created (AGENTS, skills, contexts, 10 specs).

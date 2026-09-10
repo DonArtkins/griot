@@ -39,7 +39,17 @@
         └─────────────────────────────┘
 ```
 
-Data flow: **Copilot prompt → `ai/` agent → (tool calls) → .NET GraphQL → SQL Server → results streamed back.** Trivial lookups short-circuit: rule-based agents answer from a cached snapshot; only genuinely generative turns call the LLM (cost control).
+Data flow: **Copilot prompt → `ai/` agent → (tool calls) → .NET GraphQL → SQL Server → results streamed back.**
+
+## 2b. AI Superpowers (2026-09-11 user wave — all PLANNED)
+
+Beyond the Copilot single-tool calls, the AI layer gains three user-commanded superpowers, each as a scoped, typed, audited capability:
+
+1. **Knowledge agent + system auditor (ai 06)** — ask anything about the system (answers grounded in real API rows with citations) and run whole-system audits (2FA coverage, stale invites, error floods, bulk-action spikes) that persist as Report rows. Read-only data plane; RBAC respected; never touches auth/OTP.
+2. **Report generation (ai 07)** — typed reports (`sprint_digest`, `task_summary`, `velocity`, `workload`, `ai_action_summary`, `custom`) as **CSV always + PDF (A4, brand tokens, text layer)**; numbers are deterministic aggregations in Node — the LLM writes only narrative; artifacts stored via blob (backend 11) and surfaced through backend 24; RBAC-exclusion lines are explicit.
+3. **Advanced executor (ai 08)** — Level-4 planning loop (PLAN → human gate → ACT → OBSERVE → summarize-as-report) for everything a logged-in user can do, with full-plan approval, idempotency keys, typed tool-output validation, confidence thresholds (clarify instead of guess), step observability, and prompt-injection-neutralized board content.
+
+**Boundaries that scaling does not move:** no OTP/auth/MFA/delete/invite/member tools ever (backend 23 is human-only; the OBO principal is 403); report-row creation rides the new scoped `CreateReport` capability (backend 24) — the OBO grant is never loosened; every run lands in ApiLogs/AuditLogs with the real user id + runId (backend 20). MCP exposes the same tools to external clients (mcp 06). Trivial lookups short-circuit: rule-based agents answer from a cached snapshot; only genuinely generative turns call the LLM (cost control).
 
 ### 2a. Orchestration contract — Trigger.dev as a separate service, orchestrated by .NET (authoritative)
 
