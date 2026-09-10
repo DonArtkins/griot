@@ -29,10 +29,17 @@ Canonical guide: `docs/communication/COMMUNICATION-GUIDE.md`.
    `{sender, to, subject, htmlContent, textContent, replyTo}` to `POST /v3/smtp/email`.
 2. AuthService: OTP email uses `SenderKey:"security"`, admin notice uses `"admin"`;
    register -> email-verify OTP to user + admin "New user registered" notice to
-   `Brevo:ContactToEmail`. All best-effort (never fail auth).
+   `Brevo:ContactToEmail`. **Best-effort is scoped to registration only** — register
+   always returns 201 and a Brevo failure there is logged, never surfaced; login sends
+   no email. `/api/auth/otp/request` surfaces delivery failure as **HTTP 502 Bad
+   Gateway** (202 on success, 401 unknown email, 429 rate-limited).
 3. Rate guard: `ratelimit:otp:request:{email}` 3/15min (AuthController, Redis) + API
    global limiter 100/min/caller. No per-recipient redis window for plain email beyond
    the route-level OTP window (facade removed with SMS/WhatsApp).
+4. Failure semantics: `BrevoEmailService` returns success/failure instead of throwing;
+   AuthService maps an OTP-send failure to `OtpRequestResult { Success = false }` and
+   AuthController returns 502 with a message. Registration emails have no such mapping —
+   they are fire-and-forget with structured logs ("Brevo rejected email to ...").
 
 ## Rate limits
 
@@ -40,6 +47,12 @@ Canonical guide: `docs/communication/COMMUNICATION-GUIDE.md`.
 |---|---|---|
 | OTP request route | 3 / 15 min per email | `ratelimit:otp:request:{email}` |
 | API global limiter | 100 / min per caller | -- |
+
+Brevo's **300 emails/day free cap is an operational budget, not a hard guarantee**:
+the OTP window throttles abusive callers but a burst of distinct verified emails (or
+shared-IP testing) can still exhaust it. When it does, `/api/auth/otp/request` returns
+502 (delivery rejected) while registration stays 201 — monitor the API log line
+"Brevo rejected email to ...".
 
 ## Docker & Deploy
 

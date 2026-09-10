@@ -232,8 +232,9 @@ app.UseExceptionHandler(appBuilder =>
 // Request-id middleware (spec 04: structured logging + stable request id on every response).
 app.Use(async (context, next) =>
 {
-    var requestId = context.Request.Headers["X-Request-Id"].FirstOrDefault()
-                    ?? Guid.NewGuid().ToString("N");
+    var requestId = context.Request.Headers["X-Request-Id"].FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(requestId))
+        requestId = Guid.NewGuid().ToString("N");
 
     context.Request.Headers["X-Request-Id"] = requestId;
     context.TraceIdentifier = requestId;

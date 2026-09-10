@@ -78,19 +78,23 @@
 
 **Implementation:**
 ```csharp
-// backend/Griot.Application/Services/DomainService.cs — GetDashboardSummaryAsync
-public async Task<DashboardSummary> GetSummaryAsync(Guid workspaceId, CancellationToken ct)
+// Planned Phase-1 shape — NOT implemented. Real seams today:
+//   IDashboardRepository.GetSummaryAsync(Guid workspaceId) (SQL read, no cache)
+//   ICacheService (Redis facade, Griot.Application/Interfaces)
+// This sample shows where the cache would sit: an application service wrapping the
+// repository with a fail-open cache-aside read. Placeholder code, illustrative only.
+public async Task<DashboardSummaryDto> GetSummaryAsync(Guid workspaceId)
 {
     var cacheKey = $"dashboard:summary:{workspaceId}";
-    
+
     // Try cache first (fail-open: Redis failure should not block request)
     try
     {
-        var cached = await _redis.StringGetAsync(cacheKey);
-        if (cached.HasValue)
+        var cached = await _cache.GetStringAsync(cacheKey);
+        if (cached is not null)
         {
             _logger.LogInformation("Dashboard cache hit for workspace {WorkspaceId}", workspaceId);
-            return JsonSerializer.Deserialize<DashboardSummary>(cached);
+            return JsonSerializer.Deserialize<DashboardSummaryDto>(cached)!;
         }
     }
     catch (Exception ex)
@@ -98,19 +102,16 @@ public async Task<DashboardSummary> GetSummaryAsync(Guid workspaceId, Cancellati
         _logger.LogWarning(ex, "Redis read failed for dashboard cache, falling back to database");
     }
     
-    // Cache miss or Redis failure → query database
-    var summary = await _db.QueryFirstAsync<DashboardSummary>(
-        "EXEC usp_GetDashboardSummary @workspaceId",
-        new { workspaceId }
-    );
-    
+    // Cache miss or Redis failure → query database (repository seam, not raw SQL here)
+    var summary = await _dashboardRepository.GetSummaryAsync(workspaceId);
+
     // Store in cache with 60s TTL (fail-open: don't block on cache write failure)
     try
     {
-        await _redis.StringSetAsync(
+        await _cache.SetStringAsync(
             cacheKey,
             JsonSerializer.Serialize(summary),
-            TimeSpan.FromSeconds(60)
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60) }
         );
     }
     catch (Exception ex)

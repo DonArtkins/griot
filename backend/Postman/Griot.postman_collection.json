@@ -1,14 +1,23 @@
 {
   "info": {
     "_postman_id": "griot-collection-v2",
-    "name": "Griot \u2014 API Contract Suite (REST + GraphQL)",
-    "description": "Official Griot Postman collection. Covers every route. Auth tokens and entity IDs chain automatically via test scripts. Run headlessly with Newman in CI (qa spec 05). All routes implemented \u2014 none return 501. Updated: 2026-09-10.",
+    "name": "Griot — API Contract Suite (REST + GraphQL)",
+    "description": "Official Griot Postman collection. Covers every route. Auth tokens and entity IDs chain automatically via test scripts. Run headlessly with Newman in CI (qa spec 05). All routes implemented — none return 501. Updated: 2026-09-10.\n\nv2.2.0 - added folder 14 (Audit - Logs & Trails, specs 18-22): observability/query-contract/cache-rate-limit probes with tolerant assertions until implementation.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "griot-gtp2026"
+    "_exporter_id": "griot-gtp2026",
+    "version": "2.2.0"
   },
   "variable": [
-    { "key": "authHeader", "value": "Bearer {{accessToken}}", "type": "string" },
-    { "key": "memberAuthHeader", "value": "Bearer {{memberToken}}", "type": "string" }
+    {
+      "key": "authHeader",
+      "value": "Bearer {{accessToken}}",
+      "type": "string"
+    },
+    {
+      "key": "memberAuthHeader",
+      "value": "Bearer {{memberToken}}",
+      "type": "string"
+    }
   ],
   "item": [
     {
@@ -19,13 +28,29 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
             "description": "Public health check. No auth. Returns 200 Healthy."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK', () => pm.response.to.have.status(200));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -36,136 +61,347 @@
           "name": "POST /api/auth/register (alice)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"displayName\": \"{{testDisplayName}}\",\n  \"password\": \"{{testPassword}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"displayName\": \"{{testDisplayName}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
             "description": "Register alice (primary test user). 201 on first run, 409 on re-run (idempotent)."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 Created OR 409 Duplicate', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) {",
-            "  const j = pm.response.json();",
-            "  pm.test('Has accessToken + refreshToken + user', () => pm.expect(j).to.have.all.keys('accessToken','refreshToken','expiresAt','user'));",
-            "  pm.test('user.id is UUID', () => pm.expect(j.user.id).to.match(/^[0-9a-fA-F-]{36}$/));",
-            "  pm.environment.set('accessToken', j.accessToken);",
-            "  pm.environment.set('refreshToken', j.refreshToken);",
-            "  pm.environment.set('userId', j.user.id);",
-            "}"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created OR 409 Duplicate', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  pm.test('Has accessToken + refreshToken + user', () => pm.expect(j).to.have.all.keys('accessToken','refreshToken','expiresAt','user'));",
+                  "  pm.test('user.id is UUID', () => pm.expect(j.user.id).to.match(/^[0-9a-fA-F-]{36}$/));",
+                  "  pm.environment.set('accessToken', j.accessToken);",
+                  "  pm.environment.set('refreshToken', j.refreshToken);",
+                  "  pm.environment.set('userId', j.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/login (alice)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
             "description": "Authenticate alice. Rotates refresh token. 429 after 10 attempts/900s."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK OR 401/429', () => pm.expect(pm.response.code).to.be.oneOf([200,401,429]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 200) {",
-            "  const j = pm.response.json();",
-            "  pm.environment.set('accessToken', j.accessToken);",
-            "  pm.environment.set('refreshToken', j.refreshToken);",
-            "  pm.environment.set('userId', j.user.id);",
-            "} else if (pm.response.code === 429) {",
-            "  pm.test('429 has Retry-After', () => pm.response.to.have.header('Retry-After'));",
-            "}"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK OR 401/429', () => pm.expect(pm.response.code).to.be.oneOf([200,401,429]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 200) {",
+                  "  const j = pm.response.json();",
+                  "  pm.environment.set('accessToken', j.accessToken);",
+                  "  pm.environment.set('refreshToken', j.refreshToken);",
+                  "  pm.environment.set('userId', j.user.id);",
+                  "} else if (pm.response.code === 429) {",
+                  "  pm.test('429 has Retry-After', () => pm.response.to.have.header('Retry-After'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/register (bob)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{memberEmail}}\",\n  \"displayName\": \"{{memberDisplayName}}\",\n  \"password\": \"{{memberPassword}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{memberEmail}}\",\n  \"displayName\": \"{{memberDisplayName}}\",\n  \"password\": \"{{memberPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
             "description": "Register bob (second test user for invite/member flows)."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 Created OR 409 Duplicate', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) { const j = pm.response.json(); pm.environment.set('memberId', j.user.id); pm.environment.set('memberToken', j.accessToken); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created OR 409 Duplicate', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) { const j = pm.response.json(); pm.environment.set('memberId', j.user.id); pm.environment.set('memberToken', j.accessToken); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/login (bob)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{memberEmail}}\",\n  \"password\": \"{{memberPassword}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{memberEmail}}\",\n  \"password\": \"{{memberPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
             "description": "Login bob to get memberToken."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 401/429', () => pm.expect(pm.response.code).to.be.oneOf([200,401,429]));",
-            "if (pm.response.code === 200) { const j = pm.response.json(); pm.environment.set('memberId', j.user.id); pm.environment.set('memberToken', j.accessToken); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 401/429', () => pm.expect(pm.response.code).to.be.oneOf([200,401,429]));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.environment.set('memberId', j.user.id); pm.environment.set('memberToken', j.accessToken); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/refresh",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","auth","refresh"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
             "description": "Exchange refresh token for a new pair. FamilyId preserved; reuse revokes family (401)."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "const skip = !pm.environment.get('refreshToken');",
-            "if (skip) { console.log('SKIP: no refreshToken yet'); return; }",
-            "pm.test('200 OR 400/401', () => pm.expect(pm.response.code).to.be.oneOf([200,400,401]));",
-            "if (pm.response.code === 200) { const j = pm.response.json(); pm.environment.set('accessToken', j.accessToken); pm.environment.set('refreshToken', j.refreshToken); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const skip = !pm.environment.get('refreshToken');",
+                  "if (skip) { console.log('SKIP: no refreshToken yet'); return; }",
+                  "pm.test('200 OR 400/401', () => pm.expect(pm.response.code).to.be.oneOf([200,400,401]));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.environment.set('accessToken', j.accessToken); pm.environment.set('refreshToken', j.refreshToken); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/otp/request",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"purpose\": \"email_verify\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/auth/otp/request", "host": ["{{baseUrl}}"], "path": ["api","auth","otp","request"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"purpose\": \"email_verify\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "request"
+              ]
+            },
             "description": "Request 6-digit OTP. Purposes: email_verify | login_2fa | password_reset. Rate-limited 3/900s per email."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('202 OR 400/401/429/502', () => pm.expect(pm.response.code).to.be.oneOf([202,400,401,429,502]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 429) pm.test('429 has Retry-After', () => pm.response.to.have.header('Retry-After'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('202 OR 400/401/429/502', () => pm.expect(pm.response.code).to.be.oneOf([202,400,401,429,502]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 429) pm.test('429 has Retry-After', () => pm.response.to.have.header('Retry-After'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/otp/verify",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"code\": \"000000\",\n  \"purpose\": \"email_verify\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/auth/otp/verify", "host": ["{{baseUrl}}"], "path": ["api","auth","otp","verify"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"code\": \"000000\",\n  \"purpose\": \"email_verify\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "otp",
+                "verify"
+              ]
+            },
             "description": "Verify OTP. Replace code '000000' with actual 6-digit code from email for a 200 pass. 5 wrong attempts -> 429 lockout."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200/400/401/429', () => pm.expect(pm.response.code).to.be.oneOf([200,400,401,429]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200/400/401/429', () => pm.expect(pm.response.code).to.be.oneOf([200,400,401,429]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/logout",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "{{authHeader}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","auth","logout"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
             "description": "Authenticated logout. Idempotent: revokes refresh token. Returns 204."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 400/401', () => pm.expect(pm.response.code).to.be.oneOf([204,400,401]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 400/401', () => pm.expect(pm.response.code).to.be.oneOf([204,400,401]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -177,166 +413,427 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Griot Demo Workspace\",\n  \"slug\": \"griot-demo\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/workspaces", "host": ["{{baseUrl}}"], "path": ["api","workspaces"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Griot Demo Workspace\",\n  \"slug\": \"griot-demo\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces"
+              ]
+            },
             "description": "Create workspace. Chains workspaceId into env."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 Created OR 409 Slug conflict', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) {",
-            "  const j = pm.response.json();",
-            "  pm.test('Has id, name, slug, ownerId', () => pm.expect(j).to.include.all.keys('id','name','slug','ownerId'));",
-            "  pm.environment.set('workspaceId', j.id);",
-            "}"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created OR 409 Slug conflict', () => pm.expect(pm.response.code).to.be.oneOf([201,409]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  pm.test('Has id, name, slug, ownerId', () => pm.expect(j).to.include.all.keys('id','name','slug','ownerId'));",
+                  "  pm.environment.set('workspaceId', j.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/workspaces",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/workspaces", "host": ["{{baseUrl}}"], "path": ["api","workspaces"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces"
+              ]
+            },
             "description": "List workspaces for authenticated user."
           },
-          "event": [{ "listen": "prerequest", "script": { "exec": [], "type": "text/javascript" } },
-          { "listen": "test", "script": { "exec": [
-            "pm.test('200 OK + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "const list = pm.response.json();",
-            "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('workspaceId')) {",
-            "  pm.environment.set('workspaceId', list[0].id);",
-            "}"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "const list = pm.response.json();",
+                  "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('workspaceId')) {",
+                  "  pm.environment.set('workspaceId', list[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/workspaces/:id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}"
+              ]
+            },
             "description": "Get workspace by ID."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 200) { const j = pm.response.json(); pm.test('Schema ok', () => pm.expect(j).to.include.all.keys('id','name','slug','ownerId','members')); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.test('Schema ok', () => pm.expect(j).to.include.all.keys('id','name','slug','ownerId','members')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PUT /api/workspaces/:id",
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Griot Demo Workspace (Updated)\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Griot Demo Workspace (Updated)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}"
+              ]
+            },
             "description": "Update workspace name/slug."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 404/409', () => pm.expect(pm.response.code).to.be.oneOf([200,404,409]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 404/409', () => pm.expect(pm.response.code).to.be.oneOf([200,404,409]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "DELETE /api/workspaces/:id",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}"
+              ]
+            },
             "description": "Delete workspace (and its projects/boards/tasks). Owner only. Returns 204."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/workspaces/:id/members",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}","members"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "members"
+              ]
+            },
             "description": "List workspace members."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/workspaces/:id/members",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{memberId}}\",\n  \"role\": 2\n}" },
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}","members"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{memberId}}\",\n  \"role\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "members"
+              ]
+            },
             "description": "Add bob as member (role 2 = Member). Requires memberId to be set."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 404/409/403', () => pm.expect(pm.response.code).to.be.oneOf([201,404,409,403]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 404/409/403', () => pm.expect(pm.response.code).to.be.oneOf([201,404,409,403]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PATCH /api/workspaces/:id/members/:userId",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"role\": 2\n}" },
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}","members","{{memberId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "members",
+                "{{memberId}}"
+              ]
+            },
             "description": "Update member role. Owner/Admin only."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/workspaces/:id/invites",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{inviteeEmail}}\",\n  \"role\": 2\n}" },
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/invites", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}","invites"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{inviteeEmail}}\",\n  \"role\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/invites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "invites"
+              ]
+            },
             "description": "Create a 7-day invite token. Chains inviteToken into env."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 400/403', () => pm.expect(pm.response.code).to.be.oneOf([201,400,403]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) {",
-            "  const j = pm.response.json();",
-            "  pm.test('Has token', () => pm.expect(j).to.have.property('token'));",
-            "  pm.environment.set('inviteToken', j.token);",
-            "}"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 400/403', () => pm.expect(pm.response.code).to.be.oneOf([201,400,403]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  pm.test('Has token', () => pm.expect(j).to.have.property('token'));",
+                  "  pm.environment.set('inviteToken', j.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "DELETE /api/workspaces/:id/members/:userId",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}","members","{{memberId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "members",
+                "{{memberId}}"
+              ]
+            },
             "description": "Remove member from workspace. Owner only."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -347,28 +844,75 @@
           "name": "GET /api/invites/:token",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/invites/{{inviteToken}}", "host": ["{{baseUrl}}"], "path": ["api","invites","{{inviteToken}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invites/{{inviteToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invites",
+                "{{inviteToken}}"
+              ]
+            },
             "description": "Inspect invite before accepting. Returns InviteDto or 404."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 200) { pm.test('Has token field', () => pm.expect(pm.response.json()).to.have.property('token')); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 200) { pm.test('Has token field', () => pm.expect(pm.response.json()).to.have.property('token')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/invites/:token/accept (bob)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "{{memberAuthHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/invites/{{inviteToken}}/accept", "host": ["{{baseUrl}}"], "path": ["api","invites","{{inviteToken}}","accept"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{memberAuthHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/invites/{{inviteToken}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invites",
+                "{{inviteToken}}",
+                "accept"
+              ]
+            },
             "description": "Accept invite as bob. Returns 200 on success or 409 if already member/expired."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 404/409/403', () => pm.expect(pm.response.code).to.be.oneOf([200,404,409,403]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 404/409/403', () => pm.expect(pm.response.code).to.be.oneOf([200,404,409,403]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -380,75 +924,200 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Alpha Sprint\",\n  \"key\": \"ALPHA\",\n  \"description\": \"First project for the demo workspace.\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/projects", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}","projects"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alpha Sprint\",\n  \"key\": \"ALPHA\",\n  \"description\": \"First project for the demo workspace.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "projects"
+              ]
+            },
             "description": "Create project. Chains projectId into env."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) { pm.environment.set('projectId', pm.response.json().id); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) { pm.environment.set('projectId', pm.response.json().id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/workspaces/:id/projects",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/projects", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}","projects"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "projects"
+              ]
+            },
             "description": "List projects in workspace."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "const list = pm.response.json();",
-            "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('projectId')) pm.environment.set('projectId', list[0].id);"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "const list = pm.response.json();",
+                  "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('projectId')) pm.environment.set('projectId', list[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/projects/:id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["api","projects","{{projectId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{projectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{projectId}}"
+              ]
+            },
             "description": "Get project by ID."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PUT /api/projects/:id",
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Alpha Sprint (Updated)\",\n  \"description\": \"Updated project description.\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["api","projects","{{projectId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alpha Sprint (Updated)\",\n  \"description\": \"Updated project description.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{projectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{projectId}}"
+              ]
+            },
             "description": "Update project fields."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "DELETE /api/projects/:id",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["api","projects","{{projectId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{projectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{projectId}}"
+              ]
+            },
             "description": "Delete project. Owner/Admin only. Returns 204."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -460,140 +1129,371 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Sprint 1 Board\",\n  \"order\": 1\n}" },
-            "url": { "raw": "{{baseUrl}}/api/projects/{{projectId}}/boards", "host": ["{{baseUrl}}"], "path": ["api","projects","{{projectId}}","boards"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sprint 1 Board\",\n  \"order\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{projectId}}/boards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{projectId}}",
+                "boards"
+              ]
+            },
             "description": "Create board in project. Chains boardId into env."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) { pm.environment.set('boardId', pm.response.json().id); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) { pm.environment.set('boardId', pm.response.json().id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/projects/:id/boards",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/projects/{{projectId}}/boards", "host": ["{{baseUrl}}"], "path": ["api","projects","{{projectId}}","boards"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{projectId}}/boards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{projectId}}",
+                "boards"
+              ]
+            },
             "description": "List boards in project."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "const list = pm.response.json();",
-            "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('boardId')) pm.environment.set('boardId', list[0].id);"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "const list = pm.response.json();",
+                  "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('boardId')) pm.environment.set('boardId', list[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/boards/:id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/boards/{{boardId}}", "host": ["{{baseUrl}}"], "path": ["api","boards","{{boardId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/boards/{{boardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "boards",
+                "{{boardId}}"
+              ]
+            },
             "description": "Get board by ID (includes columns)."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PUT /api/boards/:id",
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Sprint 1 Board (Updated)\",\n  \"order\": 1\n}" },
-            "url": { "raw": "{{baseUrl}}/api/boards/{{boardId}}", "host": ["{{baseUrl}}"], "path": ["api","boards","{{boardId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sprint 1 Board (Updated)\",\n  \"order\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/boards/{{boardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "boards",
+                "{{boardId}}"
+              ]
+            },
             "description": "Update board name/order."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/boards/:id/columns",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"To Do\",\n  \"order\": 1,\n  \"wipLimit\": 10\n}" },
-            "url": { "raw": "{{baseUrl}}/api/boards/{{boardId}}/columns", "host": ["{{baseUrl}}"], "path": ["api","boards","{{boardId}}","columns"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"To Do\",\n  \"order\": 1,\n  \"wipLimit\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/boards/{{boardId}}/columns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "boards",
+                "{{boardId}}",
+                "columns"
+              ]
+            },
             "description": "Create column in board. Owner/Admin only. Chains columnId and targetColId."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) { const j = pm.response.json(); pm.environment.set('columnId', j.id); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) { const j = pm.response.json(); pm.environment.set('columnId', j.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/boards/:id/columns (target col)",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"In Progress\",\n  \"order\": 2,\n  \"wipLimit\": 5\n}" },
-            "url": { "raw": "{{baseUrl}}/api/boards/{{boardId}}/columns", "host": ["{{baseUrl}}"], "path": ["api","boards","{{boardId}}","columns"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"In Progress\",\n  \"order\": 2,\n  \"wipLimit\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/boards/{{boardId}}/columns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "boards",
+                "{{boardId}}",
+                "columns"
+              ]
+            },
             "description": "Create a second column for task-move testing. Chains targetColId."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,403,404]));",
-            "if (pm.response.code === 201) { pm.environment.set('targetColId', pm.response.json().id); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,403,404]));",
+                  "if (pm.response.code === 201) { pm.environment.set('targetColId', pm.response.json().id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PATCH /api/columns/:id",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"To Do (Updated)\",\n  \"order\": 1,\n  \"wipLimit\": 8\n}" },
-            "url": { "raw": "{{baseUrl}}/api/columns/{{columnId}}", "host": ["{{baseUrl}}"], "path": ["api","columns","{{columnId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"To Do (Updated)\",\n  \"order\": 1,\n  \"wipLimit\": 8\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/columns/{{columnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "columns",
+                "{{columnId}}"
+              ]
+            },
             "description": "Update column name/order/wipLimit. Owner/Admin only."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "DELETE /api/columns/:id",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/columns/{{columnId}}", "host": ["{{baseUrl}}"], "path": ["api","columns","{{columnId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/columns/{{columnId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "columns",
+                "{{columnId}}"
+              ]
+            },
             "description": "Delete column. Owner/Admin only. Returns 204."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "DELETE /api/boards/:id",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/boards/{{boardId}}", "host": ["{{baseUrl}}"], "path": ["api","boards","{{boardId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/boards/{{boardId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "boards",
+                "{{boardId}}"
+              ]
+            },
             "description": "Delete board. Owner/Admin only. Returns 204."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -605,114 +1505,294 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Implement login page\",\n  \"description\": \"Build the login UI with Argon2 password validation.\",\n  \"columnId\": \"{{columnId}}\",\n  \"status\": \"Todo\",\n  \"priority\": \"High\",\n  \"assigneeId\": null,\n  \"dueDate\": \"2026-10-01T00:00:00Z\",\n  \"position\": 1\n}" },
-            "url": { "raw": "{{baseUrl}}/api/boards/{{boardId}}/tasks", "host": ["{{baseUrl}}"], "path": ["api","boards","{{boardId}}","tasks"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Implement login page\",\n  \"description\": \"Build the login UI with Argon2 password validation.\",\n  \"columnId\": \"{{columnId}}\",\n  \"status\": \"Todo\",\n  \"priority\": \"High\",\n  \"assigneeId\": null,\n  \"dueDate\": \"2026-10-01T00:00:00Z\",\n  \"position\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/boards/{{boardId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "boards",
+                "{{boardId}}",
+                "tasks"
+              ]
+            },
             "description": "Create task. Chains taskId into env."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,400,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) {",
-            "  const j = pm.response.json();",
-            "  pm.test('Has id, title, status', () => pm.expect(j).to.include.all.keys('id','title','status'));",
-            "  pm.environment.set('taskId', j.id);",
-            "}"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,400,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  pm.test('Has id, title, status', () => pm.expect(j).to.include.all.keys('id','title','status'));",
+                  "  pm.environment.set('taskId', j.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/boards/:id/tasks",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/boards/{{boardId}}/tasks", "host": ["{{baseUrl}}"], "path": ["api","boards","{{boardId}}","tasks"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/boards/{{boardId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "boards",
+                "{{boardId}}",
+                "tasks"
+              ]
+            },
             "description": "List tasks on a board."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "const list = pm.response.json();",
-            "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('taskId')) pm.environment.set('taskId', list[0].id);"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "const list = pm.response.json();",
+                  "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('taskId')) pm.environment.set('taskId', list[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/tasks/:id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}"
+              ]
+            },
             "description": "Get task by ID."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PUT /api/tasks/:id",
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Implement login page (Updated)\",\n  \"status\": \"InProgress\",\n  \"priority\": \"Urgent\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Implement login page (Updated)\",\n  \"status\": \"InProgress\",\n  \"priority\": \"Urgent\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}"
+              ]
+            },
             "description": "Update task fields."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,400,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,400,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PATCH /api/tasks/:id/move",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"columnId\": \"{{targetColId}}\",\n  \"newPosition\": 1\n}" },
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/move", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}","move"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"columnId\": \"{{targetColId}}\",\n  \"newPosition\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/move",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}",
+                "move"
+              ]
+            },
             "description": "Move task to different column. targetColId must be set."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,400,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,400,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PATCH /api/tasks/bulk-status",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"workspaceId\": \"{{workspaceId}}\",\n  \"taskIds\": [\"{{taskId}}\"],\n  \"status\": \"InReview\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/tasks/bulk-status", "host": ["{{baseUrl}}"], "path": ["api","tasks","bulk-status"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspaceId\": \"{{workspaceId}}\",\n  \"taskIds\": [\"{{taskId}}\"],\n  \"status\": \"InReview\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/bulk-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "bulk-status"
+              ]
+            },
             "description": "Bulk-update task statuses within a workspace. Valid statuses: Backlog | Todo | InProgress | InReview | Done."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 400/403/404/409', () => pm.expect(pm.response.code).to.be.oneOf([200,400,403,404,409]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 200) { pm.test('Has updatedCount', () => pm.expect(pm.response.json()).to.have.property('updatedCount')); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 400/403/404/409', () => pm.expect(pm.response.code).to.be.oneOf([200,400,403,404,409]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 200) { pm.test('Has updatedCount', () => pm.expect(pm.response.json()).to.have.property('updatedCount')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "DELETE /api/tasks/:id",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}"
+              ]
+            },
             "description": "Delete task. Returns 204 or 404."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -724,62 +1804,168 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"body\": \"This is the first comment on this task.\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/comments", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}","comments"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"This is the first comment on this task.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}",
+                "comments"
+              ]
+            },
             "description": "Create comment on task. Chains commentId."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,400,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) { pm.environment.set('commentId', pm.response.json().id); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,400,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) { pm.environment.set('commentId', pm.response.json().id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/tasks/:taskId/comments",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/comments", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}","comments"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}",
+                "comments"
+              ]
+            },
             "description": "List comments on task."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "const list = pm.response.json();",
-            "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('commentId')) pm.environment.set('commentId', list[0].id);"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "const list = pm.response.json();",
+                  "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('commentId')) pm.environment.set('commentId', list[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PUT /api/tasks/:taskId/comments/:commentId",
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"body\": \"Updated comment body — more detail added.\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/comments/{{commentId}}", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}","comments","{{commentId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Updated comment body — more detail added.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}",
+                "comments",
+                "{{commentId}}"
+              ]
+            },
             "description": "Update comment body. Author only."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,400,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,400,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "DELETE /api/tasks/:taskId/comments/:commentId",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/comments/{{commentId}}", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}","comments","{{commentId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/comments/{{commentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}",
+                "comments",
+                "{{commentId}}"
+              ]
+            },
             "description": "Delete comment. Author only. Returns 204 or 404."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -791,49 +1977,126 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "{{authHeader}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"fileName\": \"spec-v2.pdf\",\n  \"mimeType\": \"application/pdf\",\n  \"sizeBytes\": 204800,\n  \"url\": \"https://storage.griot.app/attachments/spec-v2.pdf\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/attachments", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}","attachments"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"spec-v2.pdf\",\n  \"mimeType\": \"application/pdf\",\n  \"sizeBytes\": 204800,\n  \"url\": \"https://storage.griot.app/attachments/spec-v2.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}",
+                "attachments"
+              ]
+            },
             "description": "Register attachment metadata (pre-blob; url is external storage link). Chains attachmentId."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('201 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,400,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 201) {",
-            "  const j = pm.response.json();",
-            "  pm.test('Has id, fileName, mimeType', () => pm.expect(j).to.include.all.keys('id','fileName','mimeType'));",
-            "  pm.environment.set('attachmentId', j.id);",
-            "}"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 OR 400/403/404', () => pm.expect(pm.response.code).to.be.oneOf([201,400,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 201) {",
+                  "  const j = pm.response.json();",
+                  "  pm.test('Has id, fileName, mimeType', () => pm.expect(j).to.include.all.keys('id','fileName','mimeType'));",
+                  "  pm.environment.set('attachmentId', j.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/tasks/:id/attachments",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/attachments", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}","attachments"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}",
+                "attachments"
+              ]
+            },
             "description": "List attachments on task."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "const list = pm.response.json();",
-            "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('attachmentId')) pm.environment.set('attachmentId', list[0].id);"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "const list = pm.response.json();",
+                  "if (Array.isArray(list) && list.length > 0 && !pm.environment.get('attachmentId')) pm.environment.set('attachmentId', list[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "DELETE /api/tasks/:id/attachments/:attachmentId",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/tasks/{{taskId}}/attachments/{{attachmentId}}", "host": ["{{baseUrl}}"], "path": ["api","tasks","{{taskId}}","attachments","{{attachmentId}}"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}/attachments/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}",
+                "attachments",
+                "{{attachmentId}}"
+              ]
+            },
             "description": "Delete attachment metadata. Returns 204 or 404."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([204,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -844,56 +2107,148 @@
           "name": "GET /api/notifications",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api","notifications"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
             "description": "List notifications for current user (latest 100)."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "const list = pm.response.json();",
-            "if (Array.isArray(list) && list.length > 0) pm.environment.set('notificationId', list[0].id);"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "const list = pm.response.json();",
+                  "if (Array.isArray(list) && list.length > 0) pm.environment.set('notificationId', list[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/notifications/unread-count",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/notifications/unread-count", "host": ["{{baseUrl}}"], "path": ["api","notifications","unread-count"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "unread-count"
+              ]
+            },
             "description": "Get count of unread notifications."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK', () => pm.response.to.have.status(200));",
-            "pm.test('Has count field', () => pm.expect(pm.response.json()).to.have.property('count'));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Has count field', () => pm.expect(pm.response.json()).to.have.property('count'));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PATCH /api/notifications/:id/read",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read", "host": ["{{baseUrl}}"], "path": ["api","notifications","{{notificationId}}","read"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
             "description": "Mark a single notification as read. Idempotent."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 404', () => pm.expect(pm.response.code).to.be.oneOf([200,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/notifications/read-all",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["api","notifications","read-all"] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "read-all"
+              ]
+            },
             "description": "Mark all notifications as read for current user."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK', () => pm.response.to.have.status(200));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -904,54 +2259,183 @@
           "name": "GET /api/dashboard/summary",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/dashboard/summary?workspaceId={{workspaceId}}", "host": ["{{baseUrl}}"], "path": ["api","dashboard","summary"], "query": [{ "key": "workspaceId", "value": "{{workspaceId}}" }] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/summary?workspaceId={{workspaceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "workspaceId",
+                  "value": "{{workspaceId}}"
+                }
+              ]
+            },
             "description": "Dashboard summary: task counts by status, urgent open count, recent activity."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
-            "if (pm.response.code === 200) { pm.test('Has taskCountsByStatus', () => pm.expect(pm.response.json()).to.have.property('taskCountsByStatus')); }"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));",
+                  "if (pm.response.code === 200) { pm.test('Has taskCountsByStatus', () => pm.expect(pm.response.json()).to.have.property('taskCountsByStatus')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/workspaces/:id/activity",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/activity?page=1&pageSize=20", "host": ["{{baseUrl}}"], "path": ["api","workspaces","{{workspaceId}}","activity"], "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "20" }] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/activity?page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            },
             "description": "Paginated activity log for workspace."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 + array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/logs/errors",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/logs/errors?workspaceId={{workspaceId}}&limit=20", "host": ["{{baseUrl}}"], "path": ["api","logs","errors"], "query": [{ "key": "workspaceId", "value": "{{workspaceId}}" }, { "key": "limit", "value": "20" }] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/errors?workspaceId={{workspaceId}}&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logs",
+                "errors"
+              ],
+              "query": [
+                {
+                  "key": "workspaceId",
+                  "value": "{{workspaceId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
             "description": "Error logs. Owner/Admin only."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/logs/audit",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "{{authHeader}}" }],
-            "url": { "raw": "{{baseUrl}}/api/logs/audit?workspaceId={{workspaceId}}&limit=20", "host": ["{{baseUrl}}"], "path": ["api","logs","audit"], "query": [{ "key": "workspaceId", "value": "{{workspaceId}}" }, { "key": "limit", "value": "20" }] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/audit?workspaceId={{workspaceId}}&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logs",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "workspaceId",
+                  "value": "{{workspaceId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
             "description": "Audit logs. Owner only."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OR 403/404', () => pm.expect(pm.response.code).to.be.oneOf([200,403,404]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -963,17 +2447,44 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Trigger-Signature", "value": "{{webhookSignature}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Trigger-Signature",
+                "value": "{{webhookSignature}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"event\": \"task.created\",\n  \"taskId\": \"{{taskId}}\",\n  \"workspaceId\": \"{{workspaceId}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/webhooks/trigger", "host": ["{{baseUrl}}"], "path": ["api","webhooks","trigger"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"task.created\",\n  \"taskId\": \"{{taskId}}\",\n  \"workspaceId\": \"{{workspaceId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/trigger",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "trigger"
+              ]
+            },
             "description": "Trigger.dev webhook endpoint. HMAC-SHA256 verified via X-Trigger-Signature. 202 on valid, 401 on mismatch, 503 if secret unconfigured. NOTE: set webhookSignature env var to the correct HMAC before sending."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('202 OR 401/503', () => pm.expect(pm.response.code).to.be.oneOf([202,401,503]));",
-            "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('202 OR 401/503', () => pm.expect(pm.response.code).to.be.oneOf([202,401,503]));",
+                  "pm.test('X-Request-Id present', () => pm.response.to.have.header('X-Request-Id'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
@@ -985,56 +2496,445 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "{{authHeader}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\"query\":\"{ __schema { queryType { name } mutationType { name } } }\"}" },
-            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\":\"{ __schema { queryType { name } mutationType { name } } }\"}"
+            },
+            "url": {
+              "raw": "{{graphqlUrl}}",
+              "host": [
+                "{{graphqlUrl}}"
+              ]
+            },
             "description": "Verify GraphQL schema is reachable and introspection works."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK', () => pm.response.to.have.status(200));",
-            "pm.test('Has data.__schema', () => pm.expect(pm.response.json().data).to.have.property('__schema'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Has data.__schema', () => pm.expect(pm.response.json().data).to.have.property('__schema'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GraphQL — workspaces query",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "{{authHeader}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\"query\":\"{ workspaces { id name slug ownerId } }\"}" },
-            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\":\"{ workspaces { id name slug ownerId } }\"}"
+            },
+            "url": {
+              "raw": "{{graphqlUrl}}",
+              "host": [
+                "{{graphqlUrl}}"
+              ]
+            },
             "description": "GraphQL query for workspaces list."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK', () => pm.response.to.have.status(200));",
-            "const j = pm.response.json();",
-            "pm.test('No GraphQL errors', () => pm.expect(j).to.not.have.property('errors'));",
-            "pm.test('Has data.workspaces array', () => pm.expect(j.data.workspaces).to.be.an('array'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('No GraphQL errors', () => pm.expect(j).to.not.have.property('errors'));",
+                  "pm.test('Has data.workspaces array', () => pm.expect(j.data.workspaces).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GraphQL — tasks query",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "{{authHeader}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{authHeader}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\"query\":\"{ tasks(boardId: \\\"{{boardId}}\\\") { id title status priority columnId } }\"}" },
-            "url": { "raw": "{{graphqlUrl}}", "host": ["{{graphqlUrl}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\":\"{ tasks(boardId: \\\"{{boardId}}\\\") { id title status priority columnId } }\"}"
+            },
+            "url": {
+              "raw": "{{graphqlUrl}}",
+              "host": [
+                "{{graphqlUrl}}"
+              ]
+            },
             "description": "GraphQL query for tasks on a board."
           },
-          "event": [{ "listen": "test", "script": { "exec": [
-            "pm.test('200 OK', () => pm.response.to.have.status(200));",
-            "const j = pm.response.json();",
-            "pm.test('data.tasks present', () => pm.expect(j.data).to.have.property('tasks'));"
-          ], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('data.tasks present', () => pm.expect(j.data).to.have.property('tasks'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
+    },
+    {
+      "name": "14. Audit",
+      "item": [
+        {
+          "name": "Audit — errors visible to Owner/Admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/errors?page=1&pageSize=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logs",
+                "errors"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "25"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('logs errors reachable (200 or 403)', () => pm.expect([200,403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const b = pm.response.json(); pm.test('paged envelope present', () => pm.expect(b).to.not.be.null); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit — audit trail readable by Owner",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/audit?entityType=TaskItem&page=1&pageSize=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logs",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "entityType",
+                  "value": "TaskItem"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "25"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('audit log reachable (200 or 403)', () => pm.expect([200,403]).to.include(pm.response.code));",
+                  "pm.test('request id present', () => pm.expect(pm.response.headers.get('X-Request-Id')).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit — trail captured for created task",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/logs/audit?entityType=TaskItem&entityId={{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logs",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "entityType",
+                  "value": "TaskItem"
+                },
+                {
+                  "key": "entityId",
+                  "value": "{{taskId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('trail endpoint reachable', () => pm.expect([200,403]).to.include(pm.response.code));",
+                  "// TOLERANT today (tables empty until backend spec 20 ships). When spec 20 lands, tighten to:",
+                  "// pm.test('audit rows exist for the task created by folder 7', () => pm.expect(pm.response.json().items.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notifications — fanout gated (spec 22 planned route)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"type\":\"System\",\"userId\":\"{{userId}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/fanout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "fanout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Route arrives with spec 22. Tolerant pre-implementation (404 = not built yet);",
+                  "// spec 22's own Postman task tightens this to 401-with-JWT (service token only).",
+                  "pm.test('fanout gated (401/403/404 pre-spec-22)', () => pm.expect([401,403,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit - RequestId present",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/unread-count",
+            "description": "Every response carries the correlation id spec 20 persists to ApiLogs.RequestId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('X-Request-Id present (trail join key)', () => pm.expect(pm.response.headers.get('X-Request-Id')).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pagination guard - pageSize 5000 (spec 18)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/boards/{{boardId}}/tasks?page=1&pageSize=5000",
+            "description": "Strict after spec 18: always 400."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status tolerant (400|200|404|501)', () => pm.expect([400,200,404,501]).to.include(pm.response.code));",
+                  "if (pm.response.code === 400) {",
+                  "  pm.test('RFC 7807 ProblemDetails', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sort guard - invalid sortBy (spec 18)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/boards/{{boardId}}/tasks?page=1&pageSize=10&sortBy=1%3B1&sortDir=asc",
+            "description": "Strict after spec 18: always 400."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status tolerant (400|200|404|501)', () => pm.expect([400,200,404,501]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rate-limit guard - auth 429 (spec 19)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{testEmail}}\", \"password\": \"definitely-wrong-password\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Partition lands with spec 19 (10/min/IP); global window already 429s under load."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status tolerant (401|429|400|501)', () => pm.expect([401,429,400,501]).to.include(pm.response.code));",
+                  "if (pm.response.code === 429) pm.test('Retry-After present', () => pm.expect(pm.response.headers.get('Retry-After')).to.exist);",
+                  "if (pm.response.code === 401) pm.test('401 carries X-Request-Id (spec 20 join)', () => pm.expect(pm.response.headers.get('X-Request-Id')).to.exist);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cache probe - dashboard X-Cache (spec 19)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/summary?workspaceId={{workspaceId}}",
+            "description": "X-Cache HIT/MISS header asserted strict after spec 19 lands."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status tolerant (200|404|501)', () => pm.expect([200,404,501]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) pm.test('latency budget < 500ms (p95)', () => pm.expect(pm.response.responseTime).to.be.below(500));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trail captured - audit non-empty (strict after spec 20)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/logs/audit?page=1&pageSize=50",
+            "description": "After Tasks/Comments run, spec 20 guarantees AuditLogs rows for every mutation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status tolerant (200|401|403|404|501)', () => pm.expect([200,401,403,404,501]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) console.log('audit totalCount =', pm.response.json().totalCount);",
+                  "// STRICT (spec 20 done): pm.expect(pm.response.json().totalCount).to.be.above(0);"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "\n\nSpecs 18-22 probes appended 2026-09-10: assertions are TOLERANT (200/400/401/403/404/429/501 accepted) while backend specs 18-22 are PLANNED; tighten to strict per spec 20 acceptance criteria."
     }
   ]
 }

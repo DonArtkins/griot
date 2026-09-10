@@ -17,6 +17,10 @@ Stack: Trigger.dev v3 (Node 20, own lockfile), `@trigger.dev/sdk`, LLM SDK (Anth
 
 Root shared skills + `ai/.agents/skills/` (`trigger-dev-tasks`, `ai-agent-security`).
 
+## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
+
+**Phase P2 — AI hop.** Hard-blocked by backend **09** (`GRIOT_SERVICE_TOKEN` + HMAC webhook — the only legal data path). Starts after P1 (web 01–09). Own order: **01 → 02 → [web 10] → 03 → 04 → 05**: web 10 sits inside this phase because it consumes ai 02's realtime stream, while ai 04's propose-before-write wraps web 10's approval cards. ai 02's "web 10" dependency is contract-design, not build-order. Entry branch: `feature/ai/01-trigger-setup`. Track state in `ai/project-kit/context/progress-tracker.md`.
+
 ## Verification Gates
 
 - `npm run lint && npm run typecheck && npm test` green (golden transcripts with a MOCKED LLM - no network in CI).
@@ -29,8 +33,8 @@ Root shared skills + `ai/.agents/skills/` (`trigger-dev-tasks`, `ai-agent-securi
 2. Mutations are proposed -> approved -> executed by the app, never by the agent.
 3. LLM keys only in `ai/.env`; never in web or backend.
 4. **Trigger.dev is a compute/orchestration adapter, never a data owner.** Every result is written back by calling the .NET API (`POST /api/webhooks/trigger` HMAC or service-token REST); `ai/` never writes to SQL Server, never holds DB credentials.
-5. **`ai/` tasks are triggered only by the .NET backend** (Trigger.dev REST/SDK, server-to-server `TRIGGER_SECRET_KEY`). Web/mobile never trigger or poll Trigger.dev — they call the .NET API, which enqueues tasks. The only direct web↔Trigger channel is the Copilot realtime stream (scoped access token, read-only delivery).
-6. Scheduled agents (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`) run on Trigger.dev schedules but persist their output through the same .NET-only path.
+5. **`ai/` tasks are triggered only by the .NET backend or by a Trigger.dev schedule** (backend side: Trigger.dev REST/SDK, server-to-server `TRIGGER_SECRET_KEY`). Web/mobile never trigger or poll Trigger.dev — they call the .NET API, which enqueues tasks. The only direct web↔Trigger channel is the Copilot realtime stream (scoped access token, read-only delivery).
+6. **Scheduled agents are the ONE explicit exception to "the backend is the only trigger."** `dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder` are started by Trigger.dev's own cron scheduler (no user request exists to originate them), NOT by the .NET backend. They are still not data owners: every scheduled run reads through backend GraphQL with `GRIOT_SERVICE_TOKEN` and persists its output through the same .NET-only write-back path (`POST /api/webhooks/trigger` HMAC or service-token REST). No other trigger source exists.
 
 See `research/ai-integration.md` §2a for the authoritative orchestration contract.
 

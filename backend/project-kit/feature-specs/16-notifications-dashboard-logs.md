@@ -16,3 +16,16 @@ Notifications (list/unread-count/read-all), dashboard summary (EF via `DomainSer
 - [x] Dashboard summary + activity scoped to workspace membership
 - [x] Error/audit logs role-gated (Owner/Admin, Owner-only)
 - [x] No 501 across notifications/dashboard/logs
+
+## Amendment (spec 20 — observability pipeline, 2026-09-10)
+
+The `GET /api/logs/*` routes are implemented and role-gated, but the 2026-09-10 audit
+(`docs/observability/LOGGING-AUDIT-REPORT.md`) proved the underlying tables have
+**zero writers** — today they can only return empty arrays, and the activity feed has
+no producer either. Backend spec **20** (`20-observability-logging-pipeline.md`) is the
+planned owner of the write side: `ApiLoggingMiddleware` → `ApiLogs`, exception handler →
+`ErrorLogs` (RFC 7807), `IAuditService` → `AuditLogs` + `ActivityLogs` (which also feeds
+this spec's activity endpoint with real rows). This spec's acceptance stays ✅ as
+implemented (routes, gates, scoping); spec 20's acceptance extends it with "the
+endpoints return persisted rows." Query extensions (`fixStatus`, `actorId`, sorting,
+spec-18 caps) belong to specs 18/20.

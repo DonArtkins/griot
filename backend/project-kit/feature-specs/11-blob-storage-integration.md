@@ -1,6 +1,6 @@
-# Backend Feature 11 — Blob Storage Integration (Vercel Blob → R2 Migration Path)
+# Backend Feature 11 — Blob Storage Integration (Cloudinary → R2 Migration Path)
 
-> Production-ready attachment storage with Vercel Blob (v1) and migration path to Cloudflare R2 (production scale). Replaces local/disk storage with cloud-native blob store + CDN delivery.
+> Production-ready attachment storage with Cloudinary via `CloudinaryDotNet` (v1) and migration path to Cloudflare R2 (production scale). Replaces local/disk storage with cloud-native blob store + CDN delivery.
 
 **Status:** Planning  
 **Priority:** **CRITICAL** (production blocker — must ship before public launch)  
@@ -50,19 +50,19 @@
 
 | Solution | Storage | Egress | Integration | v1 fit? |
 |---|---|---|---|---|
-| **Vercel Blob** | $0.023/GB | $0.05/GB | `@vercel/blob` SDK, 1-day setup | ✅ **v1** |
+| **Cloudinary** | ~25 free credits (≈25 GB storage + 25 GB bandwidth/mo), then ~$0.25/credit-class overage | CDN bandwidth included in credits | `CloudinaryDotNet` NuGet (.NET-native), 1-day setup | ✅ **v1** |
 | **Cloudflare R2** | $0.015/GB | **$0 (FREE)** | S3-compatible API, 1-day migration | ✅ **v2** |
 | AWS S3 | $0.023/GB | $0.09/GB (6× R2) | Mature ecosystem | ❌ expensive egress |
 | Azure Blob | $0.023/GB | $0.087/GB | .NET native SDK | ❌ similar to S3 |
 
 **Decision:**  
-1. **Ship v1 with Vercel Blob on free Hobby tier** (1 GB storage + 10 GB transfer/month included with existing Vercel account — no additional cost)
-2. **Monitor egress usage** — Vercel dashboard tracks storage + transfer; set alert at 8 GB/month transfer
-3. **Migrate to Cloudflare R2 for production scale** when egress consistently exceeds 100 GB/month (cost savings: ~$50/month per TB egress vs Vercel's $0.05/GB)
+1. **Ship v1 with Cloudinary on the free tier** (~25 credits/month: 25 GB storage + 25 GB bandwidth — no additional cost; .NET-native `CloudinaryDotNet` SDK, no HTTP hand-rolling)
+2. **Monitor credit/egress usage** — Cloudinary dashboard tracks storage + bandwidth; set alert at 20 GB/month bandwidth
+3. **Migrate to Cloudflare R2 for production scale** when egress consistently exceeds 100 GB/month (cost savings: ~$50/month per TB egress vs Cloudinary's credit-class overage pricing)
 
-**Rationale:** Free tier unblocks launch immediately with zero infrastructure cost; v1 usage (1,500 users × 50 MB attachments ≈ 75 GB storage) fits within free storage limit (costs ~$2/month for storage only, transfer stays within 10 GB free). R2 migration is a config swap (S3-compatible API) when scale justifies migration effort (>2TB/month transfer = >$100/month Vercel costs vs $0 R2 egress).
+**Rationale:** Free tier unblocks launch immediately with zero infrastructure cost and a first-class .NET SDK (`CloudinaryDotNet` — no REST-replication layer). R2 migration is a config swap (S3-compatible API) when scale justifies migration effort (>2 TB/month transfer = >$100/month egress costs vs $0 R2 egress).
 
-### 2.2 Attachment flow (v1 — Vercel Blob)
+### 2.2 Attachment flow (v1 — Cloudinary)
 
 ```
 ┌────────────┐  POST /api/tasks/{id}/attachments   ┌────────────────┐
@@ -72,12 +72,12 @@
                                                      │  ↓ validate    │
                                                      │    size/type   │
                                                      │  ↓ upload      │
-                                                     │    @vercel/blob│
+                                                     │ CloudinaryDotNet│
                 ┌────────────────────────────────────┤                │
-                │  Vercel Blob (S3-backed)          │  ↓ save meta   │
+                │  Cloudinary (CDN-backed)          │  ↓ save meta   │
                 │  - public URL returned            │    to SQL      │
-                │  - CDN-cached (512 MB max)        └────────────────┘
-                │  - auto-expires via TTL (optional)
+                │  - CDN-cached (res.cloudinary.com)└────────────────┘
+                │  - signed delivery optional (Phase 3)
                 └────────────────────────────────────
                        │
                        ▼ public URL
@@ -87,27 +87,29 @@
 ```
 
 **Key changes from local/disk:**
-- `StorageUrl` now holds public blob URL (e.g. `https://xyz.public.blob.vercel-storage.com/abc123.jpg`)
-- Uploads go through API → Vercel Blob SDK → S3-backed store
-- Downloads bypass API (client fetches blob URL directly → CDN-cached)
+- `StorageUrl` now holds public Cloudinary URL (e.g. `https://res.cloudinary.com/<cloud>/image/upload/v<ver>/griot/attachments/abc123.jpg`)
+- Uploads go through API → `CloudinaryDotNet` SDK → Cloudinary media library
+- Downloads bypass API (client fetches the Cloudinary URL directly → CDN-cached)
 
-### 2.3 Migration path (v1 → v2: Vercel Blob → Cloudflare R2)
+### 2.3 Migration path (v1 → v2: Cloudinary → Cloudflare R2)
 
 When egress costs justify migration (>100 GB/month):
 
 1. **Swap SDK:**
    ```diff
-   - import { put, del } from '@vercel/blob';
-   + import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-   + const s3 = new S3Client({ endpoint: 'https://<account-id>.r2.cloudflarestorage.com', ... });
+   - var cloudinary = new Cloudinary(account);           // CloudinaryDotNet
+   - var uploadResult = await cloudinary.UploadAsync(new ImageUploadParams { ... });
+   + using var s3 = new AmazonS3Client(new AmazonS3Config
+   +     { ServiceURL = "https://<account-id>.r2.cloudflarestorage.com" });   // AWSSDK.S3
+   + await s3.PutObjectAsync(new PutObjectRequest { BucketName = "griot-attachments", ... });
    ```
 
 2. **Update StorageUrl semantics:**
-   - Vercel Blob: `https://*.public.blob.vercel-storage.com/*`
+   - Cloudinary: `https://res.cloudinary.com/<cloud-name>/*`
    - R2: `https://r2.griot.io/*` (custom domain via Cloudflare Workers)
 
 3. **Migrate existing blobs:**
-   - One-time script: `SELECT Id, StorageUrl FROM Attachments` → download from Vercel → upload to R2 → `UPDATE StorageUrl`
+   - One-time script: `SELECT Id, StorageUrl FROM Attachments` → download from Cloudinary → upload to R2 → `UPDATE StorageUrl`
    - Cutover: update `BLOB_STORAGE_PROVIDER` env var → new uploads go to R2
 
 **Contract:** the attachment path stays the same (`AttachmentController` -> `IDomainService.CreateAttachmentAsync`, metadata @ `Attachments`); only the provider implementation changes (spec 17 ships metadata-only).
@@ -118,31 +120,18 @@ When egress costs justify migration (>100 GB/month):
 
 ### 3.1 Package dependencies
 
-Add to `backend/Griot.Api/Griot.Api.csproj`:
+Add to `backend/Griot.Infrastructure/Griot.Infrastructure.csproj` (or `Griot.Api.csproj` if `Infrastructure` does not reference it):
 
 ```xml
-<!-- v1: Vercel Blob SDK (Node.js SDK via System.Diagnostics.Process or HTTP client) -->
-<!-- Note: @vercel/blob is a Node package; .NET integration via HTTP API -->
-<!-- Alternative: Use Vercel Blob REST API directly (no SDK needed) -->
+<PackageReference Include="CloudinaryDotNet" Version="1.26.2" />
 ```
 
-**Decision:** Use Vercel Blob **REST API** via standard HTTP client — documented SDK behavior:
-- **Upload:** `PUT https://{account}.public.blob.vercel-storage.com/{path}` with `x-vercel-blob-token` header
-- **Delete:** `POST https://blob.vercel-storage.com/delete` with JSON body `{ "urls": ["https://..."] }`
-- Auth: Bearer token from `BLOB_READ_WRITE_TOKEN` env var in `x-vercel-blob-token` header or `Authorization: Bearer` header
+**Decision:** Use the **`CloudinaryDotNet`** SDK — first-class .NET library (account-based auth via `Account`, typed `UploadAsync`/`DestroyAsync` params/results, automatic request signing). No hand-rolled REST replication.
 
-**Note:** The SDK's `put()` and `del()` functions abstract these endpoints. For .NET, we replicate their behavior:
-```csharp
-// Upload
-var request = new HttpRequestMessage(HttpMethod.Put, $"https://{account}.public.blob.vercel-storage.com/{path}");
-request.Headers.Add("x-vercel-blob-token", token);
-request.Content = new StreamContent(fileStream);
-
-// Delete
-var request = new HttpRequestMessage(HttpMethod.Post, "https://blob.vercel-storage.com/delete");
-request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-request.Content = new StringContent(JsonSerializer.Serialize(new { urls = new[] { blobUrl } }));
-```
+**Core SDK behavior (documented):**
+- **Upload:** `cloudinary.UploadAsync(new RawUploadParams { File = new FileDescription(fileName, stream) })` → `RawUploadResult.SecureUrl` (public CDN URL)
+- **Delete:** `cloudinary.DestroyAsync(new DeletionParams(publicId))` → `Result == "ok"`; treat "not found" as success (idempotent deletes)
+- **Auth:** `Account(cloudName, apiKey, apiSecret)` built from `CLOUDINARY_URL` or the discrete env vars in §3.2 — request signing (SHA-1 over params + secret) is handled inside the SDK
 
 **Future (R2 migration):** Add `AWSSDK.S3` NuGet package for S3-compatible API.
 
@@ -152,17 +141,18 @@ request.Content = new StringContent(JsonSerializer.Serialize(new { urls = new[] 
 ```json
 {
   "BlobStorage": {
-    "Provider": "VercelBlob",  // or "CloudflareR2" post-migration
-    "VercelBlob": {
-      "StoreId": "griot_attachments",
-      "ApiUrl": "https://blob.vercel-storage.com",
-      "TokenEnvVar": "BLOB_READ_WRITE_TOKEN"
+    "Provider": "Cloudinary",  // or "CloudflareR2" post-migration
+    "Cloudinary": {
+      "CloudName": "",          // resolved from CLOUDINARY_CLOUD_NAME (or CLOUDINARY_URL)
+      "ApiKey": "",             // resolved from CLOUDINARY_API_KEY
+      "ApiSecret": "",          // resolved from CLOUDINARY_API_SECRET (server-only)
+      "Folder": "griot/attachments"
     },
     "MaxFileSizeBytes": 26214400,  // 25 MB per file
     "MaxWorkspaceQuotaBytes": 104857600,  // 100 MB per workspace (v1)
     "AllowedMimeTypes": [
       "image/jpeg", "image/png", "image/gif", "image/webp",
-      "application/pdf", "text/plain",
+      "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  // .docx
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"  // .xlsx
     ],
@@ -171,10 +161,17 @@ request.Content = new StringContent(JsonSerializer.Serialize(new { urls = new[] 
 }
 ```
 
-**Railway/Vercel env vars:**
+**Railway/env vars:**
 ```env
-BLOB_READ_WRITE_TOKEN=vercel_blob_rw_xxxxxxxxxxxx  # from Vercel dashboard → Storage → Blob
+# Option A — single URL (SDK-native format):
+CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
+# Option B — discrete vars (preferred for Railway; never commit the secret):
+CLOUDINARY_CLOUD_NAME=griot
+CLOUDINARY_API_KEY=123456789012345
+CLOUDINARY_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+Secrets rule: `CLOUDINARY_API_SECRET` (or the embedded secret inside `CLOUDINARY_URL`) is **server-to-server only** — never exposed to web/mobile, never logged.
 
 ### 3.3 Domain layer (`Griot.Domain.Entities`)
 
@@ -220,78 +217,109 @@ public interface IBlobStorageService
 }
 ```
 
-**Implementation (v1 — Vercel Blob REST API):**
+**Implementation (v1 — Cloudinary via `CloudinaryDotNet`):**
 
 ```csharp
-// backend/Griot.Infrastructure/BlobStorage/VercelBlobStorageService.cs
-public class VercelBlobStorageService : IBlobStorageService
-{
-    private readonly HttpClient _httpClient;
-    private readonly IConfiguration _config;
-    private readonly ILogger<VercelBlobStorageService> _logger;
+// backend/Griot.Infrastructure/BlobStorage/CloudinaryBlobStorageService.cs
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 
-    public VercelBlobStorageService(HttpClient httpClient, IConfiguration config, ILogger<VercelBlobStorageService> logger)
+public class CloudinaryBlobStorageService : IBlobStorageService
+{
+    private readonly Cloudinary _cloudinary;
+    private readonly string _folder;
+    private readonly ILogger<CloudinaryBlobStorageService> _logger;
+
+    public CloudinaryBlobStorageService(IConfiguration config, ILogger<CloudinaryBlobStorageService> logger)
     {
-        _httpClient = httpClient;
-        _config = config;
         _logger = logger;
 
-        var token = Environment.GetEnvironmentVariable(_config["BlobStorage:VercelBlob:TokenEnvVar"]);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        // Option A: single URL (CLOUDINARY_URL=cloudinary://key:secret@cloud_name)
+        var url = Environment.GetEnvironmentVariable("CLOUDINARY_URL");
+        Account account = url is not null
+            ? new Account(url)
+            : new Account(
+                Environment.GetEnvironmentVariable("CLOUDINARY_CLOUD_NAME")!,
+                Environment.GetEnvironmentVariable("CLOUDINARY_API_KEY")!,
+                Environment.GetEnvironmentVariable("CLOUDINARY_API_SECRET")!);
+
+        _cloudinary = new Cloudinary(account) { Api = { Secure = true } };
+        _folder = config["BlobStorage:Cloudinary:Folder"] ?? "griot/attachments";
     }
 
     public async Task<string> UploadAsync(Stream fileStream, string fileName, string contentType, CancellationToken ct)
     {
-        var storeId = _config["BlobStorage:VercelBlob:StoreId"];
-        var apiUrl = _config["BlobStorage:VercelBlob:ApiUrl"];
+        fileStream.Position = 0;
+        var uploadParams = new RawUploadParams
+        {
+            File = new FileDescription(fileName, fileStream),
+            Folder = _folder,
+            UseFilename = true,
+            UniqueFilename = true,
+            Overwrite = false,
+            // Preserve original bytes; Cloudinary must not transform non-image files
+            Type = "upload"
+        };
 
-        var content = new MultipartFormDataContent();
-        content.Add(new StreamContent(fileStream), "file", fileName);
+        var result = await _cloudinary.UploadAsync(uploadParams, ct);
+        if (result.Error is not null)
+        {
+            _logger.LogError("Cloudinary upload failed for {File}: {Error}", fileName, result.Error.Message);
+            throw new DomainError(DomainErrorKind.External, $"Cloudinary upload failed: {result.Error.Message}");
+        }
 
-        var response = await _httpClient.PostAsync($"{apiUrl}/{storeId}/put", content, ct);
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<VercelBlobUploadResponse>(ct);
-        return result!.Url;  // public URL (e.g. https://xyz.public.blob.vercel-storage.com/abc123.jpg)
+        return result.SecureUrl!.ToString();  // public CDN URL (e.g. https://res.cloudinary.com/<cloud>/raw/upload/...)
     }
 
     public async Task DeleteAsync(string storageUrl, CancellationToken ct)
     {
-        var storeId = _config["BlobStorage:VercelBlob:StoreId"];
-        var apiUrl = _config["BlobStorage:VercelBlob:ApiUrl"];
-
-        var response = await _httpClient.DeleteAsync($"{apiUrl}/{storeId}?url={Uri.EscapeDataString(storageUrl)}", ct);
-        if (!response.IsSuccessStatusCode)
+        // Derive the public ID from the stored URL (Cloudinary asset identifier)
+        var publicId = ExtractPublicId(storageUrl);
+        if (publicId is null)
         {
-            _logger.LogWarning("Failed to delete blob {Url}: {Status}", storageUrl, response.StatusCode);
+            _logger.LogWarning("Could not derive Cloudinary public id from {Url}; skipping destroy", storageUrl);
+            return;
+        }
+
+        var result = await _cloudinary.DestroyAsync(new DeletionParams(publicId), ct);
+        // "ok" = deleted; "not found" = already gone (treat as success — idempotent deletes)
+        if (result.Result is not ("ok" or "not found"))
+        {
+            _logger.LogWarning("Cloudinary destroy for {PublicId} returned {Result}", publicId, result.Result);
         }
     }
 
     public async Task<long> GetWorkspaceUsageAsync(Guid workspaceId, CancellationToken ct)
     {
         // Implementation: Query workspace storage usage from Attachments table
-        // This would be injected as IAttachmentRepository in a real implementation
-        // For now, provide the SQL contract that AttachmentRepository.GetWorkspaceUsageBytesAsync(workspaceId) should execute:
-        // SELECT COALESCE(SUM(a.SizeBytes), 0) FROM Attachments a 
-        // JOIN TaskItems t ON a.TaskId = t.Id 
-        // WHERE t.WorkspaceId = @workspaceId
-        
-        // Stub implementation for specification phase:
         // In actual code, inject IAttachmentRepository and call:
-        // return await _attachmentRepo.GetWorkspaceUsageBytesAsync(workspaceId, ct);
-        
-        // For specification completeness, return 0 (allows quota check logic to work)
+        //   return await _attachmentRepo.GetWorkspaceUsageBytesAsync(workspaceId, ct);
+        // SQL contract:
+        //   SELECT COALESCE(SUM(a.SizeBytes), 0) FROM Attachments a
+        //   JOIN TaskItems t ON a.TaskId = t.Id
+        //   WHERE t.WorkspaceId = @workspaceId
         return 0; // TODO: Replace with repository call when AttachmentRepository is implemented
     }
 
-    private record VercelBlobUploadResponse(string Url);
+    private static string? ExtractPublicId(string storageUrl)
+    {
+        // res.cloudinary.com/<cloud>/<type>/upload/v<ver>/<publicId>.<ext>  →  <publicId>
+        var marker = "/upload/";
+        var idx = storageUrl.IndexOf(marker, StringComparison.Ordinal);
+        if (idx < 0) return null;
+        var tail = storageUrl[(idx + marker.Length)..];
+        var slash = tail.IndexOf('/');
+        if (slash >= 0 && tail.StartsWith("v", StringComparison.Ordinal)) tail = tail[(slash + 1)..];
+        var dot = tail.LastIndexOf('.');
+        return dot > 0 ? tail[..dot] : tail;
+    }
 }
 ```
 
 **Registration (`Program.cs`):**
 
 ```csharp
-builder.Services.AddHttpClient<IBlobStorageService, VercelBlobStorageService>();
+builder.Services.AddSingleton<IBlobStorageService, CloudinaryBlobStorageService>();
 ```
 
 **Attachment path changes (spec 17 metadata-only today; this spec adds real upload):**
@@ -471,10 +499,10 @@ extend type Mutation {
 
 ---
 
-## 4. Migration Strategy (local → Vercel Blob)
+## 4. Migration Strategy (local → Cloudinary)
 
 ### 4.1 Pre-launch (no existing production data)
-- No migration needed — v1 ships with Vercel Blob from day 1
+- No migration needed — v1 ships with Cloudinary from day 1
 
 ### 4.2 If local-disk uploads exist (staging/dev)
 1. Export attachments:
@@ -483,7 +511,7 @@ extend type Mutation {
    ```
 2. For each row:
    - Read file from `StorageUrl` (local path, e.g. `./uploads/abc123.jpg`)
-   - Upload to Vercel Blob via `IBlobStorageService.UploadAsync()`
+   - Upload to Cloudinary via `IBlobStorageService.UploadAsync()`
    - Update `StorageUrl` to new blob URL
    - Delete local file
 3. Deploy new code + env vars
@@ -524,13 +552,13 @@ public class DomainServiceAttachmentTests
         // Arrange: 5 MB JPEG file
         var file = CreateMockFormFile("test.jpg", "image/jpeg", 5_242_880);
         _blobStorageMock.Setup(b => b.UploadAsync(It.IsAny<Stream>(), "test.jpg", "image/jpeg", ct))
-            .ReturnsAsync("https://xyz.public.blob.vercel-storage.com/test-abc123.jpg");
+            .ReturnsAsync("https://res.cloudinary.com/griot/raw/upload/griot/attachments/test-abc123.jpg");
 
         // Act
         var attachment = await _service.UploadAsync(taskId, userId, file, ct);
 
         // Assert
-        Assert.Equal("https://xyz.public.blob.vercel-storage.com/test-abc123.jpg", attachment.StorageUrl);
+        Assert.Equal("https://res.cloudinary.com/griot/raw/upload/griot/attachments/test-abc123.jpg", attachment.StorageUrl);
         _repoMock.Verify(r => r.AddAsync(It.Is<Attachment>(a => a.SizeBytes == 5_242_880), ct), Times.Once);
     }
 }
@@ -610,16 +638,16 @@ Add to `Postman/Griot.postman_collection.json`:
 
 ## 6. Observability & Monitoring
 
-### 6.1 Metrics (tracked via Netdata + Vercel dashboard)
-- **Blob storage size:** Vercel dashboard → Storage → Blob → total GB used
-- **Blob data transfer:** Vercel dashboard → total GB downloaded (track egress)
+### 6.1 Metrics (tracked via Netdata + Cloudinary dashboard)
+- **Blob storage size:** Cloudinary dashboard → total GB used (credits consumed)
+- **Blob data transfer:** Cloudinary dashboard → total GB delivered (track bandwidth/egress)
 - **Upload success rate:** `ApiLogs` → count 201 vs 400/500 for `/api/tasks/{id}/attachments`
 - **p95 upload latency:** `ApiLogs.DurationMs` for upload endpoint
 
 ### 6.2 Alerts
 - **Quota exceeded:** Email/Slack when workspace usage > 95 MB (before hitting 100 MB hard cap)
 - **Upload failure spike:** If upload 5xx rate > 5% over 10 min, alert on-call
-- **Vercel Blob API errors:** Log + alert if Vercel returns non-2xx (503 = service issue)
+- **Cloudinary API errors:** Log + alert if Cloudinary returns non-2xx (503 = service issue) or `result.Error` is set
 
 ### 6.3 Logs (`ApiLogs`, `ErrorLogs`)
 - **Upload success:** `INFO: Uploaded {FileName} ({SizeBytes} bytes) for Task {TaskId}, StorageUrl: {Url}`
@@ -641,7 +669,7 @@ Add to `Postman/Griot.postman_collection.json`:
 - **Uploads:** Only authenticated workspace members can upload attachments to their workspace's tasks
 - **Downloads:** Public blob URLs are **accessible to anyone with the URL** (no auth required) — this is intentional for CDN caching
   - Risk: If URL leaks, anyone can download the file
-  - Mitigation: Use signed URLs (Vercel Blob supports TTL expiration) for sensitive attachments (v2 enhancement)
+  - Mitigation: Use signed-delivery URLs (Cloudinary supports signed URLs / TTL expiration) for sensitive attachments (v2 enhancement)
 
 ### 7.3 Audit trail
 - Every upload/delete → `ActivityLogs` (action = `AttachmentUploaded`/`AttachmentDeleted`, payload = JSON with file metadata)
@@ -657,7 +685,7 @@ Add to `Postman/Griot.postman_collection.json`:
 
 ## 8. Acceptance Criteria
 
-- [ ] `POST /api/tasks/{id}/attachments` uploads files to Vercel Blob, returns public URL
+- [ ] `POST /api/tasks/{id}/attachments` uploads files to Cloudinary, returns public CDN URL
 - [ ] `DELETE /api/tasks/{id}/attachments/{id}` deletes blob from storage + DB
 - [ ] `GET /api/tasks/{id}/attachments` returns list with public `StorageUrl` for each attachment
 - [ ] File size validation: 400 error if file >25 MB
@@ -685,7 +713,7 @@ Add to `Postman/Griot.postman_collection.json`:
 **Answer:** When egress costs >$100/month (roughly >2 TB/month transfer at 1,500 users). Migration is a 1-day config swap (S3-compatible API).
 
 ### Q4: Should we support image thumbnails (resize on upload)?
-**Answer:** Defer to v2. Use Vercel Image Optimization (`/_vercel/image?url=...`) for on-the-fly resizing instead of generating thumbnails at upload time.
+**Answer:** Defer to v2. Use Cloudinary transformations (`/upload/w_300,c_fill/...`) for on-the-fly resizing instead of generating thumbnails at upload time.
 
 ---
 
@@ -694,8 +722,8 @@ Add to `Postman/Griot.postman_collection.json`:
 - **Optimization recommendations:** `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` §1
 - **ERD (Attachments table):** `backend/project-kit/feature-specs/01-erd-and-schema-design.md`
 - **API surface:** `backend/project-kit/context/api-surface.md` (routes: `GET/POST /api/tasks/{id}/attachments`)
-- **Vercel Blob docs:** https://vercel.com/docs/storage/vercel-blob/usage-and-pricing
-- **Vercel Blob REST API:** https://vercel.com/docs/storage/vercel-blob/using-blob-sdk
+- **CloudinaryDotNet SDK:** https://github.com/cloudinary/CloudinaryDotNet
+- **Cloudinary docs / pricing:** https://cloudinary.com/documentation / https://cloudinary.com/pricing
 - **Cloudflare R2 docs:** https://developers.cloudflare.com/r2/
 - **HotChocolate file uploads:** https://chillicream.com/docs/hotchocolate/v13/server/files
 

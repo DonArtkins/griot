@@ -29,30 +29,30 @@
 - Breaks at scale: Railway ephemeral filesystem + no CDN + no size caps = user-facing failures
 - Missing from ERD constraints: no `SizeBytes` validation, no quota tracking per workspace
 
-### Recommendation: **Blob Storage Strategy** (Vercel Blob → R2 migration path)
+### Recommendation: **Blob Storage Strategy** (Cloudinary → R2 migration path)
 
 | Solution | Storage | Egress | Why |
 |---|---|---|---|
-| **Vercel Blob (v1)** | **1 GB FREE** + $0.023/GB overage | **10 GB/mo FREE** + $0.05/GB overage | Free tier covers demo/early prod; excellent DX; already on Vercel stack |
+| **Cloudinary (v1)** | **~25 credits FREE** (≈25 GB storage + 25 GB bandwidth/mo) + credit-class overage after | CDN bandwidth included in credits | Free tier covers demo/early prod; .NET-native `CloudinaryDotNet` SDK; media CDN included |
 | **Cloudflare R2 (migration)** | **$0.015/GB** | **$0 (FREE)** | Zero-egress = massive savings at scale; S3-compatible API; migrate when egress >100 GB/month |
 | AWS S3 | $0.023/GB | $0.09/GB | Industry standard but 6× more expensive egress than R2 |
 | Azure Blob | $0.023/GB | $0.087/GB | Similar to S3; no advantage for this workload |
 
 **Math (10 TB/month egress at 1,500 users):**
 - R2: $150 storage + $0 egress = **$150/month**
-- Vercel Blob: $230 storage + $500 egress = **$730/month**
+- Cloudinary (credit overage class): storage + bandwidth credits ≈ **$700+/month** (credit-metered)
 - S3: $230 storage + $900 egress = **$1,130/month**
 
-**Decision:** Start with **Vercel Blob free tier** (leveraging existing Vercel account: 1 GB storage + 10 GB transfer/month included at no cost = $0); migrate to **R2 for production** when egress consistently exceeds 100 GB/month (cost savings of $580/month become significant). See Phase 1/Phase 3 roadmap in CAPACITY-PLAN.md.
+**Decision:** Start with **Cloudinary free tier** (~25 credits/month: 25 GB storage + 25 GB bandwidth at no cost, .NET-native `CloudinaryDotNet`); migrate to **R2 for production** when egress consistently exceeds 100 GB/month (credit overage economics make the $580+/month savings significant). See Phase 1/Phase 3 roadmap in CAPACITY-PLAN.md.
 
 ### Implementation checklist
-- [ ] Add `MaxFileSizeBytes` constant (25 MB per attachment, 100 MB workspace quota)
-- [ ] Update the attachment path (`AttachmentController` → `DomainService.CreateAttachmentAsync`) to use Vercel Blob SDK (`@vercel/blob`)
-- [ ] Migrate `StorageUrl` semantics: local paths → public blob URLs
-- [ ] Add file-type validation (allow images/docs, block executables)
-- [ ] Create migration script: local files → blob storage (one-time, pre-production)
+- [ ] Add `MaxAttachmentSizeBytes` constant (25 MB per attachment, 100 MB workspace quota) — **done**: `DomainService.MaxAttachmentSizeBytes = 26_214_400`
+- [x] Update the attachment path (`AttachmentController` → `DomainService.CreateAttachmentAsync`) to use the Cloudinary SDK (`CloudinaryDotNet`)
+- [ ] Migrate `StorageUrl` semantics: local paths → public Cloudinary CDN URLs
+- [ ] Add file-type validation (allow images/docs, block executables) — **done**: `DomainService.AllowedAttachmentMimeTypes` + `AttachmentValidationTests`
+- [ ] Create migration script: local files → Cloudinary (one-time, pre-production)
 - [ ] Update API docs: `POST /api/tasks/{id}/attachments` rate limits + size caps
-- [ ] Add blob observability: track storage size + transfer via Vercel dashboard
+- [ ] Add blob observability: track storage size + bandwidth via Cloudinary dashboard
 
 **Effort:** 2–3 days (backend integration + migration script)  
 **Impact:** **Blocks production scale** — must ship before public launch  
@@ -302,7 +302,7 @@
 ### Phase 1: Production blockers (ship before public launch)
 | # | Item | Effort | Impact | Owner |
 |---|---|---|---|---|
-| 1 | Blob storage integration (Vercel Blob → R2 later) | 2–3 days | **Critical** (blocks scale) | backend |
+| 1 | Blob storage integration (Cloudinary → R2 later) | 2–3 days | **Critical** (blocks scale) | backend |
 | 2 | Netdata monitoring deployment + config | 1 day | **High** (observability) | infra |
 | 3 | Dashboard summary caching (Redis + 60s TTL) | 4 hours | **High** (UX improvement) | backend |
 | 4 | GraphQL DataLoader documentation + implementation | 1 day | **High** (prevents N+1) | backend |
@@ -318,7 +318,7 @@
 ### Phase 3: Post-bootcamp enhancements
 | # | Item | Why deferred | Effort | Owner |
 |---|---|---|---|---|
-| 9 | Migrate Vercel Blob → Cloudflare R2 | Cost optimization (>100 GB/month egress) | 1 day | backend |
+| 9 | Migrate Cloudinary → Cloudflare R2 | Cost optimization (>100 GB/month egress) | 1 day | backend |
 | 10 | Prometheus + Grafana for custom dashboards | Need cross-team observability | 3–5 days | infra |
 | 11 | Mobile offline queue (`sqflite` persistence) | v1 has minimal offline tolerance | 2 days | mobile |
 | 12 | Web code splitting + lazy routes | LCP already <2.5s (Lighthouse target) | 3 hours | web |
@@ -327,17 +327,17 @@
 
 ## 8. Cost-Benefit Analysis
 
-### Blob storage (Vercel Blob free tier vs R2)
+### Blob storage (Cloudinary free tier vs R2)
 **Assumptions:** 1,500 users, 50 MB avg attachments per user, 10 TB/month egress at production scale
 
 | Solution | Storage cost | Egress cost | **Total/month** | Notes |
 |---|---|---|---|
-| **Vercel Blob (v1 — free tier)** | $0 (1 GB free) + $1.70 (74 GB × $0.023) | $0 (10 GB free) | **~$2/month** | Storage exceeds free 1 GB by 74 GB |
-| **Vercel Blob (prod scale — 10 TB egress)** | $1,725 (75 GB × $0.023) | $500 (10 TB × $0.05) | **$2,225/month** | Egress becomes dominant cost |
+| **Cloudinary (v1 — free tier)** | $0 (~25 free credits ≈ 25 GB) | $0 (25 GB bandwidth included) | **$0/month** at v1 scale | Credit-class overage applies beyond free credits |
+| **Cloudinary (prod scale — 10 TB egress)** | credit-metered (75 GB storage) | credit-metered (10 TB bandwidth) | **~$2,000+/month** | Credit overages make large egress the dominant cost |
 | **Cloudflare R2 (prod scale)** | $1,125 (75 GB × $0.015) | $0 (FREE) | **$1,125/month** | Zero-egress pricing |
-| **Savings (R2 vs Vercel at scale)** | $600 | $500 | **$1,100/month (49%)** | Migration justified at >2 TB/month egress |
+| **Savings (R2 vs Cloudinary at scale)** | — | — | **~$900+/month** | Migration justified at >2 TB/month egress |
 
-**Recommendation:** Start Vercel Blob free tier (minimal cost for v1), migrate to R2 when monthly egress consistently exceeds 100 GB (break-even: ~$5/month Vercel egress cost vs migration effort).
+**Recommendation:** Start Cloudinary free tier (zero cost for v1, .NET-native `CloudinaryDotNet` SDK), migrate to R2 when monthly egress consistently exceeds 100 GB (credit overage economics vs R2 zero-egress pricing).
 
 ### Monitoring (Netdata free vs paid)
 **Netdata Community (free):**
@@ -418,7 +418,8 @@
 - **Database design:** `docs/database/DATABASE-DESIGN.md`
 - **API surface:** `backend/project-kit/context/api-surface.md`
 - **Netdata presentation:** `research/Netdata_RD_Presentation.pptx` (16 slides, R&D session)
-- **Vercel Blob docs:** https://vercel.com/docs/storage/vercel-blob/usage-and-pricing
+- **CloudinaryDotNet SDK:** https://github.com/cloudinary/CloudinaryDotNet
+- **Cloudinary pricing:** https://cloudinary.com/pricing
 - **Cloudflare R2 pricing:** https://cloudflare.com/products/r2/ ($0.015/GB storage, $0 egress)
 - **HotChocolate caching:** https://chillicream.com/docs/hotchocolate/v13/performance/query-caching
 

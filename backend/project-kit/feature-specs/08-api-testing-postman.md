@@ -79,5 +79,15 @@ configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
+## Postman folder 14 — Audit (added 2026-09-10, syncs with specs 20–22)
+
+The collection gained folder **"14. Audit"** (`backend/Postman/Griot.postman_collection.json`):
+logs read-guards (`/api/logs/errors`, `/api/logs/audit` — 200-or-403 tolerant),
+an audit-trail capture assertion keyed on `{{taskId}}` (tolerant until backend spec 20
+ships, then tightened to assert non-empty rows), and a `POST /api/notifications/fanout`
+gate probe (401/403/404 tolerant until spec 22 builds the route). Newman (qa 05) reuses
+this collection unchanged. This folder is part of the spec-08 deliverable surface; its
+strict assertions activate as specs 18–22 land — labeled planned-vs-implemented.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

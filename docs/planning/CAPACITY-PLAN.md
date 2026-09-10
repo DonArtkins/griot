@@ -37,7 +37,7 @@ See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full details, cost-benef
 ### Phase 1: Production blockers (ship before public launch)
 **Effort:** 4–8 days | **Trigger:** Must complete before launch
 
-1. **Vercel Blob storage** — Replace local/disk attachments with Vercel Blob (free tier: 1 GB storage + 10 GB transfer/month). 25 MB file limit, 100 MB workspace quota. See `backend/project-kit/feature-specs/11-blob-storage-integration.md`.
+1. **Cloudinary blob storage** — Replace local/disk attachments with Cloudinary via `CloudinaryDotNet` (free tier: ~25 credits/month ≈ 25 GB storage + 25 GB bandwidth). 25 MB file limit, 100 MB workspace quota. See `backend/project-kit/feature-specs/11-blob-storage-integration.md`.
 2. **Netdata monitoring** — Per-second metrics with anomaly detection on all Railway nodes. Tuned retention (7-day tier-0, 2 GB disk cap/node) prevents growth. Free tier covers 5 nodes. See `infra/project-kit/feature-specs/07-netdata-monitoring.md`.
 3. **Dashboard summary caching** — Redis cache with 60s TTL. **Impact:** p95 dashboard 400ms → 100ms. **Effort:** 4 hours.
 4. **GraphQL DataLoader** — Batch assignee + comment queries to prevent N+1. **Impact:** Board with 50 tasks: 101 queries → 3 queries. **Effort:** 1 day.
@@ -53,7 +53,7 @@ See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full details, cost-benef
 ### Phase 3: Post-bootcamp enhancements (deferred)
 **Trigger:** Cost/scale justifies effort | **Effort:** varies
 
-1. **Cloudflare R2 migration** — When egress >100 GB/month. Zero-egress pricing saves ~$50/month per TB vs Vercel Blob. **Effort:** 1 day (S3-compatible API swap).
+1. **Cloudflare R2 migration** — When egress >100 GB/month. Zero-egress pricing saves ~$50/month per TB vs credit-metered Cloudinary bandwidth. **Effort:** 1 day (S3-compatible API swap).
 2. **Prometheus + Grafana** — Custom cross-team dashboards. **Trigger:** Need centralized querying at scale. **Effort:** 3–5 days.
 3. **Mobile offline queue** — `sqflite` persistence for queued writes. **Trigger:** v1 offline tolerance insufficient. **Effort:** 2 days.
 4. **Web code splitting** — Lazy-load dashboard/board routes. **Impact:** Initial bundle ~40% smaller. **Effort:** 3 hours.
@@ -62,7 +62,7 @@ See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full details, cost-benef
 
 | Concern | Current (v1) | Phase 1 (prod blockers) | Phase 2 (post-k6) | Phase 3 (post-bootcamp) |
 |---|---|---|---|---|
-| Attachments | ❌ local/disk (breaks) | ✅ Vercel Blob (free tier) | — | Cloudflare R2 (zero egress) |
+| Attachments | ❌ local/disk (breaks) | ✅ Cloudinary (free tier) | — | Cloudflare R2 (zero egress) |
 | Monitoring | ❌ /health only | ✅ Netdata (per-second) | — | + Prometheus/Grafana |
 | Dashboard p95 | ~400ms (uncached) | ✅ <100ms (Redis 60s) | — | — |
 | Board reads p95 | ~300ms (baseline) | ✅ <200ms (DataLoader) | <100ms (indexes + cache) | — |
@@ -82,14 +82,14 @@ See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full details, cost-benef
 - **Redis memory:**
   - **Phase 1 (baseline):** session + rate + budget metadata ~ a few MB for 10k sessions (each refresh token ~200 bytes). Dashboard summary cache: 100 hot workspaces × ~50 KB each = **5 MB**. **Total: ~10 MB**.
   - **Phase 2 (GraphQL caching):** Add 100 hot boards × 2 MB each = **200 MB**. **Total: ~210 MB** (still fits comfortably in Railway Hobby Redis).
-- **Vercel Blob storage:** Phase 1 uses free tier (1 GB storage + 10 GB transfer/month). At 1,500 users with 50 MB avg attachments per user: **75 GB storage** (exceeds free tier by 74 GB × $0.023/GB = **$1.70/month**). Transfer at 10% download rate: 7.5 GB/month (within free 10 GB). **Cost: ~$2/month**.
+- **Cloudinary blob storage:** Phase 1 uses free tier (~25 credits/month ≈ 25 GB storage + 25 GB bandwidth). At 1,500 users with 50 MB avg attachments per user: **75 GB storage** (exceeds free credits ≈ 50 GB equivalent → credit overage). Transfer at 10% download rate: 7.5 GB/month (within free 25 GB bandwidth). **Cost: $0 at v1 scale** (free credits); credit overages kick in as attachment volume grows.
 - **Railway tier**: Hobby 1–2 services comfortably; upgrade only when the baseline numbers are exceeded (NDR: don't over-engineer).
 - **p95 latency budget:** dashboard summary < 500 ms (Phase 1: <100ms with Redis cache), board < 500 ms (Phase 1: <200ms with DataLoader; Phase 2: <100ms with indexes + cache), login < 300 ms, GraphQL read < 200 ms average (NFR doc).
 
 ## 5. Verdict
 
 - **Now**: architecture targets cohort/demo + early public (~1,500 concurrent) — **these are design targets until k6 load evidence confirms them** (QE week baseline + regression tests required before claiming production-ready capacity).
-- **Next (phased roadmap)**: **Phase 1** (production blockers): Vercel Blob + dashboard caching + Netdata monitoring. **Phase 2** (post-k6 conditional): database indexes + GraphQL caching + read replica. **Phase 3** (post-bootcamp): R2 migration + code splitting + offline queue. No rewrite needed at any step; the architecture was designed so each is additive. See `OPTIMIZATION-RECOMMENDATIONS.md` for full roadmap.
+- **Next (phased roadmap)**: **Phase 1** (production blockers): Cloudinary blob storage + dashboard caching + Netdata monitoring. **Phase 2** (post-k6 conditional): database indexes + GraphQL caching + read replica. **Phase 3** (post-bootcamp): R2 migration + code splitting + offline queue. No rewrite needed at any step; the architecture was designed so each is additive. See `OPTIMIZATION-RECOMMENDATIONS.md` for full roadmap.
 
 ---
 

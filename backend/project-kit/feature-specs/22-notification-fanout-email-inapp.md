@@ -1,0 +1,78 @@
+# Backend Feature Spec 22 — Notification Fan-Out: In-App + Email
+
+**Status:** PLANNED — in-app routes exist (spec 16 ✅) but nothing *creates* notifications from product events, and no email notification path exists. The email infrastructure (spec 12 senders, `IEmailService`) is implemented and reused here.
+
+## What This Delivers
+
+When something happens in a workspace, the affected users get an **in-app notification always** and a **transactional email** when they've enabled it — through the exact Email-only contract of spec 12 (multi-sender identities, best-effort, never blocking the request).
+
+## Dependencies
+
+- Feature 16 (✅ notification routes/read-models), Feature 12 (✅ `IEmailService`, branded templates), Feature 13 (✅ membership resolution for recipients).
+
+## Context To Read First
+
+- `docs/communication/COMMUNICATION-GUIDE.md` (sender profile rules — this spec maps notification types to senders)
+- `backend/project-kit/context/data-layer.md` (`NotificationType` enum: `Mention · Assignment · DueDate · System`)
+
+## Fan-out matrix (planned)
+
+| Trigger event | `NotificationType` | Recipients | Email sender key |
+|---|---|---|---|
+| Task assigned to a member | `Assignment` | assignee (+ actor if different, excluded by default) | `noreply` |
+| `@mention` in a comment | `Mention` | mentioned user(s) | `support` |
+| Due-date reminder window (24h; scheduled agent post spec 09 writes via API — the *backend* fan-out endpoint is what the agent calls) | `DueDate` | assignee | `noreply` |
+| Invite sent / accepted | `System` | inviter / invitee | `team` |
+| Role change / removal | `System` | affected member | `admin` |
+| Workspace-level incidents surfaced by spec 20 (optional flag, off by default) | `System` | Owner/Admin | `admin` |
+
+- Every event: 1 `Notifications` row per recipient (in-app, the source of truth) → then email fan-out **only** for recipients whose preference allows it.
+- Email body: branded template (spec 12 shell), deep link `VITE_API_URL`-agnostic `{webBase}/board/{boardId}?task={taskId}`; `replyTo` per profile; `X-Griot-Notification-Id` custom header for tracing.
+
+## New schema (the one migration in this spec)
+
+`NotificationPreferences` (1:1 with `Users`): `UserId` PK/FK cascade, `EmailEnabled` bit default **true**, `InAppEnabled` bit default true, `MutedNotificationTypes` nvarchar(max) JSON array, `UpdatedAt`. Migration `AddNotificationPreferences` (EF, spec-02 conventions). No changes to existing tables.
+
+## New routes (planned)
+
+| Route | Purpose | Gate |
+|---|---|---|
+| `GET /api/notifications/preferences` | current user's prefs (creates defaults lazily) | authenticated |
+| `PUT /api/notifications/preferences` | update prefs (self only) | authenticated |
+| `POST /api/notifications/fanout` *(internal)* | `GRIOT_SERVICE_TOKEN`-gated event → fan-out used by scheduled agents (ai/) post spec 09; JWT callers rejected | service token only |
+
+Fan-out service lives in `Griot.Application` (`INotificationFanoutService`); email sending via existing `IEmailService`; recipients resolved through `WorkspaceMembers`.
+
+## Failure isolation (spec 12 semantics)
+
+Email is **best-effort**: a Brevo outage must not fail the triggering API request (task assignment still succeeds, 200/201, notification row exists). Delivery failure → `ErrorLogs` row (spec 20) + warning log. The one surfaced-failure exception in the system remains `/api/auth/otp/request` (502) — this spec adds **no** new surfaced-failure path.
+
+## Rate limiting
+
+Fan-out emails inherit the global limiter + spec 12 Redis gates; `fanout` endpoint additionally capped at 30/min per principal (spec 19 partition). Brevo's 300/day budget stays protected: per-event fan-out is capped at 25 recipients (larger audiences → digest, post-bootcamp).
+
+## Separation of Concerns
+
+Event detection + recipient resolution: `Griot.Application`. SMTP/API call + templates: `Griot.Infrastructure.Email` (existing). Routes: thin controllers. Web/mobile only ever read `Notifications` — they never compute fan-out.
+
+## Docker & Deploy
+
+One new env var `Web__BaseUrl` (email deep links) — added to `.env.example` + integration-contracts in the same branch. Compose unchanged otherwise.
+
+## Out of Scope
+
+Push notifications (mobile/web FCM), digest scheduling (ai/ spec 03 calls the fanout endpoint instead), SMS/WhatsApp (removed, spec 12).
+
+## Acceptance Criteria (all pending)
+
+- [ ] Assigning a task creates a `Notifications` row for the assignee; `GET /api/notifications` + unread-count reflect it
+- [ ] `@mention` in a comment creates a `Mention` notification for the mentioned user
+- [ ] With `EmailEnabled=true`, the email send is attempted via `IEmailService` with the matrix's sender key; with `false`, no email call (unit-tested with the existing Brevo test double)
+- [ ] Brevo failure during fan-out → request still succeeds; `ErrorLogs` row exists
+- [ ] `PUT /api/notifications/preferences` persists; `MutedNotificationTypes` suppresses both channels for that type
+- [ ] `POST /api/notifications/fanout` without service token → 401; with it → 202
+- [ ] Postman folder 10 + 14 updated (preferences GET/PUT + fanout negative test)
+- [ ] Migration `AddNotificationPreferences` applies clean on a fresh + an existing DB
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

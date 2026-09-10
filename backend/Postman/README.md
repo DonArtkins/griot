@@ -50,7 +50,8 @@ Required order so tokens and IDs chain:
 | 1 | `REST / Auth / Register` | Creates the test user; writes `accessToken`, `refreshToken`, `userId` to the env. |
 | 2 | `REST / Auth / Login` | Re-authenticates; rotates tokens; confirms 429 lockout works on repeated calls. |
 | 3 | `REST / Workspaces` through `REST / Webhooks` | Iterates every route in `api-surface.md`; all routes are implemented; none return 501. |
-| 4 | `GraphQL / Queries` + `GraphQL / Mutations` | Same `accessToken` reused; `boardId`-scoped tasks; assertions on JSON shape and time. |
+| 4 | `REST / 14. Audit` (specs 18–22 probes) | Tolerant probes for the observability/protection contracts: `X-Request-Id` join key, `PagedResult` envelope, pagination/sort guards (400 when spec 18 lands), auth 429 + `Retry-After` (spec 19), dashboard cache/latency probe, audit-trail-captured check (strict after spec 20). Run **after** Auth/Workspaces/Tasks so trails have data. |
+| 5 | `GraphQL / Queries` + `GraphQL / Mutations` | Same `accessToken` reused; `boardId`-scoped tasks; assertions on JSON shape and time. |
 
 ### 4. Expected status codes per implementation maturity
 
@@ -62,7 +63,7 @@ Required order so tokens and IDs chain:
 | **GraphQL queries** (11) | `401 AUTH_NOT_AUTHENTICATED` without token; `200 OK` + payload with valid token for resolvers where data exists | — |
 | **GraphQL mutations** (11) | Same auth rules | — |
 
-The collection assertions accept the current status: auth 200/201/204, REST modules 200/201/204 + 401/403/404/409, GraphQL 200/401. None return 501.
+The collection assertions accept the current status: auth 200/201/204, REST modules 200/201/204 + 401/403/404/409, GraphQL 200/401. None return 501. **Folder 14 (Audit — specs 18–22 probes) is deliberately tolerant** (200/400/401/403/404/429/501 accepted) until backend specs 18–22 are implemented; tighten per `feature-specs/20-observability-logging-pipeline.md` §Acceptance Criteria.
 
 ## Assertions (Tests tab) used
 

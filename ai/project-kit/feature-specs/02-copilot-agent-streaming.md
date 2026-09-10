@@ -11,6 +11,7 @@ The `griotCopilot` agent that answers board/task questions with streamed respons
 ## Dependencies
 
 - Feature 01. Backend feature 05 (GraphQL) + 09 (service token). Web feature 10 (panel surface).
+- **Build-order note (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md` P2):** the "web feature 10" reference is a *contract-design* dependency — the Copilot panel is the consumer of this stream, and its data shape is agreed here. Implementation order is **ai 01 → ai 02 → web 10** (then ai 04 wraps the panel's approval cards). Do not block ai 02 on web 10 existing.
 
 ## Context To Read First
 

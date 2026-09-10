@@ -19,15 +19,15 @@ backend/
 
 | Layer | Owns | Never does |
 |---|---|---|
-| Griot.Api | HTTP: routing, serialization, auth middleware, CORS, GraphQL | business logic |
-| Griot.Application | business rules, orchestration | EF, HTTP, Redis |
-| Griot.Infrastructure | EF Core DbContext, repositories, Dapper, Redis, migrations, **blob storage** | business rules |
+| Griot.Api | HTTP: routing, serialization, auth middleware, CORS, GraphQL, **ApiLoggingMiddleware + ProblemDetails → ErrorLogs (spec 20 planned), rate-limit partitions + Redis cache-aside (spec 19 planned)** | business logic |
+| Griot.Application | business rules, orchestration, **IAuditService + activity writer + INotificationFanoutService (specs 20/22 planned)** | EF, HTTP, Redis |
+| Griot.Infrastructure | EF Core DbContext, repositories, Dapper, Redis, migrations, **blob storage, audit-trigger + backup + prune SQL (specs 20/21 planned)** | business rules |
 | Griot.Domain | entities + enums | references anything |
 
 ## Optimization layers (integrated phases)
 
 ### Phase 1: Production blockers (ship before launch)
-- **Blob storage service** (`Griot.Infrastructure.BlobStorage`): `IBlobStorageService` interface with Vercel Blob REST API implementation. Injected into the attachment path (`AttachmentController` → `DomainService.CreateAttachmentAsync`). See `feature-specs/11-blob-storage-integration.md`.
+- **Blob storage service** (`Griot.Infrastructure.BlobStorage`): `IBlobStorageService` interface with Cloudinary implementation via `CloudinaryDotNet` (upload, destroy, signed URLs). Injected into the attachment path (`AttachmentController` → `DomainService.CreateAttachmentAsync`). See `feature-specs/11-blob-storage-integration.md`.
 - **Dashboard summary caching**: Redis cache with 60s TTL around `DomainService.GetDashboardSummaryAsync`. Key: `dashboard:summary:{workspaceId}`. Purge on workspace-level writes.
 - **GraphQL DataLoader** (`Griot.Api/GraphQL/DataLoaders`): `AssigneeDataLoader`, `CommentDataLoader` batch queries per request. Eliminates N+1 (board with 50 tasks: 101 queries → 3 queries).
 - **Pagination middleware** (`Griot.Api/Middleware`): `MaxPageSize = 1,000` validation. Returns 400 if client requests >1k items.

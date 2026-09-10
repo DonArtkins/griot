@@ -56,6 +56,16 @@ RUN: `docker compose up -d`; verify all healthy.
 - [ ] SQL Server reachable (DBeaver 14333); Redis PONG (6380)
 
 
+## Tri-agent verification note (2026-09-10)
+
+The infrastructure review that produced backend specs 20/21 (`docs/observability/LOGGING-AUDIT-REPORT.md`,
+ADR-004) requires a compose-side change owned HERE: a **backup sidecar service** (opt-in
+`profile: backup`) writing SQL Server FULL/DIFF/LOG backups to a new named volume
+`sababisha_mssql_backup` — the "copies of the database" guarantee. When this spec is
+implemented, add: the sidecar service + volume, `.env.example` rows, and health-check
+parity. Until then this note is the planned-behavior marker (not implemented evidence).
+Spec 21 owns the T-SQL; this spec owns the container + volume.
+
 ## Implemented authentication contract (Feature 07)
 
 Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,

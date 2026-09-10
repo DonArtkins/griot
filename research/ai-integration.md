@@ -47,7 +47,8 @@ This subsection is the **binding integration contract** for how the AI layer att
 
 **Architecture:**
 - **Trigger.dev tasks (TypeScript)** — a standalone Node/TS project (`ai/`, own `.nvmrc` 20 + own lockfile), deployed independently (Trigger cloud, or a Docker container alongside the other services). This is where AI calls and long-running background work actually execute.
-- **ASP.NET Core backend** — stays the source of truth for domain data. It triggers jobs via Trigger.dev's REST API/SDK (`POST` to trigger a task by ID) whenever something async or AI-related needs to happen.
+- **ASP.NET Core backend** — stays the source of truth for domain data. It triggers jobs via Trigger.dev's REST API/SDK (`POST` to trigger a task by ID) whenever something async or AI-related needs to happen. It is the only trigger source for request-originated work.
+- **Scheduled agents (the one explicit exception)** — `dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder` are started by Trigger.dev's own cron scheduler, because no user request exists to originate them. The backend does NOT enqueue these. They remain non-data-owners: each scheduled run reads through backend GraphQL with `GRIOT_SERVICE_TOKEN` and writes back only via the .NET API (`POST /api/webhooks/trigger` HMAC or service-token REST). Beyond the backend and these schedules, no trigger source exists.
 - **React/Vite frontend (and Flutter mobile)** — **never touch Trigger.dev for triggering or status.** They only call the .NET API, which internally kicks off Trigger.dev tasks. The one exception is the Copilot **output stream**: the web panel consumes Trigger's realtime WS with a scoped access token (read-only delivery channel — no triggering, no status polling, no public API calls).
 
 **Why AI integration fits in Trigger.dev, not C#:**
@@ -64,7 +65,7 @@ This subsection is the **binding integration contract** for how the AI layer att
 
 **Non-negotiables (keep it clean):**
 1. **.NET remains the only writer of source-of-truth data** (tenant-scoped, immutable where relevant) — Trigger.dev is a compute/orchestration adapter, **not a data owner**. AI still never connects to SQL Server directly (rule above).
-2. **Auth between .NET ↔ Trigger.dev is a server-to-server secret/API key** (`TRIGGER_SECRET_KEY` on the backend trigger side, `TRIGGER_WEBHOOK_SECRET` for HMAC callbacks) — never exposed to the frontend or mobile.
+2. **Auth between .NET ↔ Trigger.dev is a server-to-server secret/API key** (`TRIGGER_SECRET_KEY` on the backend trigger side, `WEBHOOK_SECRET` for HMAC callbacks — read by `WebhookController` as `Webhook:Secret ?? WEBHOOK_SECRET`) — never exposed to the frontend or mobile.
 3. **Don't let the frontend call Trigger.dev's public API even for "simple" cases** — it breaks the single-API-surface pattern and duplicates auth logic. One authoritative entry point: the .NET API, for web and mobile alike.
 
 

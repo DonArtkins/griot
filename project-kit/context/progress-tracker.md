@@ -2,27 +2,29 @@
 
 ## Current State
 
-Bootcamp Week 2 — **Implementation phase**. Backend implementation is underway.
+Bootcamp **implementation phase** — Week 2 backend nearly closed; canonical cross-system build order lives in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** (P0 → P6). Every system's `AGENTS.md` carries a "Build-Order Slot" pointer and every system now has its own progress tracker.
 
-| System | Kit | Status |
-|---|---|---|
-| backend | backend/project-kit | Specs 01–08 + **12 (Communication, code-done)**; **Spec 09 (AI service token + webhooks) next** |
-| web | web/project-kit | 10 feature specs; awaiting backend |
-| mobile | mobile/project-kit | 7 feature specs; waiting |
-| infra | infra/project-kit | 6 feature specs; waiting |
-| qa | qa/project-kit | 13 feature specs; waiting |
-| ai | ai/project-kit | 5 feature specs; waiting |
-| mcp | mcp/project-kit | 5 feature specs; waiting |
+| System | Kit | Status | Roadmap phase |
+|---|---|---|---|
+| backend | backend/project-kit | Specs 01–08, 12 (Email-only), 13–17 ✅; **09 next**, then the hardening wave 20 → 18 → 19 → 22 → 21, then 11, 10 — then P0 closes | P0 (current) |
+| web | web/project-kit | 10 specs pending; deps = backend ✅ — starts right after P0 (web 10 waits for ai 01–02 in P2) | P1 (next layer) |
+| ai | ai/project-kit | 5 specs pending; blocked by backend 09 | P2 |
+| mobile | mobile/project-kit | 7 specs pending; deps = backend ✅ only | P3 |
+| infra | infra/project-kit | 7 specs pending; 07-Netdata is a Phase-1 launch gate | P4 |
+| mcp | mcp/project-kit | 5 specs pending; 04 needs infra; 03 needs backend 09 | P5 |
+| qa | qa/project-kit | 13 specs pending; 01–03 have no code deps (gap filler) | P6 |
 
-Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/planning/*` (NFR, capacity, risk, runbook, change-management), `docs/seo/`, `docs/deployment/`, `docs/observability/`, `docs/api/` + ADRs + LICENSE/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG + `inspo/`. 12 diagram specs written in `PROMPTS/week-02/`.
+Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/planning/*` (NFR, capacity, risk, runbook, change-management, **IMPLEMENTATION-ROADMAP.md**), `docs/seo/`, `docs/deployment/`, `docs/observability/`, `docs/api/` + ADRs + LICENSE/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG + `inspo/`. 12 diagram specs written in `PROMPTS/week-02/`.
 
 ## Next Steps
 
-1. Fill `inspo/` with desired UI screenshots (web + mobile visual contract).
-2. Continue backend implementation in **dependency order** (canonical list in `docs/DEPENDENCY-AUDIT.md`): 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 ✅ → **09 (AI service token)** → 10 (API docs) → 11 (Blob storage — only needs 01/02/04, can run in parallel once 04 exists).
+1. **P0 (now):** implement backend **09** (AI service token + webhooks — unblocks all of `ai/` + `mcp/`) on `feature/backend/09-ai-service-token-and-webhooks`, then the **2026-09-10 hardening wave 20 → 18 → 19 → 22 → 21** (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **11** (blob storage — unblocks attachment UI), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
+2. **P1–P6:** follow `docs/planning/IMPLEMENTATION-ROADMAP.md` — Web 01–09 → ai 01–02 → web 10 → ai 03–05 → mobile 01–07 → infra 01–07 → mcp 01–05 → qa 01–13. Each phase's entry condition and rationale are in the roadmap; do not reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
 
 ## Session Notes
 
+- **2026-09-10 (4)** — 🔭 **Observability & audit audit** (docs-only, branch `feature/backend/08-api-testing-postman`): verified `ApiLogs`/`ErrorLogs`/`AuditLogs`/`ActivityLogs` have ZERO writers (30+ SaveChanges sites, none log); exception handler persists nothing; no DB triggers; no SQL Server backup chain; one global rate-limit window; no notification producer. Created backend specs **18–22** (search/filter/pagination · cache+rate-limits · observability pipeline · DB triggers/backups · notification fan-out email+in-app), `docs/observability/LOGGING-AUDIT-REPORT.md` (incident answer matrix + per-layer flow + SQL recipes), ADR-004; Postman folder 14; **P0 reordered to 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10** across roadmap/dependency-audit/AGENTS/trackers. Strict implementation follows one spec per branch, starting with 20 after 09.
+- **2026-09-10 (3)** — 🔁 **Full-system layer-order audit** (docs-only, branch `feature/backend/08-api-testing-postman`). Created `docs/planning/IMPLEMENTATION-ROADMAP.md` as the canonical cross-system build order (P0 backend 09→11→10 → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa), resolving the web10↔ai02 circular dependency (ai 02's "web 10" dep = contract-design, not build-order). Created the 4 missing progress trackers (ai, mcp, mobile, infra) and added "Build-Order Slot" sections to every system `AGENTS.md` + this root file. Fixed stale info: infra spec count 6→7, web tracker's outdated "await backend 04–06" line. All systems now point at the same next-spec answer.
 - **2026-09-10** - Trigger.dev orchestration contract ratified (docs-only, branch `feature/backend/08-api-testing-postman`): authoritative contract in `research/ai-integration.md` section 2a - Trigger.dev (`ai/`) = standalone compute/orchestration adapter; .NET backend is the only task trigger (server-to-server `TRIGGER_SECRET_KEY`) and the only writer of source-of-truth data (write-back via `POST /api/webhooks/trigger` HMAC / `GRIOT_SERVICE_TOKEN` REST); web/mobile never call Trigger.dev's public API (exception: read-only Copilot realtime stream). Swept across all AGENTS files (root, ai, mcp, mobile), project kits (ai context/README/specs 01-02, backend spec 09, web spec 10, infra spec 05), context files (system-map, integration-contracts env rows, stack-contract), and root README. Same branch also completed the backend spec 08 fresh-config cycle (BoardId migration, E2E smoke, Email-only contract sweep, stale-file cleanup).
 - **2026-09-09 (5)** — 📣 **Backend communication layer spec 12 [own-stack]** (same branch): Redis-guarded `ICommunicationService` facade over Brevo — Email multi-sender identities (Security/Admin/NoReply/Support/Info/Team + reply-to), SMS, WhatsApp, Contacts (automation hook). Automated on register/verify; windows 10/15min email, 5/h SMS/WA per recipient keep under Brevo caps. Gates green: build 0W/0E, tests 24/7S/0F, contract-sync exit 0. Docs: `docs/communication/COMMUNICATION-GUIDE.md`, spec 12, AGENTS/context updated. Spec 09 next.
 - **2026-09-09 (4)** — 📧 **Backend transactional email provider switched Resend → Brevo** (same branch). Reason: Resend test-mode sandbox only sends to the account owner's verified email/domain → OTP to arbitrary recipients failed 502; Brevo free tier (300/day, no recipient sandbox) sends real OTP. Implemented `BrevoEmailService` (REST `api.brevo.com/v3/smtp/email`, `api-key` header, verified sender required), deleted `ResendEmailService`, updated `Program.cs`/`AuthService` + 13-files contract-sync (AGENTS, ADR-003 D10/D12/D16/G, auth-contract config table, AUTHENTICATION-GUIDE, spec 07, research, stack/integration contracts, root README §3, CHANGELOG, trackers). Gates green: `dotnet build` 0W/0E, `dotnet test` 20/7S/0F, contract-sync exit 0. Spec 09 (AI service token) next.
@@ -40,6 +42,7 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 - **2026-09-03 (3)** — Removed all ≤2000-char prompt caps by user request. ERD is now one extensive master prompt (`02-erd-figma-make-master-prompt.md`, full 16 tables / 5 enums / 19 edges / 13 indexes). All 11 diagram figure files promoted to single extensive prompts (no length limit); kept tiny "Refine" follow-ups.
 - **2026-09-07** — **Master design system synthesized from `inspo/` (all 12)**. Deliverables: `docs/design/MASTER-DESIGN-SYSTEM.md` (catalog, ranking, tokens + provenance, component rules, rejections); `project-kit/context/ui-tokens.md` rewritten as a concrete token contract (v2 — **light canvas `#F7F8FA` + white cards supersedes the dark-workspace placeholder**, 12/12 inspos are light; dark is now a derived variant); theme files created at the spec-owned paths `web/src/theme.ts` (MUI v6 `createTheme`, chrome-ink CTA, severity maps exported) and `mobile/lib/core/theme/theme.dart` (ThemeData + `GriotColors`/`GriotRadii` extensions, header tint, radius-24 cards); contract-synced web design-system.md, web skill 0.2.0, web specs 02, web architecture/diagrams README, both public-shell prompts (dark→light), created the missing `mobile/project-kit/context/design-system.md`, cataloged `inspo/README.md`. Next: MUI/Flutter font bundling in scaffold specs (feature 01s); `StatusChip`/`PriorityChip` etc. build on these primitives.
 
+- **2026-09-10** — CodeRabbit review fixes + storage contract swap: backend attachment validation (25 MB inclusive / MIME allowlist) implemented and pinned by 12 unit tests; blob storage contract changed **Vercel Blob → Cloudinary (`CloudinaryDotNet`, `CLOUDINARY_URL`)** across backend spec 11 + all synced docs (`BLOB_READ_WRITE_TOKEN` removed repo-wide); Trigger-ownership model (backend-only triggering, scheduled agents as the sole cron exception, web read-only Copilot stream) synced; Brevo best-effort scoped to registration with OTP 502 path documented; `TRIGGER_WEBHOOK_SECRET` renamed `WEBHOOK_SECRET` everywhere.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.
