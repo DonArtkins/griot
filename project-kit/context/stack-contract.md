@@ -49,10 +49,10 @@ Status codes: **exact** = bootcamp-mandated, use as-is. **[own-stack]** = the gu
 
 | Area | Choice | Owner kit |
 |---|---|---|
-| Communication | Brevo transactional Email (multi-sender identities `Brevo:Senders:*` + reply-to), SMS (`transactionalSMS/send`), WhatsApp (`whatsapp/sendMessage`), Contacts API (Automations hook), unified behind Redis-guarded `ICommunicationService` | backend |
+| Communication | Brevo transactional Email only (multi-sender identities `Brevo:Senders:*` + reply-to) | backend |
 | Auth | Custom JWT (15-min access, rotated opaque refresh, Argon2, Redis sliding-window rate limit, Brevo Email OTP 2FA) | backend |
 | Perf/load testing | k6 | qa |
-| AI layer | Trigger.dev v3 Level-4 Autonomous Agents (reasoning loops, human-in-loop) + Griot MCP server + in-app Copilot | ai, mcp, web |
+| AI layer | Trigger.dev v3 Level-4 Autonomous Agents (reasoning loops, human-in-loop) + Griot MCP server + in-app Copilot — orchestrated by the .NET backend only; Trigger.dev = compute adapter, never a data owner (`research/ai-integration.md` §2a) | ai, mcp, web |
 | System Reports | SQL Server stored procedures + Trigger.dev scheduled digests + AI ad-hoc generation | backend, ai, web |
 | Contract testing | Postman collection → Newman | qa |
 

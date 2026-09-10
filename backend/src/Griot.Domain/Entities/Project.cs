@@ -8,7 +8,7 @@ public class Project
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid WorkspaceId { get; set; }
-    public Workspace Workspace { get; set; } = null!;
+    public virtual Workspace Workspace { get; set; } = null!;
     public string Name { get; set; } = string.Empty;
     public string Key { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -16,5 +16,5 @@ public class Project
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    public ICollection<Board> Boards { get; set; } = new List<Board>();
+    public virtual ICollection<Board> Boards { get; set; } = new List<Board>();
 }

@@ -1,11 +1,11 @@
 # Backend Feature Spec 17 — Attachments (metadata) & Webhooks readiness
 
 ## Goal
-Attachment metadata list/delete (blob upload is spec 11) and the signed webhook
+Attachment metadata list/create/delete (blob upload is spec 11) and the signed webhook
 trigger endpoint (HMAC X-Trigger-Signature) — spec 09 dependency.
 
 ## Routes
-- `GET /api/tasks/{id}/attachments` · `DELETE /api/tasks/{id}/attachments/{attachmentId}`
+- `GET|POST /api/tasks/{id}/attachments` (metadata create — blob upload is spec 11) · `DELETE /api/tasks/{id}/attachments/{attachmentId}`
 - `POST /api/webhooks/trigger` (HMAC)
 
 ## Acceptance (implemented)

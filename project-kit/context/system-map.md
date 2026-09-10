@@ -42,7 +42,10 @@
 | ai | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` (ai-agent principal) |
 | mcp | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` |
 | backend | ai | `POST /api/webhooks/trigger` (HMAC) | `X-Trigger-Signature` |
-| web | ai | Trigger realtime (WS) | Trigger access token |
+| backend | ai | Trigger.dev REST (enqueue task by ID) | `TRIGGER_SECRET_KEY` (server-to-server only) |
+| web | ai | Trigger realtime (WS) — read-only stream delivery | Trigger access token |
+| mobile | ai | *(none)* — mobile AI/Copilot rides the .NET API exclusively | n/a |
+| mobile | ai | *(none)* — mobile never touches Trigger.dev; any mobile AI/Copilot surface consumes the .NET API only (contract: `research/ai-integration.md` §2a) | n/a |
 | external AI clients | mcp | MCP (stdio / Streamable HTTP) | per-client config |
 | infra | all | Docker images, env, CI/CD | infra secrets |
 | qa | all | HTTP + test harnesses | test credentials / CI tokens |
@@ -50,6 +53,8 @@
 ## Non-negotiable boundary
 
 AI (`ai/` + `mcp/`) never connects to SQL Server/Redis directly and never holds DB credentials. All data access is through the backend API. `web/` and `mobile/` never touch a database. `backend/` never contains UI or agent code.
+
+**AI orchestration contract** (`research/ai-integration.md` §2a — authoritative): Trigger.dev (`ai/`) is a standalone compute/orchestration adapter deployed independently; the .NET backend is the only component that triggers tasks (REST/SDK, server-to-server `TRIGGER_SECRET_KEY`) and the only writer of source-of-truth data — task results are written back through the API (`POST /api/webhooks/trigger` HMAC, or `GRIOT_SERVICE_TOKEN` REST). Web/mobile never trigger or poll Trigger.dev — they call the .NET API; the sole direct frontend↔Trigger channel is the web Copilot realtime stream (scoped access token, read-only).
 
 ## Implemented authentication contract (Feature 07)
 

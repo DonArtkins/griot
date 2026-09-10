@@ -28,7 +28,7 @@ The bootcamp deliverable "Implement GitHub Actions CI/CD": the test-gate pipelin
 
 ## Files
 
-CREATE: workflow with jobs `test-dotnet`, `test-web`, `test-mobile`, `test-ai`, `test-mcp`, `newman`, `cypress`, `deploy` (needs all; `if: github.ref == 'refs/heads/main'`). SQL Server 2022 as a CI service container. Secrets documented in `README.md`: `RAILWAY_TOKEN`, `VERCEL_TOKEN`, `TRIGGER_API_KEY`, `GRIOT_SERVICE_TOKEN`, coverage token.
+CREATE: workflow with jobs `test-dotnet`, `test-web`, `test-mobile`, `test-ai`, `test-mcp`, `newman`, `cypress`, `deploy` (needs all; `if: github.ref == 'refs/heads/main'`). SQL Server 2022 as a CI service container. Secrets documented in `README.md`: `RAILWAY_TOKEN`, `VERCEL_TOKEN`, `TRIGGER_API_KEY`, `GRIOT_SERVICE_TOKEN`, coverage token. Backend Railway env (spec 06 env sync) additionally carries `TRIGGER_SECRET_KEY` + `TRIGGER_WEBHOOK_SECRET` (server-to-server only — never exposed to Vercel/mobile bundles; orchestration contract `research/ai-integration.md` §2a).
 
 ## Setup / Initialization
 

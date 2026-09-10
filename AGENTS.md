@@ -66,7 +66,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Stack at a Glance
 
-Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. Communication [own-stack]: Brevo Email (multi-sender) + SMS + WhatsApp + Contacts automations + Redis-guarded routing — see `docs/communication/COMMUNICATION-GUIDE.md`. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v3 Level-4 Autonomous Agents, MCP.
+Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. Communication [own-stack]: Brevo transactional Email only — multi-sender identities (`Brevo:Senders:<Key>`, reply-to per profile) — see `docs/communication/COMMUNICATION-GUIDE.md`. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v3 Level-4 Autonomous Agents, MCP — orchestrated by the .NET backend only (Trigger.dev = compute adapter, never a data owner; web/mobile never touch Trigger.dev; contract: `research/ai-integration.md` §2a).
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 
@@ -78,13 +78,15 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 
 ## Implemented communication contract (Spec 12 — own-stack)
 
-Every outbound user/operator message goes through `ICommunicationService` (rate-guarded,
-non-throwing). Channels: **Email** (sender identities: Security/OTP, Admin/ops, NoReply,
-Support, Info, Team — config `Brevo:Senders:<Key>`, reply-to per profile), **SMS**
-(`/v3/transactionalSMS/send`), **WhatsApp** (`/v3/whatsapp/sendMessage`), and **Contacts**
-(`/v3/contacts`) which feeds Brevo **Automations** (welcome/onboarding). Local Redis
-sliding windows (email 10/15min/recipient; SMS & WhatsApp 5/hour/number) gate every send
-BEFORE Brevo is called, so Brevo's 300/day free cap is never reachable from app code.
+Outbound operator/user email is **Email only** (SMS/WhatsApp/Contacts/automations were
+removed from code in the same branch; contract-synced docs below). Every transactional
+email goes through `IEmailService` (`BrevoEmailService`, best-effort, never throws) with
+per-purpose sender identities (`Brevo:Senders:<Key>`: Security/OTP, Admin/ops, NoReply,
+Support, Info, Team — reply-to per profile; OTP = `security`, admin notice = `admin`).
+Callers today: register (OTP `email_verify` to user + admin "New user registered" notice
+to `Brevo:ContactToEmail`) and `/api/auth/otp/request`. The OTP request route itself is
+rate-limited (3/15min/email via Redis) before Brevo, and the API global limiter caps
+100/min/caller — Brevo's 300/day free cap is never reachable from app code.
 Full contract: `docs/communication/COMMUNICATION-GUIDE.md`; owner spec:
 `backend/project-kit/feature-specs/12-communication-channels-brevo.md`.
 

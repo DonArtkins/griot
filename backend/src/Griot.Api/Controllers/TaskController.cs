@@ -10,7 +10,6 @@ using Griot.Application.Services;
 namespace Griot.Api.Controllers;
 
 [ApiController]
-[Route("api/tasks")]
 [Authorize]
 public class TaskController : DomainControllerBase
 {
@@ -23,32 +22,39 @@ public class TaskController : DomainControllerBase
         _taskService = taskService;
     }
 
-    [HttpGet("/api/boards/{id}/tasks")]
+    [HttpGet]
+    [Route("api/boards/{id}/tasks")]
     public async Task<IActionResult> GetTasks(Guid id)
     { try { return Ok(await _domain.GetTasksAsync(id, CurrentUserId())); } catch (DomainError e) { return Handle(e); } }
 
-    [HttpPost("/api/boards/{id}/tasks")]
+    [HttpPost]
+    [Route("api/boards/{id}/tasks")]
     public async Task<IActionResult> CreateTask(Guid id, [FromBody] CreateTaskRequest request)
     { try { return StatusCode(StatusCodes.Status201Created, await _domain.CreateTaskAsync(id, request, CurrentUserId())); } catch (DomainError e) { return Handle(e); } }
 
-    [HttpGet("{id}")]
+    [HttpGet]
+    [Route("api/tasks/{id}")]
     public async Task<IActionResult> GetTask(Guid id)
     { try { return Ok(await _domain.GetTaskAsync(id, CurrentUserId())); } catch (DomainError e) { return Handle(e); } }
 
-    [HttpPut("{id}")]
+    [HttpPut]
+    [Route("api/tasks/{id}")]
     public async Task<IActionResult> UpdateTask(Guid id, [FromBody] UpdateTaskRequest request)
     { try { return Ok(await _domain.UpdateTaskAsync(id, request, CurrentUserId())); } catch (DomainError e) { return Handle(e); } }
 
-    [HttpDelete("{id}")]
+    [HttpDelete]
+    [Route("api/tasks/{id}")]
     public async Task<IActionResult> DeleteTask(Guid id)
     { try { return (await _domain.DeleteTaskAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Task not found." }); } catch (DomainError e) { return Handle(e); } }
 
-    [HttpPatch("{id}/move")]
+    [HttpPatch]
+    [Route("api/tasks/{id}/move")]
     public async Task<IActionResult> MoveTask(Guid id, [FromBody] MoveTaskRequest request)
     { try { return Ok(await _domain.MoveTaskAsync(id, request, CurrentUserId())); } catch (DomainError e) { return Handle(e); } }
 
-    [HttpPatch("bulk-status")]
-    public IActionResult BulkStatusUpdate([FromBody] BulkUpdateTaskStatusRequest request)
+    [HttpPatch]
+    [Route("api/tasks/bulk-status")]
+    public async Task<IActionResult> BulkStatusUpdate([FromBody] BulkUpdateTaskStatusRequest request)
     {
         if (request == null || request.WorkspaceId == Guid.Empty || request.TaskIds == null || request.TaskIds.Count == 0)
             return BadRequest(new { message = "Request must include valid workspace ID and non-empty task IDs array" });
@@ -56,6 +62,22 @@ public class TaskController : DomainControllerBase
             return BadRequest(new { message = "Status is required" });
         var userId = CurrentUserId();
         if (userId == Guid.Empty) return Unauthorized(new { message = "Invalid user authentication" });
-        return Ok(_taskService.BulkUpdateStatusAsync(request, userId));
+
+        var result = await _taskService.BulkUpdateStatusAsync(request, userId);
+
+        if (!result.Success)
+        {
+            if (result.Message?.Contains("Invalid status value", StringComparison.OrdinalIgnoreCase) == true)
+                return BadRequest(new { message = result.Message });
+            if (result.Message?.Contains("do not belong", StringComparison.OrdinalIgnoreCase) == true)
+                return Conflict(new { message = result.Message });
+            if (result.Message?.Contains("not a member", StringComparison.OrdinalIgnoreCase) == true)
+                return Forbid();
+            if (result.Message?.Contains("server error", StringComparison.OrdinalIgnoreCase) == true)
+                return StatusCode(500, new { message = "An error occurred while processing the bulk update" });
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(result);
     }
 }

@@ -31,6 +31,7 @@ Root shared skills + `mcp/.agents/skills/` (`mcp-sdk-tools`, `mcp-contract-testi
 
 1. Tools never bypass the backend API.
 2. Write tools mirror the approve-gate: they execute only what the backend allows (ai-agent principal).
+3. MCP is a data/tool surface, not an orchestration trigger: external MCP clients get data through the backend GraphQL only — they never enqueue Trigger.dev tasks or receive Trigger.dev credentials (orchestration contract: `research/ai-integration.md` §2a).
 
 **Engineering Excellence. Production Mindset. Professional Impact. Rocket**
 

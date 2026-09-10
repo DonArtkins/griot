@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.IO;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Griot.Application.Interfaces.Services;
@@ -22,16 +23,19 @@ public class WebhookController : DomainControllerBase
     /// the signature does not match. Spec 09 readiness (AI service token + webhooks).
     /// </summary>
     [HttpPost("trigger")]
-    public async Task<IActionResult> Trigger([FromBody] string? body)
+    public async Task<IActionResult> Trigger()
     {
         var secret = _config["Webhook:Secret"] ?? _config["WEBHOOK_SECRET"];
         if (string.IsNullOrWhiteSpace(secret))
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Webhook secret not configured." });
 
-        var rawBody = body ?? "";
-        var signatureHeader = (Request.Headers.TryGetValue("X-Trigger-Signature", out var sig) ? sig.ToString() : "");
-        var expected = "sha256=" + Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(rawBody)));
-        if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(signatureHeader)))
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+        var rawBody = (await reader.ReadToEndAsync()).Trim();
+        var signatureHeader = (Request.Headers.TryGetValue("X-Trigger-Signature", out var sig) ? sig.ToString().Trim() : "");
+        var expected = "sha256=" + Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(rawBody))).ToLowerInvariant();
+        var matches = expected.Length == signatureHeader.Length
+            && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(signatureHeader));
+        if (!matches)
             return Unauthorized(new { message = "Invalid signature." });
 
         return StatusCode(StatusCodes.Status202Accepted, new { message = "Webhook accepted." });

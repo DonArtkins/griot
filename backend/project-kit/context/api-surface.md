@@ -12,11 +12,12 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET/POST | `/api/workspaces/{id}/members` | member list/add | Owner/Admin |
 | PATCH/DELETE | `/api/workspaces/{id}/members/{userId}` | update/remove member | Owner (remove), Admin (update role) |
 | POST | `/api/workspaces/{id}/invites` | invite by email + role | Owner/Admin |
+| GET | `/api/invites/{token}` | invite lookup by token | authenticated |
 | POST | `/api/invites/{token}/accept` | accept invite | authenticated |
 | GET/POST | `/api/workspaces/{id}/projects` | project list/create | workspace member |
 | GET/PUT/DELETE | `/api/projects/{id}` | read/update/archive/delete | DELETE = Owner/Admin |
 | GET/POST | `/api/projects/{id}/boards` | board list/create | workspace member |
-| GET | `/api/boards/{id}` | board with columns+tasks | workspace member |
+| GET/PUT/DELETE | `/api/boards/{id}` | board read/update/delete | DELETE = Owner/Admin |
 | POST | `/api/boards/{id}/columns` | column create | Owner/Admin |
 | PATCH/DELETE | `/api/columns/{id}` | column update/delete | Owner/Admin |
 | GET/POST | `/api/boards/{id}/tasks` | task list (filters: status/priority/assignee; paginated) / create | workspace member |
@@ -24,10 +25,12 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | PATCH | `/api/tasks/{id}/move` | move task to column+position (optimistic-safe) | workspace member |
 | PATCH | `/api/tasks/bulk-status` | TVP bulk status via `usp_BulkUpdateTaskStatus` (atomic; 409 on any invalid id in batch) | Owner/Admin/Member (workspace) |
 | GET/POST | `/api/tasks/{id}/comments` | list/create comments | workspace member |
+| PUT/DELETE | `/api/tasks/{id}/comments/{commentId}` | update/delete comment | workspace member |
 | GET/POST | `/api/tasks/{id}/attachments` | list attachment metadata / upload to Vercel Blob (Phase 1) | workspace member |
 | DELETE | `/api/tasks/{id}/attachments/{attachmentId}` | delete attachment (blob + DB metadata) | workspace member |
 | GET | `/api/workspaces/{id}/activity` | activity feed (paginated) | workspace member |
 | GET/POST | `/api/notifications` · POST `/api/notifications/read-all` | list / mark all read | authenticated |
+| PATCH | `/api/notifications/{id}/read` | mark one notification read | authenticated |
 | GET | `/api/notifications/unread-count` | unread notification count | authenticated |
 | GET | `/api/dashboard/summary?workspaceId=` | dashboard via `usp_GetDashboardSummary` (one round-trip; Phase 1: Redis 60s cache) | workspace member |
 | GET | `/api/logs/errors` | error log (Owner/Admin) | Owner/Admin |
@@ -62,18 +65,23 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 
 ## Controller topology
 
+All CRUD orchestration (specs 13–17) lives in `IDomainService`/`DomainService`;
+`TaskController` additionally uses `TaskService` for the bulk-status stored proc.
+
 | Controller | Routes | Service(s) |
 |---|---|---|
 | AuthController | `/api/auth/*` | AuthService |
-| WorkspaceController | `/api/workspaces*`, `/api/invites/*` | WorkspaceService |
-| ProjectController | `/api/workspaces/{id}/projects`, `/api/projects/{id}` | ProjectService |
-| BoardController | `/api/projects/{id}/boards`, `/api/boards/{id}`, `/api/boards/{id}/columns`, `/api/columns/{id}` | BoardService |
-| TaskController | `/api/boards/{id}/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/move`, `/api/tasks/bulk-status` | TaskService |
-| CommentController | `/api/tasks/{id}/comments` | CommentService |
-| AttachmentController | `/api/tasks/{id}/attachments` | AttachmentService |
-| NotificationController | `/api/notifications*` | NotificationService |
-| DashboardController | `/api/dashboard/summary`, `/api/workspaces/{id}/activity`, `/api/logs/*` | DashboardService |
-| WebhookController | `/api/webhooks/trigger` | WebhookRelayService |
+| WorkspaceController | `/api/workspaces*` | DomainService |
+| InviteController | `/api/invites/*` | DomainService |
+| ProjectController | `/api/workspaces/{id}/projects`, `/api/projects/{id}` | DomainService |
+| BoardController | `/api/projects/{id}/boards`, `/api/boards/{id}`, `/api/boards/{id}/columns` | DomainService |
+| ColumnController | `/api/columns/{id}` | DomainService |
+| TaskController | `/api/boards/{id}/tasks`, `/api/tasks/{id}`, `/api/tasks/{id}/move`, `/api/tasks/bulk-status` | DomainService + TaskService (bulk-status) |
+| CommentController | `/api/tasks/{id}/comments` | DomainService |
+| AttachmentController | `/api/tasks/{id}/attachments` | DomainService |
+| NotificationController | `/api/notifications*` | DomainService |
+| DashboardController | `/api/dashboard/summary`, `/api/workspaces/{id}/activity`, `/api/logs/*` | DomainService |
+| WebhookController | `/api/webhooks/trigger` | HMAC verification only |
 
 ## Conventions
 
@@ -94,10 +102,11 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 
 ## Communication contracts (Spec 12 — own-stack)
 
-Outbound channels (no new REST routes): Email (sender identities per purpose),
-SMS, WhatsApp, Brevo Contacts (automation hook) — all behind `ICommunicationService`
-guarded by Redis windows (`ratelimit:comm:*`). Sender profiles: `Brevo:Senders:<Key>`
-(Key ∈ Security, Admin, NoReply, Support, Info, Team). Canonical:
+Outbound messaging is **Email only** (no new REST routes; SMS/WhatsApp/Contacts/automations
+removed from code in the same branch): Email with per-purpose sender identities
+(`Brevo:Senders:<Key>` — Key ∈ Security, Admin, NoReply, Support, Info, Team; OTP=security,
+admin notice=admin) via `IEmailService`/`BrevoEmailService`. Redis gate:
+`ratelimit:otp:request:{email}` 3/15min before Brevo. Canonical:
 `docs/communication/COMMUNICATION-GUIDE.md`; owner spec `feature-specs/12-communication-channels-brevo.md`.
 
 ---

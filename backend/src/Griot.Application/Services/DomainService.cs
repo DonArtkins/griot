@@ -413,7 +413,7 @@ public class DomainService : IDomainService
         RequireText(request.Title, "Title is required.");
         var task = new TaskItem
         {
-            Id = Guid.NewGuid(), ColumnId = request.ColumnId, Title = request.Title.Trim(),
+            Id = Guid.NewGuid(), BoardId = boardId, ColumnId = request.ColumnId, Title = request.Title.Trim(),
             Description = request.Description, Status = request.Status, Priority = request.Priority,
             AssigneeId = request.AssigneeId, CreatorId = userId, DueDate = request.DueDate,
             Position = request.Position, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
@@ -472,6 +472,7 @@ public class DomainService : IDomainService
         if (targetColumn!.BoardId != board!.Id)
             throw new DomainError(DomainErrorKind.Validation, "Target column must belong to the same board.");
         task.ColumnId = request.ColumnId;
+        task.BoardId = targetColumn!.BoardId;
         task.Position = (decimal)request.NewPosition;
         task.UpdatedAt = DateTime.UtcNow;
         _tasks.Update(task);
@@ -480,7 +481,65 @@ public class DomainService : IDomainService
     }
 
     public async Task<BulkUpdateTaskStatusResponse> BulkUpdateTaskStatusAsync(BulkUpdateTaskStatusRequest request, Guid userId)
-        => new() { Success = true, UpdatedCount = 0, Message = "Bulk status via existing ITaskRepository path (see TaskController)." };
+    {
+        // Validate workspace membership
+        var ws = await _workspaces.GetByIdAsync(request.WorkspaceId);
+        if (ws is null) throw new DomainError(DomainErrorKind.NotFound, "Workspace not found.");
+        if (!IsMember(ws, userId)) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of this workspace.");
+        if (request.TaskIds is null || request.TaskIds.Count == 0)
+            throw new DomainError(DomainErrorKind.Validation, "No task IDs provided.");
+
+        // Validate status value
+        if (!Enum.TryParse<Griot.Domain.Enums.TaskStatus>(request.Status, true, out var newStatus))
+            throw new DomainError(DomainErrorKind.Validation, $"Invalid status value: '{request.Status}'.");
+
+        // Collect workspace column IDs to verify task ownership
+        var wsProjectIds = (await _projects.GetAllAsync()).Where(p => p.WorkspaceId == request.WorkspaceId).Select(p => p.Id).ToList();
+        var wsBoardIds   = (await _boards.GetAllAsync()).Where(b => wsProjectIds.Contains(b.ProjectId)).Select(b => b.Id).ToList();
+        var wsColumnIds  = (await _columns.GetAllAsync()).Where(c => wsBoardIds.Contains(c.BoardId)).Select(c => c.Id).ToList();
+
+        var updated = 0;
+        foreach (var tid in request.TaskIds)
+        {
+            var task = await _tasks.GetByIdAsync(tid);
+            if (task is null || !wsColumnIds.Contains(task.ColumnId))
+                throw new DomainError(DomainErrorKind.Conflict, $"Task {tid} does not belong to this workspace.");
+            task.Status = newStatus;
+            task.UpdatedAt = DateTime.UtcNow;
+            _tasks.Update(task);
+            updated++;
+        }
+        await _tasks.SaveChangesAsync();
+        return new BulkUpdateTaskStatusResponse { Success = true, UpdatedCount = updated, Message = $"Updated {updated} task(s) to {newStatus}." };
+    }
+
+    // ══════════════════════ BOARD UPDATE / DELETE ══════════════════════
+
+    public async Task<BoardDto?> UpdateBoardAsync(Guid id, UpdateBoardRequest request, Guid userId)
+    {
+        var board = await _boards.GetByIdAsync(id);
+        if (board is null) throw new DomainError(DomainErrorKind.NotFound, "Board not found.");
+        var project = await _projects.GetByIdAsync(board.ProjectId);
+        await ScopedWorkspaceAsync(project!.WorkspaceId, userId);
+        if (!string.IsNullOrWhiteSpace(request.Name)) board.Name = request.Name.Trim();
+        if (request.Order is not null) board.Order = request.Order.Value;
+        _boards.Update(board);
+        await _boards.SaveChangesAsync();
+        return ToBoardDto(board);
+    }
+
+    public async Task<bool> DeleteBoardAsync(Guid id, Guid userId)
+    {
+        var board = await _boards.GetByIdAsync(id);
+        if (board is null) throw new DomainError(DomainErrorKind.NotFound, "Board not found.");
+        var project = await _projects.GetByIdAsync(board.ProjectId);
+        var ws = await ScopedWorkspaceAsync(project!.WorkspaceId, userId);
+        if (!CanManageMembers(ws!, userId))
+            throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to delete boards.");
+        _boards.Remove(board);
+        await _boards.SaveChangesAsync();
+        return true;
+    }
 
     // ══════════════════════ COMMENTS ══════════════════════
 
@@ -508,6 +567,33 @@ public class DomainService : IDomainService
         return ToCommentDto(comment);
     }
 
+    public async Task<CommentDto?> UpdateCommentAsync(Guid taskId, Guid commentId, UpdateCommentRequest request, Guid userId)
+    {
+        var task = await _tasks.GetByIdAsync(taskId);
+        if (task is null || !await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.NotFound, "Task not found.");
+        var comment = (await _comments.GetAllAsync()).FirstOrDefault(c => c.Id == commentId && c.TaskId == taskId);
+        if (comment is null) throw new DomainError(DomainErrorKind.NotFound, "Comment not found.");
+        if (comment.AuthorId != userId) throw new DomainError(DomainErrorKind.Forbidden, "Only the author can edit this comment.");
+        RequireText(request.Body, "Body is required.");
+        comment.Body = request.Body.Trim();
+        comment.UpdatedAt = DateTime.UtcNow;
+        _comments.Update(comment);
+        await _comments.SaveChangesAsync();
+        return ToCommentDto(comment);
+    }
+
+    public async Task<bool> DeleteCommentAsync(Guid taskId, Guid commentId, Guid userId)
+    {
+        var task = await _tasks.GetByIdAsync(taskId);
+        if (task is null || !await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.NotFound, "Task not found.");
+        var comment = (await _comments.GetAllAsync()).FirstOrDefault(c => c.Id == commentId && c.TaskId == taskId);
+        if (comment is null) return false;
+        if (comment.AuthorId != userId) throw new DomainError(DomainErrorKind.Forbidden, "Only the author can delete this comment.");
+        _comments.Remove(comment);
+        await _comments.SaveChangesAsync();
+        return true;
+    }
+
     // ══════════════════════ ATTACHMENTS ══════════════════════
 
     public async Task<List<AttachmentDto>> GetAttachmentsAsync(Guid taskId, Guid userId)
@@ -519,6 +605,24 @@ public class DomainService : IDomainService
             .Select(ToAttachmentDto).ToList();
     }
 
+    public async Task<AttachmentDto?> CreateAttachmentAsync(Guid taskId, CreateAttachmentRequest request, Guid userId)
+    {
+        var task = await _tasks.GetByIdAsync(taskId);
+        if (task is null || !await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.NotFound, "Task not found.");
+        RequireText(request.FileName, "FileName is required.");
+        RequireText(request.MimeType, "MimeType is required.");
+        var attachment = new Attachment
+        {
+            Id = Guid.NewGuid(), TaskId = taskId, UploaderId = userId,
+            FileName = request.FileName.Trim(), MimeType = request.MimeType.Trim(),
+            SizeBytes = request.SizeBytes, StorageUrl = request.Url ?? string.Empty,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _attachments.AddAsync(attachment);
+        await _attachments.SaveChangesAsync();
+        return ToAttachmentDto(attachment);
+    }
+
     public async Task<bool> DeleteAttachmentAsync(Guid taskId, Guid attachmentId, Guid userId)
     {
         var task = await _tasks.GetByIdAsync(taskId);
@@ -528,6 +632,14 @@ public class DomainService : IDomainService
         _attachments.Remove(attachment);
         await _attachments.SaveChangesAsync();
         return true;
+    }
+
+    // ══════════════════════ INVITES ══════════════════════
+
+    public async Task<InviteDto?> GetInviteByTokenAsync(string token)
+    {
+        var invite = (await _invites.GetAllAsync()).FirstOrDefault(i => i.Token == token);
+        return invite is null ? null : ToInviteDto(invite);
     }
 
     // ══════════════════════ NOTIFICATIONS ══════════════════════
@@ -550,6 +662,17 @@ public class DomainService : IDomainService
             n.ReadAt = DateTime.UtcNow;
             _notifications.Update(n);
         }
+        await _notifications.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> MarkNotificationReadAsync(Guid notificationId, Guid userId)
+    {
+        var n = await _notifications.GetByIdAsync(notificationId);
+        if (n is null || n.UserId != userId) return false;
+        if (n.ReadAt is not null) return true; // already read — idempotent
+        n.ReadAt = DateTime.UtcNow;
+        _notifications.Update(n);
         await _notifications.SaveChangesAsync();
         return true;
     }
@@ -688,19 +811,21 @@ public class DomainService : IDomainService
     }
     private TaskItemDto ToTaskDto(TaskItem t) => new()
     {
-        Id = t.Id, ColumnId = t.ColumnId, Title = t.Title, Description = t.Description, Status = t.Status,
+        Id = t.Id, BoardId = t.BoardId, ColumnId = t.ColumnId, Title = t.Title, Description = t.Description, Status = t.Status,
         Priority = t.Priority, AssigneeId = t.AssigneeId, CreatorId = t.CreatorId, DueDate = t.DueDate,
         Position = t.Position, CreatedAt = t.CreatedAt, UpdatedAt = t.UpdatedAt
     };
     private CommentDto ToCommentDto(Comment c) => new()
     {
         Id = c.Id, TaskId = c.TaskId, AuthorId = c.AuthorId, AuthorName = c.Author?.DisplayName,
-        AuthorAvatarUrl = c.Author?.AvatarUrl, Body = c.Body, CreatedAt = c.CreatedAt
+        AuthorAvatarUrl = c.Author?.AvatarUrl, Body = c.Body, CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt
     };
     private AttachmentDto ToAttachmentDto(Attachment a) => new()
     {
         Id = a.Id, TaskId = a.TaskId, UploaderId = a.UploaderId, UploaderName = a.Uploader?.DisplayName,
-        FileName = a.FileName, MimeType = a.MimeType, SizeBytes = a.SizeBytes, CreatedAt = a.CreatedAt
+        FileName = a.FileName, MimeType = a.MimeType, SizeBytes = a.SizeBytes,
+        Url = string.IsNullOrEmpty(a.StorageUrl) ? null : a.StorageUrl,
+        CreatedAt = a.CreatedAt
     };
     private NotificationDto ToNotificationDto(Notification n) => new()
     {

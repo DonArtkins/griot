@@ -12,10 +12,11 @@ stored-procedure path (feature 06) is preserved.
 ## Routes
 - `GET|POST /api/boards/{id}/tasks` · `GET|PUT|DELETE /api/tasks/{id}` · `PATCH /api/tasks/{id}/move`
 - `PATCH /api/tasks/bulk-status` (existing)
-- `GET|POST /api/tasks/{id}/comments`
+- `GET|POST /api/tasks/{id}/comments` · `PUT|DELETE /api/tasks/{id}/comments/{commentId}`
 
 ## Acceptance (implemented)
 - [x] Task CRUD + move (same-board column validation) + position
-- [x] Comments add/list behind task visibility
+- [x] Comments add/list/update/delete behind task visibility (author-only update/delete)
+- [x] `TaskItems.BoardId` denormalized (migration `20260910082854_AddTaskItemBoardId`, backfilled from `Columns.BoardId`); kept in sync on create/move
 - [x] Bulk-status still delegates to `ITaskRepository` (TVP)
 - [x] No 501 across tasks/comments

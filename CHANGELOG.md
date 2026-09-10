@@ -2,30 +2,43 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
-## [Unreleased] — 2026-09-09 (Communication layer spec 12)
+## [Unreleased] — 2026-09-10 (Full REST surface specs 13–17 + Email-only communication)
 
 ### Added
-- **Communication layer [own-stack]** (`docs/communication/COMMUNICATION-GUIDE.md`):
-  `ICommunicationService` facade over Brevo with per-channel, per-recipient **Redis
-  sliding-window guards** (email 10/15min, SMS 5/h, WhatsApp 5/h) checked BEFORE Brevo —
-  Brevo's 300/day cap is unreachable from app code.
-- **Brevo email multi-sender identities**: `EmailMessage.SenderKey` → `Brevo:Senders:<Key>`
-  (Security/Admin/NoReply/Support/Info/Team) with per-profile reply-to. OTP uses
-  `security`, admin new-user notice uses `admin`. Fixes custom-brand From + reply-to per path.
-- **SMS** (`BrevoSmsService` → `POST /v3/transactionalSMS/send`) + **WhatsApp**
-  (`BrevoWhatsAppService` → `POST /v3/whatsapp/sendMessage`, text or template).
-- **Brevo Contacts sync** (`BrevoContactSynchronizer`): contact upsert on register,
-  ACCOUNT_STATUS=VERIFIED on email verify — the hook Brevo **Automations** (welcome,
-  onboarding, re-engagement) trigger on.
-- Integration: AuthService emits OTP/admin emails with identities + contact signals
-  (all best-effort — Brevo failure never fails auth). `Program.cs` wires the new clients.
-- Tests: `CommunicationServiceTests` (4) + updated `AuthServiceTests` — `dotnet test` green.
+- **Full REST implementation (specs 13–17)** on `feature/backend/08-api-testing-postman`: workspaces
+  (+members/invites, invite lookup + accept), projects, boards (update/delete), columns (update/delete),
+  tasks (CRUD, move, bulk-status via `usp_BulkUpdateTaskStatus`), comments (update/delete), attachments
+  (create/delete metadata), notifications (unread-count, mark-read, read-all), dashboard summary,
+  activity feed, error/audit logs — all behind `IDomainService`/`DomainService` with `IGenericRepository<T>`
+  and `DomainControllerBase` (`sub` claim → Guid; `DomainError` → 400/401/403/404/409). Zero
+  `Not implemented yet` remaining. 12 controllers = 54 routes, all mirrored 1:1 in the Postman collection.
+- **Schema migration `20260910082854_AddTaskItemBoardId`**: `TaskItems.BoardId` (NOT NULL, backfilled
+  from `Columns.BoardId` via join). Lazy-loading proxies enabled (`Microsoft.EntityFrameworkCore.Proxies`);
+  all navigation properties marked `virtual`.
+- **Communication layer (spec 12) final state = Email only**: multi-sender identities
+  (`Brevo:Senders:<Key>` Security/Admin/NoReply/Support/Info/Team with per-profile reply-to; OTP=`security`,
+  admin notice=`admin`) via `IEmailService`/`BrevoEmailService` — best-effort, never fails auth.
+- **Fresh local DB** (`Griot` @ `localhost,14333`): dropped + recreated from the 4 migrations; stored
+  procedures re-applied (`usp_BulkUpdateTaskStatus`, `usp_GetDashboardSummary` from
+  `Griot.Infrastructure/Sql/`).
 
 ### Changed
-- `auth-contract.md` config table and `AUTHENTICATION-GUIDE` §4.10/§7 extended with sender
-  identities + SMS/WhatsApp keys; `stack-contract.md` + `integration-contracts.md` +
-  `api-surface.md` + root/backend `AGENTS.md` document the communication contract;
-  root `README.md` §3 points at the new guide; new feature spec 12.
+- **Removed SMS/WhatsApp/Contacts/automations code + `ICommunicationService` facade** (user decision:
+  only Email needed) — kept Brevo Email multi-sender identities. All comm docs, AGENTS (root + backend),
+  stack-contract, integration-contracts, api-surface, README, AUTHENTICATION-GUIDE and
+  COMMUNICATION-GUIDE now describe Email-only.
+- `Program.cs`: `JsonStringEnumConverter` (enums serialize as strings), global exception handler with
+  `X-Request-Id` on every response (incl. 500s), lazy-loading proxies, stable `TraceIdentifier`.
+- `docs/api/auth-contract.md` config table, `api-surface.md` REST table + controller topology, and feature
+  specs 13–17 updated to the implemented surface (`PUT/DELETE /api/boards/{id}`,
+  `PUT/DELETE /api/tasks/{id}/comments/{commentId}`, `PATCH /api/notifications/{id}/read`,
+  `GET /api/invites/{token}`, `POST /api/tasks/{id}/attachments`).
+
+### Fixed
+- `CS1998` async-without-await warnings in `WorkspaceService.cs` (scaffold kept for DI: now returns
+  `Task.FromResult`).
+- Lazy-loading proxy failure at design time: `ApiLog.User`, `AuditLog.ActivityLog`, `ErrorLog.User`,
+  `ErrorLog.SolvedByUser` made `virtual`.
 
 ## [Unreleased] — 2026-09-08 (Feature 07 auth repair + Email-OTP 2FA)
 

@@ -4,7 +4,7 @@
 
 You are the agent for the **Backend / API system** of Griot. This system is the sole owner of data and business logic. Everything else (web, mobile, AI, MCP) talks to this system and nothing else touches SQL Server.
 
-Stack (exact per `project-kit/context/stack-contract.md`): .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate GraphQL 14+, SQL Server 2022 (primary), PostgreSQL 16 (secondary), Redis 7. Auth is `[own-stack]`: custom JWT + Argon2 + rotated refresh tokens + Brevo Email OTP 2FA. Communication is `[own-stack]`: Brevo Email (multi-sender) + SMS + WhatsApp + Contacts automations + Redis-guarded facade (`ICommunicationService`) — see `docs/communication/COMMUNICATION-GUIDE.md` + spec 12. Reports [own-stack]: RBAC-scoped scheduled & ad-hoc.
+Stack (exact per `project-kit/context/stack-contract.md`): .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate GraphQL 14+, SQL Server 2022 (primary), PostgreSQL 16 (secondary), Redis 7. Auth is `[own-stack]`: custom JWT + Argon2 + rotated refresh tokens + Brevo Email OTP 2FA. Communication is `[own-stack]`: Brevo transactional Email only (multi-sender identities) — see `docs/communication/COMMUNICATION-GUIDE.md` + spec 12. Reports [own-stack]: RBAC-scoped scheduled & ad-hoc.
 
 ## Solution Layout (Separation of Concerns)
 
@@ -59,13 +59,12 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 
 ## Implemented communication contract (Spec 12 — own-stack)
 
-Every outbound message goes through `ICommunicationService` (rate-guarded, non-throwing):
-**Email** with per-purpose sender identities (`Brevo:Senders:<Key>`, reply-to per profile),
-**SMS** (`/v3/transactionalSMS/send`), **WhatsApp** (`/v3/whatsapp/sendMessage`), and
-**Contacts** (`/v3/contacts`) feeding Brevo **Automations**. Local Redis sliding windows
-(email 10/15min/recipient; SMS & WhatsApp 5/hour/number) gate every send BEFORE Brevo —
-its 300/day cap is never reachable from app code. Contact lifecycle signals on register
-(create) and email-verify (ACCOUNT_STATUS=VERIFIED) are the automation triggers.
+Outbound messaging is **Email only** (SMS/WhatsApp/Contacts/automations removed from code
+in this branch). Every transactional email goes through `IEmailService`
+(`BrevoEmailService`, best-effort, non-throwing) with per-purpose sender identities
+(`Brevo:Senders:<Key>`, reply-to per profile). OTP uses `security`, the admin new-user
+notice uses `admin`. Redis gate: `ratelimit:otp:request:{email}` 3/15min before Brevo is
+called — Brevo's 300/day free cap is never reachable from app code.
 Full contract: `docs/communication/COMMUNICATION-GUIDE.md`; owner spec:
 `feature-specs/12-communication-channels-brevo.md`.
 

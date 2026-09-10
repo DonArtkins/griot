@@ -41,6 +41,33 @@
 
 Data flow: **Copilot prompt → `ai/` agent → (tool calls) → .NET GraphQL → SQL Server → results streamed back.** Trivial lookups short-circuit: rule-based agents answer from a cached snapshot; only genuinely generative turns call the LLM (cost control).
 
+### 2a. Orchestration contract — Trigger.dev as a separate service, orchestrated by .NET (authoritative)
+
+This subsection is the **binding integration contract** for how the AI layer attaches to the bootcamp stack (researched and ratified before backend spec 09 implementation; all AGENTS files, project kits, and specs across systems reference it).
+
+**Architecture:**
+- **Trigger.dev tasks (TypeScript)** — a standalone Node/TS project (`ai/`, own `.nvmrc` 20 + own lockfile), deployed independently (Trigger cloud, or a Docker container alongside the other services). This is where AI calls and long-running background work actually execute.
+- **ASP.NET Core backend** — stays the source of truth for domain data. It triggers jobs via Trigger.dev's REST API/SDK (`POST` to trigger a task by ID) whenever something async or AI-related needs to happen.
+- **React/Vite frontend (and Flutter mobile)** — **never touch Trigger.dev for triggering or status.** They only call the .NET API, which internally kicks off Trigger.dev tasks. The one exception is the Copilot **output stream**: the web panel consumes Trigger's realtime WS with a scoped access token (read-only delivery channel — no triggering, no status polling, no public API calls).
+
+**Why AI integration fits in Trigger.dev, not C#:**
+- AI SDKs (OpenAI, Anthropic, Vercel AI SDK, LangChain.js) are TS/JS-first — richer, faster-updated tooling than the .NET equivalents.
+- AI calls are often slow/streaming/retryable — exactly what Trigger.dev is built for (built-in retries, concurrency controls, run visibility, waitpoints for human-in-the-loop steps).
+- Keeps prompt orchestration, streaming, and model-provider logic out of the core domain API, so the .NET backend doesn't become a dumping ground for AI SDK churn.
+
+**Typical flow:**
+1. User action hits the React frontend (or Flutter app) → calls the .NET API.
+2. .NET API validates/persists the request, then calls Trigger.dev to enqueue a task (e.g. `generateSummary`, `processDocument`, `sendNotificationBatch`).
+3. Trigger.dev task runs (calls OpenAI/Anthropic, does the heavy lifting, handles retries).
+4. Task calls **back into the .NET API** (authenticated HTTP callback → `POST /api/webhooks/trigger`, HMAC-verified, or service-token REST) to write results back into the DB — **Trigger.dev never owns domain/ledger data.**
+5. Frontend polls the .NET API or uses SignalR/websockets for status — never Trigger.dev's dashboard/API directly.
+
+**Non-negotiables (keep it clean):**
+1. **.NET remains the only writer of source-of-truth data** (tenant-scoped, immutable where relevant) — Trigger.dev is a compute/orchestration adapter, **not a data owner**. AI still never connects to SQL Server directly (rule above).
+2. **Auth between .NET ↔ Trigger.dev is a server-to-server secret/API key** (`TRIGGER_SECRET_KEY` on the backend trigger side, `TRIGGER_WEBHOOK_SECRET` for HMAC callbacks) — never exposed to the frontend or mobile.
+3. **Don't let the frontend call Trigger.dev's public API even for "simple" cases** — it breaks the single-API-surface pattern and duplicates auth logic. One authoritative entry point: the .NET API, for web and mobile alike.
+
+
 ---
 
 ## 3. Folders & repos (all inside the GTP tree — isolation preserved)

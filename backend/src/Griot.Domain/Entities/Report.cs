@@ -12,5 +12,5 @@ public class Report
     public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
     public string? PromptContext { get; set; }
 
-    public Workspace Workspace { get; set; } = null!;
+    public virtual Workspace Workspace { get; set; } = null!;
 }

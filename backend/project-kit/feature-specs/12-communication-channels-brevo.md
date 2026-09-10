@@ -1,74 +1,62 @@
-# Backend Feature Spec 12 — Communication Channels (Brevo Email / SMS / WhatsApp / Contacts) [own-stack]
+# Backend Feature Spec 12 — Communication Channels (Brevo Email only) [own-stack]
 
 ## Goal
 
-One rate-guarded communication facade (`ICommunicationService`) over Brevo so Griot
-reaches users across Email, SMS, WhatsApp, and (via contact lifecycle signals) Brevo
-Automations — without ever tripping Brevo rate/quota caps and without coupling business
-services to an HTTP vendor.
+Transactional Email via Brevo with per-purpose sender identities, rate-guarded so Griot
+never trips Brevo quota caps and never fails auth. SMS/WhatsApp/Contacts-automations were
+explicitly **removed** (user decision: only Email needed) and the `ICommunicationService`
+facade deleted in the same branch that shipped the full REST surface (specs 13-17).
 
 Canonical guide: `docs/communication/COMMUNICATION-GUIDE.md`.
 
 ## Dependencies
 
-- Spec 07 (auth — OTP delivery + admin notice) — **completes its delivery path**
-- Spec 08 (Postman) — collection unaffected (no route changes)
+- Spec 07 (auth -- OTP delivery + admin notice) -- **completes its delivery path**
+- Spec 08 (Postman) -- collection unaffected (no route changes)
 
 ## Separation of Concerns
 
-- **Application** (`Griot.Application`) owns interfaces (`IEmailService`, `ISmsService`,
-  `IWhatsAppService`, `IContactSynchronizer`, `ICommunicationService`) + message records.
-  AuthService calls `ICommunicationService`-shaped paths only.
-- **Infrastructure** (`Griot.Infrastructure/Communication/`) owns Brevo HTTP transports:
-  `BrevoEmailService`, `BrevoSmsService`, `BrevoWhatsAppService`,
-  `BrevoContactSynchronizer`, and the `CommunicationService` facade (Redis windows).
-- **Api** (`Program.cs`) wires the HTTP clients (SSRF redirects disabled) + facade.
+- **Application** (`Griot.Application`) owns `IEmailService` + email message records.
+  AuthService calls `IEmailService`-shaped paths only.
+- **Infrastructure** (`Griot.Infrastructure/Email/`) owns the Brevo HTTP transport:
+  `BrevoEmailService` (SSRF redirects disabled, never throws).
+- **Api** (`Program.cs`) wires the typed `IHttpClientFactory` client (15 s timeout).
 
 ## Implementation
 
-1. `IEmailService` gains `SenderKey` on `EmailMessage`; `BrevoEmailService` resolves
+1. `IEmailService.SendAsync(EmailMessage)`; `EmailMessage.SenderKey` resolves
    `Brevo:Senders:<Key>:Email/Name/ReplyTo` (fallback `Brevo:FromEmail/FromName`), sends
-   `{sender, to, subject, htmlContent, textContent, replyTo}`.
-2. `BrevoSmsService` → `POST /v3/transactionalSMS/send` `{sender, recipient, content,
-   type:"transactional", tag, unicodeEnabled}`; config `Brevo:Sms:Sender/Tag`.
-3. `BrevoWhatsAppService` → `POST /v3/whatsapp/sendMessage` with text or `templateId`
-   payloads; config `Brevo:WhatsApp:SenderNumber` (required).
-4. `BrevoContactSynchronizer` → `POST /v3/contacts` (upsert: FIRSTNAME/LASTNAME/
-   ACCOUNT_STATUS/EMAIL_VERIFIED) on register; `PUT /v3/contacts/{email}` on verify —
-   the automation trigger hook.
-5. `CommunicationService` facade: Redis sliding window per channel+recipient
-   (`ratelimit:comm:email|sms|whatsapp:…`) checked BEFORE each Brevo call.
-6. AuthService: OTP email uses `SenderKey:"security"`, admin notice `"admin"`; register →
-   contact upsert; email-verified → contact verified. All best-effort (never fail auth).
+   `{sender, to, subject, htmlContent, textContent, replyTo}` to `POST /v3/smtp/email`.
+2. AuthService: OTP email uses `SenderKey:"security"`, admin notice uses `"admin"`;
+   register -> email-verify OTP to user + admin "New user registered" notice to
+   `Brevo:ContactToEmail`. All best-effort (never fail auth).
+3. Rate guard: `ratelimit:otp:request:{email}` 3/15min (AuthController, Redis) + API
+   global limiter 100/min/caller. No per-recipient redis window for plain email beyond
+   the route-level OTP window (facade removed with SMS/WhatsApp).
 
-## Rate limits (two layers, cannot hit Brevo caps)
+## Rate limits
 
-| Channel | Facade window | AuthController (existing) |
+| Layer | Window | Key |
 |---|---|---|
-| Email | 10 / 15 min per recipient | OTP request 3 / 15 min per email |
-| SMS | 5 / hour per number | — |
-| WhatsApp | 5 / hour per number | — |
+| OTP request route | 3 / 15 min per email | `ratelimit:otp:request:{email}` |
+| API global limiter | 100 / min per caller | -- |
 
 ## Docker & Deploy
 
-Backend env: `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_SENDER_<KEY>_EMAIL/_NAME/_REPLYTO`,
-`BREVO_SMS_SENDER`, `BREVO_SMS_TAG`, `BREVO_WHATSAPP_SENDER_NUMBER`, `SITE_URL`. Web
+Backend env: `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_SENDER_<KEY>_EMAIL/_NAME/_REPLYTO`, `SITE_URL`. Web
 (Vercel) never holds Brevo keys (only `VITE_API_URL`).
 
 ## Acceptance Criteria
 
-- [x] Sender-identity map resolves per `SenderKey` with reply-to control (`BrevoEmailService.cs` L95–143)
-- [x] OTP email + admin notice use their own identities (`AuthService.cs` L326–327, L344–345)
-- [x] SMS transport implemented + wired (`BrevoSmsService.cs`; `Program.cs` L50)
-- [x] WhatsApp text + template transport implemented + wired (`BrevoWhatsAppService.cs`; `Program.cs` L58)
-- [x] Contact lifecycle sync on register + verify (`BrevoContactSynchronizer.cs`; `AuthService.cs` L111, L296)
-- [x] Redis windows gate all three channels before Brevo (`CommunicationService.cs` L59–78)
-- [x] Unit tests: `CommunicationServiceTests` (4) + AuthServiceTests updated — `dotnet test` green
-- [ ] Verify a custom domain in Brevo dashboard → sends with your own From-domain (no `brevosend.com`)
-- [ ] Configure SMS credits + WhatsApp Business in Brevo dashboard → set `SenderNumber`
-- [ ] Build Welcome / Onboarding workflows in Brevo Automations on contact-create/attribute-update
-- [ ] In-app notifications (web/mobile + AI copilot) on the same facade (next spec)
-- [ ] Brevo bounce/complaint webhook → `POST /api/webhooks/brevo` (currently scaffold 501)
+- [x] Sender-identity map resolves per `SenderKey` with reply-to control (`BrevoEmailService.cs`)
+- [x] OTP email + admin notice use their own identities (`AuthService.cs`)
+- [x] SMS/WhatsApp/Contacts/automations code + `ICommunicationService` facade removed;
+      all comm docs contract-synced to Email-only (AGENTS root/backend, stack-contract,
+      integration-contracts, api-surface, README, COMMUNICATION-GUIDE, AUTHENTICATION-GUIDE)
+- [x] Redis OTP window gates email sends before Brevo
+- [x] Unit tests green (`dotnet test`)
+- [ ] Verify a custom domain in Brevo dashboard -> sends with your own From-domain (no `brevosend.com`)
+- [ ] In-app notifications (web/mobile + AI copilot) inside the Notifications domain (next spec)
 
 ## Verification
 
@@ -79,4 +67,4 @@ python3 ../scripts/check-contract-sync.py                 # exit 0
 ```
 
 ---
-**Engineering Excellence. Production Mindset. Professional Impact. 🚀**
+**Engineering Excellence. Production Mindset. Professional Impact.**

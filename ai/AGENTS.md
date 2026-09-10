@@ -28,6 +28,11 @@ Root shared skills + `ai/.agents/skills/` (`trigger-dev-tasks`, `ai-agent-securi
 1. AI writes only via the backend GraphQL with `GRIOT_SERVICE_TOKEN`.
 2. Mutations are proposed -> approved -> executed by the app, never by the agent.
 3. LLM keys only in `ai/.env`; never in web or backend.
+4. **Trigger.dev is a compute/orchestration adapter, never a data owner.** Every result is written back by calling the .NET API (`POST /api/webhooks/trigger` HMAC or service-token REST); `ai/` never writes to SQL Server, never holds DB credentials.
+5. **`ai/` tasks are triggered only by the .NET backend** (Trigger.dev REST/SDK, server-to-server `TRIGGER_SECRET_KEY`). Web/mobile never trigger or poll Trigger.dev — they call the .NET API, which enqueues tasks. The only direct web↔Trigger channel is the Copilot realtime stream (scoped access token, read-only delivery).
+6. Scheduled agents (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`) run on Trigger.dev schedules but persist their output through the same .NET-only path.
+
+See `research/ai-integration.md` §2a for the authoritative orchestration contract.
 
 **Engineering Excellence. Production Mindset. Professional Impact. Rocket**
 

@@ -9,7 +9,7 @@ scoped to workspace membership, replacing the 501 scaffold.
 
 ## Routes
 - `GET|POST /api/workspaces/{id}/projects` · `GET|PUT|DELETE /api/projects/{id}`
-- `GET|POST /api/projects/{id}/boards` · `GET /api/boards/{id}`
+- `GET|POST /api/projects/{id}/boards` · `GET|PUT|DELETE /api/boards/{id}`
 - `POST /api/boards/{id}/columns` · `PATCH|DELETE /api/columns/{id}`
 
 ## Implementation

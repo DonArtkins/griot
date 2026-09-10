@@ -50,6 +50,7 @@ CREATE: `ai/agents.ts` stub, `ai/tasks/health.ts` (runnable scheduled task), `ai
 ## Separation of Concerns
 
 - AI orchestration only here; no DB, no HTTP routes.
+- Standalone service: deployed independently (Trigger cloud or own Docker container) and triggered only by the .NET backend (research/ai-integration.md §2a). Tasks never write domain data directly — write-back goes through the .NET API (webhook HMAC or service-token REST).
 
 ## Docker & Deploy
 

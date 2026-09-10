@@ -23,7 +23,7 @@
 
 | Alert | Trigger | Channel |
 |---|---|---|
-| Uptime down | `/health` non-200 for > 1 min | Email/WhatsApp |
+| Uptime down | `/health` non-200 for > 1 min | Email |
 | 5xx spike | ErrorLogs count > threshold /h | Email |
 | p95 board regression | k6 run in CI fails threshold | CI red |
 | LLM budget | Redis over budget alarm | Email |

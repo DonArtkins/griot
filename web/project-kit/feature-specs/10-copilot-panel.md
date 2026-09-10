@@ -36,6 +36,7 @@ The in-app Copilot: a collapsible right-rail chat panel in the App shell that st
 ## Separation of Concerns
 
 - Panel = web concern; agent logic = ai system; mutations always ride the normal REST path (backend owns writes).
+- **Frontend isolation (research/ai-integration.md §2a):** the web app never triggers or polls Trigger.dev's public API — it calls the .NET API, which enqueues tasks. The realtime WS (scoped access token) is a read-only streaming delivery channel for Copilot output only. No Trigger.dev secret ever reaches the frontend bundle.
 
 ## Docker & Deploy
 

@@ -52,12 +52,12 @@ All specification/documentation issues are complete. See commit history for deta
 
 ### Architecture & Code Quality (5 items)
 
-#### 6. Layer Violations (DashboardService)
+#### 6. Layer Violations (dashboard path)
 **Location:** `backend/project-kit/context/architecture.md:30-31`  
 **Issue:** Application layer calling Redis/Dapper directly  
-**Fix:** Create ICacheService, IDashboardRepository abstractions  
+**Fix:** Keep the dashboard query behind `IDashboardRepository` (Infrastructure) + `ICacheService` abstraction  
 **Effort:** 2 days  
-**Details:** Extract direct Redis/Dapper calls from DashboardService into IDashboardRepository (Infrastructure) and ICacheService abstraction; Application layer depends only on interfaces.
+**Details:** `DomainService.GetDashboardSummaryAsync` currently computes via EF + generic repos; when Phase-1 dashboard caching ships, switch to the Dapper proc (`usp_GetDashboardSummary`) + Redis 60s cache - Application layer depends only on interfaces.
 
 #### 7. Token Validation on Startup
 **Location:** `backend/project-kit/feature-specs/11-blob-storage-integration.md:212-213`  

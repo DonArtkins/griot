@@ -23,8 +23,9 @@ public class GriotDbContextFactory : IDesignTimeDbContextFactory<GriotDbContext>
             throw new System.InvalidOperationException("Connection string 'DefaultConnection' not found.");
         }
 
-        var optionsBuilder = new DbContextOptionsBuilder<GriotDbContext>();
+                var optionsBuilder = new DbContextOptionsBuilder<GriotDbContext>();
         optionsBuilder.UseSqlServer(connectionString);
+        optionsBuilder.UseLazyLoadingProxies();
 
         return new GriotDbContext(optionsBuilder.Options);
     }
