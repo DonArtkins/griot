@@ -10,8 +10,8 @@
 | 4 | **N+1 query under load** | Board/dashboard slow at scale | DataLoader for assignee/comments; indexes on FKs; k6 baseline | k6 in CI + dashboard p95 check |
 | 5 | **SQL Server fills disk / connection pool** | API errors | Pool limits; retention pruning (90-day log); volume monitoring | Railway volume alert |
 | 6 | **LLM budget exceeded** | Cost spike on Copilot | Per-workspace Redis token budget + alarms; propose-before-write limits usage | budget metrics |
-| 7 | **Prompt injection via user text** | Agent manipulated into unrelated writes | User text = data; tools scope per workspace; ai-agent role (no deletes/invites) | audit logs review |
-| 8 | **MCP tool abuse (external client)** | Data exfiltration / load | Service token + ai-agent scope; per-workspace scoping; rate limit on MCP HTTP | MCP access logs |
+| 7 | **Prompt injection via user text** | Agent manipulated into unrelated writes | User text = data; tools scope per workspace; OBO role `ai-on-behalf-of` (4 scopes, no deletes/invites) | audit logs review |
+| 8 | **MCP tool abuse (external client)** | Data exfiltration / load | Service token + OBO scope (4 claims, 403 on deletes/invites/bulk); per-workspace scoping; rate limit on MCP HTTP | MCP access logs |
 | 9 | **Deploy broke production** | Site down | Vercel instant rollback; Railway rollback previous deploy; runbook | uptime ping + `/health` |
 | 10 | **Attachments blob fills disk** | Storage exhaustion | Metadata in DB; blob store (v2), size limits; prune | storage metrics |
 | 11 | **Dependency CVE** | Supply-chain compromise | lockfiles + CI dependency audit (Weekly-6 gate); no `latest` floats | `npm audit`/`dotnet list package` in CI |

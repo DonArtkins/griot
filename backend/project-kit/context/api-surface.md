@@ -63,7 +63,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 - **Response caching (Phase 2)**: Board queries cached in Redis by `(boardId, workspaceId, userId, timestamp)` key. Invalidated on writes. Configured via `.AddQueryCachePipeline().AddRedisQueryStorage()`. **Impact:** Hot boards served from Redis (~1ms) instead of SQL (~50–200ms).
 - **Filters/sorts**: tasks (status, priority, assignee, dueDate), notifications (readAt). **Pagination**: MaxPageSize = 1,000.
 - **Authorization**: `[Authorize]` authenticates only; every workspace-scoped resolver and mutation additionally enforces caller ownership/membership per resource (`Workspaces.OwnerId` or a `WorkspaceMembers` row) before reading/mutating. Cross-workspace resource IDs are rejected. Destructive ops (delete workspace/project/task) require Owner/Admin. No global filter — enforcement is per-resolver.
-- **Guards**: parser caps 256 fields / 512 nodes + max execution depth 10 (introspection excluded) + 30 s execution timeout + global rate limiter; same JWT bearer; `GRIOT_SERVICE_TOKEN` → ai-agent scope (no deletes/invites).
+- **Guards**: parser caps 256 fields / 512 nodes + max execution depth 10 (introspection excluded) + 30 s execution timeout + global rate limiter; same JWT bearer; `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → real-user OBO principal (role `ai-on-behalf-of`, scopes ReadWorkspace/CreateTask/AddComment/CreateNotification; deletes/invites/member ops/bulk-status → 403).
 
 ## Controller topology
 
@@ -83,7 +83,7 @@ All CRUD orchestration (specs 13–17) lives in `IDomainService`/`DomainService`
 | AttachmentController | `/api/tasks/{id}/attachments` | DomainService |
 | NotificationController | `/api/notifications*` | DomainService |
 | DashboardController | `/api/dashboard/summary`, `/api/workspaces/{id}/activity`, `/api/logs/*` | DomainService |
-| WebhookController | `/api/webhooks/trigger` | HMAC verification only |
+| WebhookController | `/api/webhooks/trigger` | thin relay — HMAC verified upstream by `WebhookHmacMiddleware` (401 mismatch/absent, 503 unconfigured) → 202 |
 
 ## Conventions
 

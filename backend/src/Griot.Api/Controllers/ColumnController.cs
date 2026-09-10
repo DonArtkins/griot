@@ -22,5 +22,8 @@ public class ColumnController : DomainControllerBase
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteColumn(Guid id)
-    { try { return (await _domain.DeleteColumnAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Column not found." }); } catch (DomainError e) { return Handle(e); } }
+    {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
+        try { return (await _domain.DeleteColumnAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Column not found." }); } catch (DomainError e) { return Handle(e); }
+    }
 }

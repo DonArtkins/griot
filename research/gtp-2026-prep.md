@@ -102,7 +102,7 @@ xUnit/NUnit → **xUnit** for .NET · Jest + RTL → exact · Flutter widget/int
 | MCP client (consumed) | Trigger.dev MCP connections | Griot's agents call external MCP servers (Slack, GitHub, Notion, Linear) as skills. |
 | In-app Copilot UI | MUI chat panel streaming via Trigger realtime | lives in `web/features/copilot`; mutation proposals require human approval. |
 | LLM providers | OpenAI / Anthropic via Trigger.dev model config | keys exist only in the `ai/` project env, never in `web/`. |
-| Cost & safety | Redis token budgets, restricted `ai-agent` role, audit log | in scope for the Week-6 OWASP pass. |
+| Cost & safety | Redis token budgets, restricted real-user OBO role `ai-on-behalf-of`, audit log | in scope for the Week-6 OWASP pass. |
 
 ---
 

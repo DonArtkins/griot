@@ -13,7 +13,7 @@ metadata:
 2. Broken auth - refresh rotation replay fails; Argon2 hashing.
 3. Sensitive data - no tokens in localStorage; cookie flags HttpOnly; Secure; SameSite.
 4. CORS - API only serves the Vercel origin in prod.
-5. AI surface - ai-agent principal scope (no deletes/invites); prompt-injection: user text as data.
+5. AI surface - real-user OBO principal (`GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of`; 4 scopes, no deletes/invites); prompt-injection: user text as data.
 
 ## Output
 

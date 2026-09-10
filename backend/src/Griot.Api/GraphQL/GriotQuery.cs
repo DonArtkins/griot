@@ -18,7 +18,8 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
-        var userId = claimsPrincipal.FindFirst("sub")?.Value;
+        var userId = claimsPrincipal.FindFirst("sub")?.Value
+                  ?? claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
             return null;
 
@@ -256,7 +257,8 @@ public class GriotQuery
         [Service] GriotDbContext dbContext,
         ClaimsPrincipal claimsPrincipal)
     {
-        var userId = claimsPrincipal.FindFirst("sub")?.Value;
+        var userId = claimsPrincipal.FindFirst("sub")?.Value
+                  ?? claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
             return Enumerable.Empty<NotificationGraphQLType>().AsQueryable();
 
@@ -285,7 +287,8 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
-        var userId = claimsPrincipal.FindFirst("sub")?.Value;
+        var userId = claimsPrincipal.FindFirst("sub")?.Value
+                  ?? claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
             return new NotificationCountType { Count = 0 };
 
@@ -395,12 +398,15 @@ public class GriotQuery
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// Resolve the authenticated user id from the JWT principal, or reject the
-    /// request when the token has no usable subject claim.
+    /// Resolve the authenticated user Guid from either JWT "sub" claim or the
+    /// XML-SOAP NameIdentifier claim (used by the OBO ServiceToken handler).
+    /// Throws <see cref="UnauthorizedAccessException"/> when neither is present
+    /// on the request when the token has no usable subject claim.
     /// </summary>
     private static Guid AuthenticatedUserId(ClaimsPrincipal claimsPrincipal)
     {
-        var userId = claimsPrincipal.FindFirst("sub")?.Value;
+        var userId = claimsPrincipal.FindFirst("sub")?.Value
+                  ?? claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
             throw new UnauthorizedAccessException();
 

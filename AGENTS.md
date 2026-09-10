@@ -34,7 +34,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Where We Are — Implementation Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–05 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–05 → P6 qa 01–13**. Right now: backend specs 01–08, 12 (Email-only), 13–17 are ✅ — **the next spec is backend 09 (AI service token + webhooks)**, the gateway that unblocks all of `ai/` + `mcp/`, followed by the 2026-09-10 observability/hardening wave (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
+The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–05 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–05 → P6 qa 01–13**. Right now: backend specs 01–09, 12 (Email-only), 13–17 are ✅ (09 = AI service token + webhooks, implemented OBO) — **the next spec is backend 20 (observability/logging pipeline)**, the first of the 2026-09-10 observability/hardening wave (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
 
 ## Required Skills
 
@@ -49,7 +49,7 @@ The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 
 0. **Contract synchronization is a hard gate.** A change to any cross-system contract (API route, GraphQL type, env var, port, entity/enum, auth token shape, `GRIOT_SERVICE_TOKEN`, Docker service name, MCP tool id) must be reflected in the owning system's feature spec, all dependent systems' specs, the relevant context files, the root `AGENTS.md`, and `docs/` in the same branch. Never leave a system describing a stale contract.
 0a. **Optimization phases are implementation gates.** Production-blocking optimizations (Phase 1: blob storage, Netdata monitoring, dashboard caching, GraphQL DataLoader, pagination caps) ship before public launch. Post-baseline optimizations (Phase 2: indexes, Redis caching, read replicas) apply only after k6 evidence proves p95 latency targets are missed. Post-bootcamp enhancements (Phase 3: R2 migration, Prometheus, offline queue, code splitting) are deferred until cost/scale justifies them. See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` for full roadmap.
 1. **Separation of concerns is physical.** `backend/` owns data + API; `web/` + `mobile/` own presentation; `ai/` + `mcp/` own intelligence; `infra/` owns containers + deployment; `qa/` owns test lifecycles. No system writes code into another system's folder.
-2. **AI never writes to SQL Server directly.** Every AI read/write goes through the .NET API via `GRIOT_SERVICE_TOKEN` (resolved to a restricted `ai-agent` principal).
+2. **AI never writes to SQL Server directly.** Every AI read/write goes through the .NET API via `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {Guid}` (resolved to a real-user **On-Behalf-Of** principal — role `ai-on-behalf-of`, exactly four scopes: ReadWorkspace/CreateTask/AddComment/CreateNotification; no deletes, no invites, no member management; same policy code as any member).
 3. **The PDF stack is never substituted silently.** Every deviation must carry `[own-stack]` and a written rationale in `project-kit/context/stack-contract.md`.
 4. **ERD before schema, wireframes before UI.** The approved Figma Make ERD (`diagrams/erd/`) is the only source for entity/enum names; no schema code may exist before it is approved.
 5. **Planning before implementation.** Present a concrete plan and wait for explicit approval before schema migrations, API surface changes, Docker/Compose changes, deployment changes, or writing any production code. **The system-design docs + diagrams must be complete and approved before implementation starts.**
@@ -93,6 +93,20 @@ rate-limited (3/15min/email via Redis) before Brevo, and the API global limiter 
 100/min/caller — Brevo's 300/day free cap is never reachable from app code.
 Full contract: `docs/communication/COMMUNICATION-GUIDE.md`; owner spec:
 `backend/project-kit/feature-specs/12-communication-channels-brevo.md`.
+
+## Implemented AI boundary contract (Feature 09 — own-stack)
+
+AI callers authenticate with `Authorization: Bearer {GRIOT_SERVICE_TOKEN}` **plus**
+`X-On-Behalf-Of: {real User.Id}` — the `ServiceToken` auth scheme (routed via the `MultiAuth`
+policy forward-selector) issues a real-user **On-Behalf-Of (OBO)** principal (role
+`ai-on-behalf-of`, scope claims `ReadWorkspace`/`CreateTask`/`AddComment`/`CreateNotification`),
+NOT a virtual `ai-agent` member. Deletes/invites/member management and `PATCH /api/tasks/bulk-status`
+return **403** to AI OBO callers (`DomainControllerBase.ForbidIfAiCall()`; GraphQL equivalents).
+`POST /api/webhooks/trigger` is HMAC-verified by `WebhookHmacMiddleware` **before** auth
+(`X-Trigger-Signature: sha256=<hex>`, 401 mismatch, 503 unconfigured, 202 on success).
+`TriggerDevClient` enqueues tasks by ID to Trigger.dev (`TRIGGER_SECRET_KEY`, enqueue-after-persist,
+failure never rolls back). Full contract: `docs/api/ai-service-token-contract.md`; owner spec:
+`backend/project-kit/feature-specs/09-ai-service-token-and-webhooks.md`.
 
 ## Database rollback / recovery contract
 

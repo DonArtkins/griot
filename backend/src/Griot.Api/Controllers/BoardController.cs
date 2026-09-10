@@ -38,7 +38,10 @@ public class BoardController : DomainControllerBase
     [HttpDelete]
     [Route("api/boards/{id}")]
     public async Task<IActionResult> DeleteBoard(Guid id)
-    { try { return (await _domain.DeleteBoardAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Board not found." }); } catch (DomainError e) { return Handle(e); } }
+    {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
+        try { return (await _domain.DeleteBoardAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Board not found." }); } catch (DomainError e) { return Handle(e); }
+    }
 
     [HttpPost]
     [Route("api/boards/{id}/columns")]

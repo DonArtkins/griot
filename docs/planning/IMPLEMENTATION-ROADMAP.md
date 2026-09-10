@@ -25,7 +25,7 @@ P6  Quality Engineering qa 01 → 02 → … → 13                     [Weeks 6
 
 | Next | Why it must be first |
 |---|---|
-| **09 AI service token + webhooks** | The single most-blocking remaining spec. `GRIOT_SERVICE_TOKEN` (restricted `ai-agent` principal) + HMAC `/api/webhooks/trigger` is the *only* door AI agents (ai 01–05) and MCP tools (mcp 03) may walk through. Nothing in `ai/` or `mcp/` can meet acceptance criteria without it. Depends only on spec 07 (done). |
+| **09 AI service token + webhooks** | ✅ **DELIVERED** on `feature/backend/09-ai-service-token-and-webhooks` (2026-09-11). `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {real User.Id}` → real-user OBO principal (role `ai-on-behalf-of`, 4 scopes, no deletes/invites) + HMAC `POST /api/webhooks/trigger` (`WebhookHmacMiddleware`). The A→.NET door AI agents (ai 01–05) and MCP tools (mcp 03) walk through is now open. Contract: `docs/api/ai-service-token-contract.md`. |
 | **20 Observability & logging pipeline** | The 2026-09-10 audit proved `ApiLogs`/`ErrorLogs`/`AuditLogs`/`ActivityLogs` have **zero writers** (spec + ADR-004). Every later layer reads these tables: infra 07 alerts, qa 04/05 assertions, ai's audit gate, the incident runbook. Filling them is the first hardening gate. No schema change (ADR-002 tables already exist). |
 | **18 Search, filter, paginate, sort** | Uniform capped/whitelisted query contract over all list endpoints — the read plane that 19's cache keys and 21's scale-out assume. Builds directly on 20's log routes. |
 | **19 Caching & rate limiting** | Redis cache-aside (dashboard/board/unread) + per-route limiter partitions (auth/webhook/GraphQL) + GraphQL cost caps. Protects everything 20–18 built; uses 18's query shapes for cache keys. |

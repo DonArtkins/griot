@@ -2,6 +2,27 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-09-11 (Backend spec 09: AI service token + OBO principal + webhook HMAC)
+
+### Added
+- **Backend spec 09 implemented** on `feature/backend/09-ai-service-token-and-webhooks`:
+  - `ServiceTokenHandler` (scheme `ServiceToken`, AI OBO): validates `Authorization: Bearer {GRIOT_SERVICE_TOKEN}` + `X-On-Behalf-Of: {Guid}` → looks up REAL USER in Users table → issues ClaimsPrincipal with the user's own identity (NameIdentifier = user.Id, Name = DisplayName, Email = Email, role `ai-on-behalf-of`, 4 scopes: ReadWorkspace · CreateTask · AddComment · CreateNotification; constant-time token comparison; per-call `IServiceScopeFactory` for user repo resolution.
+  - `MultiAuth` policy scheme with `ForwardDefaultSelector` (Program.cs L200-213): JWT-shaped bearer → JwtBearer; anything else → ServiceToken; missing → JwtBearer so 401 challenges keep JWT shape.
+  - `DomainControllerBase.ForbidIfAiCall()` / `IsAiCall` guard: checks role `ai-on-behalf-of` → returns 403 before any destructive endpoint.
+  - GraphQL mirrors in GriotQuery/GriotMutation: IsAiCall on all DeleteWorkspace/DeleteProject/DeleteTask + RequireWorkspaceAdminOrOwnerAsync + RequireWorkspaceOwnerAsync.
+  - `WebhookHmacMiddleware`: buffers body + HMAC-SHA256 compare against `WEBHOOK_SECRET`; runs BEFORE UseAuthentication; 401 on mismatch; downstream never sees forged payloads.
+  - `TriggerDevClient` typed HttpClient + `TRIGGER_SECRET_KEY` Bearer auth for server→Trigger enqueue direction.
+- **Unit tests:** `ServiceTokenHandlerTests` (9 tests, incl. OBO-header failure paths), `OboMembershipBoundaryTests` (pure IsMember), `AiAgentControllerGuardTests` (5 `ForbidIfAiCall` coverage)).
+
+### Changed
+- **Runtime bug fix:** `PATCH api/tasks/bulk-status` added AI guard at top of handler (TaskController.BulkStatusUpdate was the ONLY bulk-destructive endpoint without scope restriction).
+- **Test file fixes:** `ServiceTokenAndWebhookTests.cs` fully rewritten for OBO; old virtual-ai-agent-GUID tests replaced/deleted (well-known fixed GUID virtual-member hack removed from runtime).
+- **`.husky/pre-push` syntax bug fixed** (parenthesis).
+- Hardcoded-GUID audit: 0 matches in application runtime code (seed/migrations/test fixtures are grandfathered).
+
+### Fixed
+- Pre-push SQL fixture: seed historical `Users` columns through parameterized SQL before applying `AddRefreshTokenFamilyId`, avoiding the premature `EmailVerified` insert. Extended the migration regression; verified 71 passing SQL-enabled tests, zero failures/skips, a clean build, and a healthy local API on 2026-09-10. No production schema or auth behavior changed in this repair.
+
 ## [Unreleased] — 2026-09-10 (Observability & audit system audit + hardening wave specs 18–22)
 
 ### Added

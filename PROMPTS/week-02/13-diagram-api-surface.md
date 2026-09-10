@@ -1,5 +1,7 @@
 # Week 02 · Diagram 09 — API Surface Map (detailed REST + GraphQL)
 
+> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`.
+
 **Master spec + Figma Make paste prompts.** This is the "everything we just discussed" API surface — every route, every GraphQL type, every module, drawn so Postman testing + backend spec 04/05 build from the same contract.
 
 ---
@@ -53,7 +55,7 @@
 - **Types**: `User`, `Workspace`, `WorkspaceMember`, `Project`, `Board`, `Column`, `TaskItem`, `Comment`, `Attachment`, `ActivityLog`, `Notification`, `Invite`, `AuthPayload`, `DashboardSummary`, `NotificationCount`
 - **DataLoader**: batch `assignee` + `comments` (N+1 prevention)
 - **Filters/sorts**: on `tasks` (status, priority, assignee, dueDate) + `notifications` (readAt)
-- **Guards**: query-cost limit + depth limit + timeouts; same JWT principal; `GRIOT_SERVICE_TOKEN` → ai-agent scope
+- **Guards**: query-cost limit + depth limit + timeouts; same JWT principal; `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → ai-on-behalf-of scope
 
 ## 3. The prompt (single, extensive — no length limit)
 
@@ -80,7 +82,7 @@ Mutations: register, login, refresh, logout, createWorkspace, updateWorkspace, d
 Types: User, Workspace, WorkspaceMember, Project, Board, Column, TaskItem, Comment, Attachment, ActivityLog, Notification, Invite, AuthPayload, DashboardSummary, NotificationCount.
 DataLoader badge: "batch assignee + comments (N+1 prevention)".
 Filters/sorts on tasks (status, priority, assignee, dueDate) + notifications (readAt).
-Guards badge: "query-cost + depth limit + timeouts; GRIOT_SERVICE_TOKEN → ai-agent scope".
+Guards badge: "query-cost + depth limit + timeouts; GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → ai-on-behalf-of scope".
 
 BELOW BOTH HALVES:
 - A wide box "Griot.Application — shared service layer (REST + GraphQL both delegate here — drift-proof)".

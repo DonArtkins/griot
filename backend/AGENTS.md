@@ -36,7 +36,7 @@ Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, thrott
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P0 — current.** Backend specs 01–08, 12 (Email-only), 13–17 are ✅. Remaining order: **09** (AI service token + webhooks — the gateway that unblocks all of `ai/` + `mcp/`) → **20** (observability pipeline — fills ApiLogs/ErrorLogs/AuditLogs/ActivityLogs; audit found zero writers) → **18** (search/filter/pagination/sorting) → **19** (caching + rate-limit partitions) → **22** (notification fan-out in-app + email) → **21** (DB audit triggers + backup chain + restore drill) → **11** (blob storage) → **10** (API docs — freezes the hardened surface before Web consumes it). Rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004. When 10 lands, P0 closes and the **Web system (P1)** becomes the active layer. Track state in `backend/project-kit/context/progress-tracker.md`; never reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
+**Phase P0 — current.** Backend specs 01–09, 12 (Email-only), 13–17 are ✅ — 09 (AI service token + webhooks) is delivered OBO. Remaining order: **20** (observability pipeline — fills ApiLogs/ErrorLogs/AuditLogs/ActivityLogs; audit found zero writers) → **18** (search/filter/pagination/sorting) → **19** (caching + rate-limit partitions) → **22** (notification fan-out in-app + email) → **21** (DB audit triggers + backup chain + restore drill) → **11** (blob storage) → **10** (API docs — freezes the hardened surface before Web consumes it). Rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004. When 10 lands, P0 closes and the **Web system (P1)** becomes the active layer. Track state in `backend/project-kit/context/progress-tracker.md`; never reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
 
 ## Verification Gates
 
@@ -49,7 +49,7 @@ Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, thrott
 
 1. Schema changes go through the ERD first (figma-make-erd skill), then a migration.
 2. Both REST and GraphQL share `Griot.Application` services — zero drift allowed.
-3. `GRIOT_SERVICE_TOKEN` resolves to the restricted `ai-agent` principal; `/api/webhooks/trigger` verifies HMAC.
+3. `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {Guid}` resolves to the restricted **real-user OBO** principal (role `ai-on-behalf-of`, scopes ReadWorkspace/CreateTask/AddComment/CreateNotification); `POST /api/webhooks/trigger` HMAC is verified by middleware (`Webhook:Secret` ?? `WEBHOOK_SECRET`) before auth; `TriggerDevClient` enqueues after persist (`Trigger:SecretKey` ?? `TRIGGER_SECRET_KEY`, never throws/rolls back).
 4. Every raw SQL / Dapper call is parameterized; stored procs are `usp_` prefixed and idempotent.
 5. Auth details (Argon2, 15-min JWT, refresh rotation with revocation-on-reuse) match spec 07 exactly.
 
@@ -75,6 +75,22 @@ is the one caller that surfaces delivery failure: Brevo reject/outage → **HTTP
 cap is a real operational budget the OTP window slows but does not make unreachable.
 Full contract: `docs/communication/COMMUNICATION-GUIDE.md`; owner spec:
 `feature-specs/12-communication-channels-brevo.md`.
+
+## Implemented AI boundary contract (Feature 09 — own-stack)
+
+AI callers authenticate with `Authorization: Bearer {GRIOT_SERVICE_TOKEN}` **plus**
+`X-On-Behalf-Of: {real User.Id}` — the `ServiceToken` auth scheme (routed via the `MultiAuth`
+policy forward-selector on `ServiceTokenHandler.SelectScheme`: JWT-shaped bearer → JwtBearer,
+anything else → ServiceToken) issues a real-user **On-Behalf-Of (OBO)** principal (role
+`ai-on-behalf-of`, scope claims ReadWorkspace/CreateTask/AddComment/CreateNotification). No
+virtual `ai-agent` member exists. Every destructive endpoint guards with
+`DomainControllerBase.ForbidIfAiCall()` → **403** (deletes, invites, member management,
+`PATCH /api/tasks/bulk-status`; GraphQL `deleteWorkspace`/`deleteProject`/`deleteTask` +
+admin/owner-only mutations). `WebhookHmacMiddleware` (before `UseAuthentication`) verifies
+`X-Trigger-Signature: sha256=<hex>` on `POST /api/webhooks/trigger` — 401 mismatch/absent,
+503 unconfigured, downstream sees 202. `TriggerDevClient` enqueues by task ID
+(`POST {Trigger:ApiUrl}/api/v1/tasks/{taskId}/trigger`), enqueue-after-persist, failure never
+rolls back. Full contract: `docs/api/ai-service-token-contract.md`.
 
 Before committing or pushing implementation, run `python3 scripts/check-contract-sync.py` from
 the repository root. Synchronize the owning spec, dependent specs, planning,

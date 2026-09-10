@@ -109,7 +109,7 @@ await _db.ExecuteAsync("dbo.usp_BulkUpdateTaskStatus",
 
 ### 6.5 AI-facing API surface (own-stack extension — see `ai-integration.md`)
 
-- GraphQL + REST are the **only** way AI touches data. The Griot MCP server and the Trigger agents call existing endpoints with a `GRIOT_SERVICE_TOKEN` (Bearer header), which the pipeline resolves to a dedicated **"ai-agent" workspace member** with an explicit reduced role (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites). Same policy code as every member.
+- GraphQL + REST are the **only** way AI touches data. The Griot MCP server and Trigger agents send `GRIOT_SERVICE_TOKEN` (Bearer header) plus `X-On-Behalf-Of: {real User.Id}`. The API resolves a real-user OBO principal with role `ai-on-behalf-of` and four scopes (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, invites, or member management). No synthetic workspace member is created; the same membership policies apply as for any user.
 - New trusted-surface endpoint: `POST /api/webhooks/trigger` — accepts signed Trigger.dev webhooks (HMAC `X-Trigger-Signature` verified in middleware) so background runs can request non-LLM work (e.g. "build the digest") without talking to a model.
 - The activity feed (Week-1 screen → `ActivityLog`) doubles as the AI layer's audit + `summarize_project` source.
 - **Zero AI code in this solution.** The .NET app only exposes typed reads/writes; the intelligence is the separate Node project in the GTP tree.
@@ -126,7 +126,7 @@ One collection with `REST` + `GraphQL` folders, chained via environment vars (`b
 - [ ] Stored procs `usp_*` created and invoked via Dapper
 - [ ] Postman collection complete and reusable from CI
 - [ ] `docker compose` runs the full backend stack (api + sqlserver + postgres + redis) in one command
-- [ ] Service-token auth resolves to a restricted `ai-agent` principal; `/api/webhooks/trigger` verifies HMAC (AI layer, see `ai-integration.md`)
+- [x] Service-token auth resolves to a restricted real-user OBO principal (`ai-on-behalf-of`); `/api/webhooks/trigger` verifies HMAC (backend spec 09, see `ai-integration.md`)
 
 ---
 **Engineering Excellence. Production Mindset. Professional Impact.**

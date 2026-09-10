@@ -6,9 +6,9 @@ Bootcamp **implementation phase** — Week 2 backend nearly closed; canonical cr
 
 | System | Kit | Status | Roadmap phase |
 |---|---|---|---|
-| backend | backend/project-kit | Specs 01–08, 12 (Email-only), 13–17 ✅; **09 next**, then the hardening wave 20 → 18 → 19 → 22 → 21, then 11, 10 — then P0 closes | P0 (current) |
+| backend | backend/project-kit | Specs 01–09, 12 (Email-only), 13–17 ✅; **20 next** (observability pipeline, CWE-778 gap), then 18 → 19 → 22 → 21, then 11, 10 — then P0 closes | P0 (current) |
 | web | web/project-kit | 10 specs pending; deps = backend ✅ — starts right after P0 (web 10 waits for ai 01–02 in P2) | P1 (next layer) |
-| ai | ai/project-kit | 5 specs pending; blocked by backend 09 | P2 |
+| ai | ai/project-kit | 5 specs pending; backend 09 prerequisite met; starts after P1 | P2 |
 | mobile | mobile/project-kit | 7 specs pending; deps = backend ✅ only | P3 |
 | infra | infra/project-kit | 7 specs pending; 07-Netdata is a Phase-1 launch gate | P4 |
 | mcp | mcp/project-kit | 5 specs pending; 04 needs infra; 03 needs backend 09 | P5 |
@@ -18,10 +18,12 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 
 ## Next Steps
 
-1. **P0 (now):** implement backend **09** (AI service token + webhooks — unblocks all of `ai/` + `mcp/`) on `feature/backend/09-ai-service-token-and-webhooks`, then the **2026-09-10 hardening wave 20 → 18 → 19 → 22 → 21** (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **11** (blob storage — unblocks attachment UI), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
+1. **P0 (now):** backend **09** is delivered on `feature/backend/09-ai-service-token-and-webhooks`; await user review before starting **20**. Remaining order is the **2026-09-10 hardening wave 20 → 18 → 19 → 22 → 21** (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **11** (blob storage — unblocks attachment UI), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
 2. **P1–P6:** follow `docs/planning/IMPLEMENTATION-ROADMAP.md` — Web 01–09 → ai 01–02 → web 10 → ai 03–05 → mobile 01–07 → infra 01–07 → mcp 01–05 → qa 01–13. Each phase's entry condition and rationale are in the roadmap; do not reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
 
 ## Session Notes
+
+- **2026-09-10 (spec 09 pre-push verification)** — Backend 09 delivers real-user OBO service authentication and webhook HMAC. With user approval, repaired a historical-schema SQL test fixture that referenced `EmailVerified` before its migration; the focused migration regression and all 71 SQL-enabled tests now pass with zero skips/failures. Build is clean and `/health` reports `Healthy`. Recorded the repair in the owning spec, backend context/tracker, API contract and changelog before commit/push. ActivityLog writers remain planned for spec 20; no next feature starts without approval.
 
 - **2026-09-10 (4)** — 🔭 **Observability & audit audit** (docs-only, branch `feature/backend/08-api-testing-postman`): verified `ApiLogs`/`ErrorLogs`/`AuditLogs`/`ActivityLogs` have ZERO writers (30+ SaveChanges sites, none log); exception handler persists nothing; no DB triggers; no SQL Server backup chain; one global rate-limit window; no notification producer. Created backend specs **18–22** (search/filter/pagination · cache+rate-limits · observability pipeline · DB triggers/backups · notification fan-out email+in-app), `docs/observability/LOGGING-AUDIT-REPORT.md` (incident answer matrix + per-layer flow + SQL recipes), ADR-004; Postman folder 14; **P0 reordered to 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10** across roadmap/dependency-audit/AGENTS/trackers. Strict implementation follows one spec per branch, starting with 20 after 09.
 - **2026-09-10 (3)** — 🔁 **Full-system layer-order audit** (docs-only, branch `feature/backend/08-api-testing-postman`). Created `docs/planning/IMPLEMENTATION-ROADMAP.md` as the canonical cross-system build order (P0 backend 09→11→10 → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa), resolving the web10↔ai02 circular dependency (ai 02's "web 10" dep = contract-design, not build-order). Created the 4 missing progress trackers (ai, mcp, mobile, infra) and added "Build-Order Slot" sections to every system `AGENTS.md` + this root file. Fixed stale info: infra spec count 6→7, web tracker's outdated "await backend 04–06" line. All systems now point at the same next-spec answer.

@@ -1,5 +1,7 @@
 # Week 02 · Diagram 03 — C4 Component Diagram (API only, Level 3)
 
+> Backend 09 contract: Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` resolves a real-user OBO principal (`ai-on-behalf-of`), never a synthetic member. Exactly four scope claims are issued: ReadWorkspace/CreateTask/AddComment/CreateNotification. AI OBO bulk status, deletes, invites and member management are denied; ActivityLog persistence is planned for backend 20. See `docs/api/ai-service-token-contract.md`.
+
 **Master spec + Figma Make paste prompts.** Opens the `api` container: the module split, the shared service layer, the two API surfaces (REST + GraphQL) both delegating to it, the DataLoader, the Redis client, and the repositories (EF + Dapper). This is where "one service layer, two API surfaces" is *drawn*, not described.
 
 ---
@@ -27,7 +29,7 @@
 | **Repositories** | EF Core repos (95%) + Dapper repos (2 procs: usp_BulkUpdateTaskStatus, usp_GetDashboardSummary) | DbContext / SqlConnection |
 | **GriotDbContext** | EF Core 8 mappings, migrations | SQL Server |
 | **Redis client** | rate limit, refresh metadata, token budgets | Redis |
-| **Auth middleware** | JWT validation → principal (`sub`, `email`, `jti`); `GRIOT_SERVICE_TOKEN` → ai-agent principal | — |
+| **Auth middleware** | JWT validation → principal (`sub`, `email`, `jti`); `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → ai-on-behalf-of principal | — |
 
 > **AttachmentService** responsibility: validates attachment metadata (mime type, size limits), persists `Attachments` row via EF repo, returns signed URL or metadata DTO. Blob storage (Azure Blob / S3) is v2 — v1 stores `StorageUrl` as a placeholder.
 >
@@ -63,7 +65,7 @@ AuthService · WorkspaceService · ProjectService · BoardService · TaskService
 (WebhookRelayService: verifies HMAC X-Trigger-Signature, deserializes Trigger.dev event, dispatches to app layer — relay interface only, no direct DB)
 
 BOTTOM LAYER — repositories + infrastructure:
-EF Core repositories (95% CRUD) | Dapper repositories (usp_BulkUpdateTaskStatus, usp_GetDashboardSummary) | GriotDbContext | Redis client | Auth middleware (JWT validation → principal; GRIOT_SERVICE_TOKEN → ai-agent principal)
+EF Core repositories (95% CRUD) | Dapper repositories (usp_BulkUpdateTaskStatus, usp_GetDashboardSummary) | GriotDbContext | Redis client | Auth middleware (JWT validation → principal; GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → ai-on-behalf-of principal)
 
 ARROWS (this is the important part — draw exactly these):
 - REST controllers → the service layer (one arrow each; label "thin shell, no logic")
@@ -71,7 +73,7 @@ ARROWS (this is the important part — draw exactly these):
 - DataLoader → repositories (label "batch assignees/comments — N+1 prevention")
 - service layer → repository interface block (label "dependency inversion")
 - repositories → GriotDbContext (label "EF"), repositories → Dapper procs (label "Dapper: usp_BulkUpdateTaskStatus, usp_GetDashboardSummary")
-- Auth middleware → controllers + GraphQL (label "JWT principal / service token→ai-agent")
+- Auth middleware → controllers + GraphQL (label "JWT principal / service token→ai-on-behalf-of")
 - Redis client ↔ service layer (label "rate limit, refresh, budgets"); Redis client → external Redis (dashed)
 - GriotDbContext → external SQL Server (dashed); Dapper repos → external SQL Server (dashed)
 - WebhookRelayService → ActivityLogService / NotificationService (label "dispatches event")

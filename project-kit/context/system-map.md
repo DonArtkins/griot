@@ -39,9 +39,9 @@
 |---|---|---|---|
 | web | backend | REST `/api/*` + GraphQL `/graphql` | JWT access token (Bearer) |
 | mobile | backend | REST + GraphQL (same endpoints) | JWT access token |
-| ai | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` (ai-agent principal) |
-| mcp | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` |
-| backend | ai | `POST /api/webhooks/trigger` (HMAC) | `X-Trigger-Signature` |
+| ai | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO principal — 4 scopes, no deletes/invites) |
+| mcp | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO) |
+| ai | backend | `POST /api/webhooks/trigger` (HMAC) | `X-Trigger-Signature` |
 | backend | ai | Trigger.dev REST (enqueue task by ID) | `TRIGGER_SECRET_KEY` (server-to-server only) |
 | web | ai | Trigger realtime (WS) — read-only stream delivery | Trigger access token |
 | mobile | ai | *(none)* — mobile AI/Copilot rides the .NET API exclusively | n/a |

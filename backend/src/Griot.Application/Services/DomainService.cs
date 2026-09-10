@@ -770,7 +770,8 @@ public class DomainService : IDomainService
     }
 
     private bool IsMember(Workspace ws, Guid userId)
-        => ws.OwnerId == userId || ws.Members.Any(m => m.UserId == userId);
+        => ws.OwnerId == userId
+        || ws.Members.Any(m => m.UserId == userId);
 
     private bool CanManageMembers(Workspace ws, Guid userId)
         => ws.OwnerId == userId || ws.Members.Any(m => m.UserId == userId && m.Role == WorkspaceRole.Admin);

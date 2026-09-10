@@ -38,5 +38,8 @@ public class ProjectController : DomainControllerBase
     [HttpDelete]
     [Route("api/projects/{id}")]
     public async Task<IActionResult> DeleteProject(Guid id)
-    { try { return (await _domain.DeleteProjectAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Project not found." }); } catch (DomainError e) { return Handle(e); } }
+    {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
+        try { return (await _domain.DeleteProjectAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Project not found." }); } catch (DomainError e) { return Handle(e); }
+    }
 }

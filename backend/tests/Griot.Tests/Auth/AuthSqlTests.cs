@@ -40,6 +40,9 @@ public sealed class AuthSqlTests : IClassFixture<SqlAuthFixture>
         var root = await context.RefreshTokens.SingleAsync(t => t.Id == _fixture.LegacyRootId);
         var replacement = await context.RefreshTokens.SingleAsync(t => t.Id == _fixture.LegacyReplacementId);
         var independent = await context.RefreshTokens.SingleAsync(t => t.Id == _fixture.LegacyIndependentId);
+        var legacyUser = await context.Users.SingleAsync(user => user.Id == root.UserId);
+        Assert.False(legacyUser.EmailVerified);
+        Assert.Equal(Griot.Domain.Enums.TwoFactorMethod.None, legacyUser.TwoFactorMethod);
         Assert.Equal(root.Id, root.FamilyId);
         Assert.Equal(root.FamilyId, replacement.FamilyId);
         Assert.Equal(independent.Id, independent.FamilyId);

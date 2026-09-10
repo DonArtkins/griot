@@ -2,12 +2,12 @@
 
 ## Current State
 
-**Phase P2** in `docs/planning/IMPLEMENTATION-ROADMAP.md`. Kit written (5 specs). **Not started — hard-blocked by backend spec 09** (`GRIOT_SERVICE_TOKEN` + HMAC `/api/webhooks/trigger`): `ai/` has no other legal path to Griot data, so no AI spec can meet acceptance criteria before 09 exists. Roadmap position: start after **P1 (web 01–09)** completes.
+**Phase P2** in `docs/planning/IMPLEMENTATION-ROADMAP.md`. Kit written (5 specs). **Not started; backend spec 09 prerequisite is met** (`GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of`, HMAC `/api/webhooks/trigger`). Client implementations remain planned. Roadmap position: start after **P1 (web 01–09)** completes.
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|
-| 01 | Trigger.dev setup + scaffold | Pending (P2 entry point) | backend 09 |
-| 02 | Copilot agent + realtime streaming | Pending | ai 01, backend 05 ✅ + 09 |
+| 01 | Trigger.dev setup + scaffold | Pending (P2 entry point) | P1 completion; backend 09 ✅ |
+| 02 | Copilot agent + realtime streaming | Pending | ai 01, backend 05 ✅ + 09 ✅ |
 | 03 | Scheduled agents (dueReminders/sprintDigest/staleBoard/standupBuilder) | Pending | ai 02, backend notifications (04/16 ✅) |
 | 04 | Propose-before-write workflow | Pending | ai 02, **web 10** |
 | 05 | Golden transcripts + cost budgets | Pending | ai 01–04 |
@@ -25,6 +25,8 @@
 3. Verification gates: `npm run lint && npm run typecheck && npm test` green (mocked LLM, no network in CI).
 
 ## Session Notes
+
+- **2026-09-10 (backend 09 sync)** — Backend OBO authentication is delivered: planned AI clients must send the service token and an authorized real-user `X-On-Behalf-Of` identity, including scheduled runs. Architecture and setup spec record the four-scope contract. No AI production code was implemented; P2 still waits for P1. Backend verification: 71 SQL-enabled tests passed with no skips/failures after the approved historical-fixture repair.
 
 - **2026-09-03** — AI kit created (AGENTS, skills, contexts, 5 specs).
 - **2026-09-10** — Trigger.dev orchestration contract ratified (`research/ai-integration.md` §2a): Trigger.dev is a compute/orchestration adapter, never a data owner; the .NET backend is the only task trigger and the only writer of source-of-truth data; web/mobile never call Trigger.dev (exception: read-only Copilot realtime stream).

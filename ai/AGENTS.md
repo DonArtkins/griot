@@ -19,7 +19,7 @@ Root shared skills + `ai/.agents/skills/` (`trigger-dev-tasks`, `ai-agent-securi
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P2 — AI hop.** Hard-blocked by backend **09** (`GRIOT_SERVICE_TOKEN` + HMAC webhook — the only legal data path). Starts after P1 (web 01–09). Own order: **01 → 02 → [web 10] → 03 → 04 → 05**: web 10 sits inside this phase because it consumes ai 02's realtime stream, while ai 04's propose-before-write wraps web 10's approval cards. ai 02's "web 10" dependency is contract-design, not build-order. Entry branch: `feature/ai/01-trigger-setup`. Track state in `ai/project-kit/context/progress-tracker.md`.
+**Phase P2 — AI hop.** Backend **09** prerequisite is met (`GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` and HMAC webhook — the only legal data path). Starts after P1 (web 01–09); AI implementation remains planned. Own order: **01 → 02 → [web 10] → 03 → 04 → 05**: web 10 sits inside this phase because it consumes ai 02's realtime stream, while ai 04's propose-before-write wraps web 10's approval cards. ai 02's "web 10" dependency is contract-design, not build-order. Entry branch: `feature/ai/01-trigger-setup`. Track state in `ai/project-kit/context/progress-tracker.md`.
 
 ## Verification Gates
 
@@ -29,7 +29,7 @@ Root shared skills + `ai/.agents/skills/` (`trigger-dev-tasks`, `ai-agent-securi
 
 ## Hard Rules
 
-1. AI writes only via the backend GraphQL with `GRIOT_SERVICE_TOKEN`.
+1. AI writes only via the backend GraphQL with `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of: {real User.Id}`. Service-token REST write-back uses the same headers. Scheduled runs must also resolve an authorized real-user identity; never invent a synthetic user. Role `ai-on-behalf-of` carries exactly ReadWorkspace/CreateTask/AddComment/CreateNotification; no deletes/invites/member management.
 2. Mutations are proposed -> approved -> executed by the app, never by the agent.
 3. LLM keys only in `ai/.env`; never in web or backend.
 4. **Trigger.dev is a compute/orchestration adapter, never a data owner.** Every result is written back by calling the .NET API (`POST /api/webhooks/trigger` HMAC or service-token REST); `ai/` never writes to SQL Server, never holds DB credentials.

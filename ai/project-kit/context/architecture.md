@@ -17,6 +17,14 @@ ai/
 
 ## Data flow
 
+The planned shared API client must accept the authorized real user's ID for each
+call and send `X-On-Behalf-Of` alongside Bearer `GRIOT_SERVICE_TOKEN`. Obtain the
+identity from trusted execution context, never model-generated text. This applies
+to scheduled runs and service-token REST write-back as well as GraphQL. Backend
+spec 09 issues role `ai-on-behalf-of` and exactly four scopes:
+ReadWorkspace/CreateTask/AddComment/CreateNotification; it creates no synthetic
+workspace member. Client implementation remains planned for this system's own branch.
+
 Copilot prompt -> `ai/` agent -> (tool calls) -> backend GraphQL -> SQL Server -> results streamed to web via Trigger realtime.
 
 ## Orchestration contract (research/ai-integration.md §2a — authoritative)

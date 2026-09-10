@@ -34,7 +34,7 @@ A source-level audit (2026-09-10) verified the observability tables designed int
 | **backend** (owner) | Writes the tables, shapes errors, enforces limits, owns the migration (`NotificationPreferences` only) | Implement 20 → 18 → 19 → 22 → 21, one spec per branch, gates: `dotnet build` + `dotnet test` green |
 | **web** | Error toasts gain parseable ProblemDetails + `X-Request-Id` (support pins incidents); notifications bell + activity feed become live; unread-count polling respects `Cache-Control` | Web 09 consumes the fan-out; no code change until P1 |
 | **mobile** | Same REST contract; notifications + feed parity | Mobile 07 unchanged in plan |
-| **ai** | Every tool call is attributed via `ApiLogs.UserId` = `ai-agent` principal (post spec 09); "audit rows per tool call" gate becomes testable | No new deps; benefits from 20 + 09 |
+| **ai** | Every tool call is attributed via `ApiLogs.UserId` = the real OBO user id (post spec 09 — `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of`, role `ai-on-behalf-of`); "audit rows per tool call" gate becomes testable | No new deps; benefits from 20 + 09 |
 | **mcp** | Same service-token attribution; rate-limit partition (30/min mutations) applies to its GraphQL writes | Contract tests updated post 19 |
 | **infra** | Backup sidecar + backup volume in compose (profile `backup`); Netdata alerts (spec 07) read real `ErrorLogs` counts; release step applies `usp_PruneObservabilityLogs` + `audit-triggers.sql` | Spec 03/06 sync notes already merged |
 | **qa** | Newman folder 14 asserts trails; xUnit failure-isolation + pagination-cap tests; k6 baselines correlate with `ApiLogs.DurationMs` for honest p95 evidence | qa 04/05 update after 20–22 land |

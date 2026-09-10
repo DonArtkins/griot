@@ -75,7 +75,7 @@ OWASP passes to perform on the .NET app:
 
 - **Golden-transcript tests** in `ai/`: fixed conversations against a **mocked LLM client** → assert exact tool-call order (no network in CI).
 - **MCP tool contract tests** in `mcp/`: each tool unit-tested as `(graphqlClient, input) → output`; JSON contract asserted; plus a manual MCP Inspector smoke run.
-- **OWASP for the AI surface**: the `ai-agent` principal is scoped (no deletes/invites), prompt-injection reviewed (user text as data), tool-call authorization verified per workspace.
+- **OWASP for the AI surface**: verify the real-user OBO principal (`ai-on-behalf-of`, `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of`) and its four scopes, with no deletes/invites/member management; review prompt injection (user text as data) and tool-call authorization per workspace.
 - **E2E**: Cypress chat-panel flows with an MSW-stubbed copilot — no real LLM latency/cost in CI.
 
 ## 7. Accessibility

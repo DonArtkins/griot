@@ -13,6 +13,12 @@ mcp/
 
 Data flow: external AI client <-> MCP <-> backend GraphQL <-> SQL Server. The MCP server holds no DB credentials and no LLM keys.
 
+The planned GraphQL client sends `X-On-Behalf-Of: {real User.Id}` alongside Bearer
+`GRIOT_SERVICE_TOKEN`, using trusted caller context rather than model-generated
+arguments. Missing identity fails closed. Backend 09 resolves role `ai-on-behalf-of`
+with exactly ReadWorkspace/CreateTask/AddComment/CreateNotification; no synthetic
+workspace member or fifth scope is created. MCP implementation remains planned.
+
 ## Transports
 
 - stdio: local Claude/Cursor/Cline (`claude mcp add`).

@@ -48,6 +48,7 @@ public class WorkspaceController : DomainControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteWorkspace(Guid id)
     {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
         try { return (await _domain.DeleteWorkspaceAsync(id, CurrentUserId())) ? NoContent() : NotFound(new { message = "Workspace not found." }); }
         catch (DomainError e) { return Handle(e); }
     }
@@ -62,6 +63,7 @@ public class WorkspaceController : DomainControllerBase
     [HttpPost("{id}/members")]
     public async Task<IActionResult> AddMember(Guid id, [FromBody] AddMemberRequest request)
     {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
         try { return StatusCode(StatusCodes.Status201Created, await _domain.AddMemberAsync(id, request, CurrentUserId())); }
         catch (DomainError e) { return Handle(e); }
     }
@@ -69,6 +71,7 @@ public class WorkspaceController : DomainControllerBase
     [HttpPatch("{id}/members/{userId}")]
     public async Task<IActionResult> UpdateMember(Guid id, Guid userId, [FromBody] UpdateMemberRoleRequest request)
     {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
         try { return Ok(await _domain.UpdateMemberRoleAsync(id, userId, request, CurrentUserId())); }
         catch (DomainError e) { return Handle(e); }
     }
@@ -76,6 +79,7 @@ public class WorkspaceController : DomainControllerBase
     [HttpDelete("{id}/members/{userId}")]
     public async Task<IActionResult> RemoveMember(Guid id, Guid userId)
     {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
         try { return (await _domain.RemoveMemberAsync(id, userId, CurrentUserId())) ? NoContent() : NotFound(new { message = "Member not found." }); }
         catch (DomainError e) { return Handle(e); }
     }
@@ -83,6 +87,7 @@ public class WorkspaceController : DomainControllerBase
     [HttpPost("{id}/invites")]
     public async Task<IActionResult> CreateInvite(Guid id, [FromBody] CreateInviteRequest request)
     {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
         try { return StatusCode(StatusCodes.Status201Created, await _domain.CreateInviteAsync(id, request, CurrentUserId())); }
         catch (DomainError e) { return Handle(e); }
     }

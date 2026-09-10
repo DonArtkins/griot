@@ -173,7 +173,7 @@ server.tool("create_task", { title: z.string(), columnId: z.string() }, async (i
 
 ## 7. Security & cost guardrails (also the Week-6 OWASP surface)
 
-- **Service-to-service auth**: static long-lived `GRIOT_SERVICE_TOKEN` validated on the .NET side → resolved to a **dedicated "ai-agent" workspace member with restricted role** (`CanReadWorkspace`, `CanCreateTask`, `CanComment`, `CanNotify` — no deletes, no invites).
+- **Service-to-service auth**: static long-lived `GRIOT_SERVICE_TOKEN` validated on the .NET side → with the `X-On-Behalf-Of: {real User.Id}` header it resolves to a **real-user On-Behalf-Of (OBO) principal** (role `ai-on-behalf-of`; scope claims `ReadWorkspace`, `CreateTask`, `AddComment`, `CreateNotification` — no deletes, no invites, no member management), NOT a virtual `ai-agent` member. Contract: `docs/api/ai-service-token-contract.md`.
 - **Prompt-injection mitigation**: user text is treated as **data, not instructions**; tools apply their own project/workspace scoping; the agent system prompt bans tool-call modification of unrelated entities.
 - **Level 4 Reasoning & Mutation confirmation**: the agent operates a Level 4 reasoning loop, capable of planning multi-step actions. It returns a *proposed* action plan; the Copilot UI renders it ("Create task *…* in column *…*?") for the human to approve. Deterministic paths (digest/reminders) skip this.
 - **Token/cost caps**: daily token budget per workspace recorded in Redis; alarms on over-budget runs.

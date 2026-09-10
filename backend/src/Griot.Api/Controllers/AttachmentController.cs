@@ -26,5 +26,8 @@ public class AttachmentController : DomainControllerBase
 
     [HttpDelete("{attachmentId}")]
     public async Task<IActionResult> DeleteAttachment(Guid id, Guid attachmentId)
-    { try { return (await _domain.DeleteAttachmentAsync(id, attachmentId, CurrentUserId())) ? NoContent() : NotFound(new { message = "Attachment not found." }); } catch (DomainError e) { return Handle(e); } }
+    {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
+        try { return (await _domain.DeleteAttachmentAsync(id, attachmentId, CurrentUserId())) ? NoContent() : NotFound(new { message = "Attachment not found." }); } catch (DomainError e) { return Handle(e); }
+    }
 }

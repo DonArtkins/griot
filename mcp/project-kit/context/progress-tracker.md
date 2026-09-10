@@ -8,7 +8,7 @@
 |---|---|---|---|
 | 01 | MCP server setup (stdio + Streamable HTTP) | Pending (P5 entry point) | Node 20 only — technically free |
 | 02 | Tool roster implementation (9 tools, ids are contracts) | Pending | mcp 01 |
-| 03 | Service-token GraphQL client (`ai-agent` principal) | Pending | mcp 02, backend 05 ✅ + **09** |
+| 03 | Service-token GraphQL client (real-user OBO principal) | Pending | mcp 02, backend 05 ✅ + **09 ✅** |
 | 04 | Container + Railway deploy | Pending | mcp 03, **infra 02–04, 06** |
 | 05 | Contract testing + MCP Inspector smoke | Pending | mcp 01–03 |
 
@@ -25,6 +25,8 @@
 3. Verification gates: `npm run lint && npm run typecheck && npm test` green (contract tests, mocked GraphQL) + MCP Inspector stdio smoke.
 
 ## Session Notes
+
+- **2026-09-10 (backend 09 sync)** — Backend service authentication is delivered as real-user OBO (`ai-on-behalf-of`, four scopes). Planned MCP clients must send `X-On-Behalf-Of` from trusted caller context with Bearer `GRIOT_SERVICE_TOKEN`; no synthetic member is created. Spec 03, architecture and agent instructions are synchronized. No MCP production code was implemented; P5 still follows infra. Backend verification passed all 71 SQL-enabled tests after the approved fixture repair.
 
 - **2026-09-03** — MCP kit created (AGENTS, skills, contexts, 5 specs; 9-tool roster fixed as a contract).
 - **2026-09-10** — Orchestration boundary ratified: MCP is a data/tool surface, never an orchestration trigger — external MCP clients reach data through backend GraphQL only and never receive Trigger.dev credentials (`research/ai-integration.md` §2a).

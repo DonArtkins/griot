@@ -28,7 +28,7 @@ Everything generated in Figma Make / FigJam that governs or documents Griot's im
 | `architecture/sequence-bulk-status.png` | `week-02/09-…` | ✅ Approved | TX boundary |
 | `architecture/task-state-machine.png` | `week-02/10-…` | Awaiting generation | legal transitions |
 | `architecture/deployment-production.png` | `week-02/11-…` | Awaiting generation | network boundaries |
-| `architecture/auth-permissions-matrix.png` | `week-02/12-…` | Awaiting generation | Owner/Admin/Member/ai-agent |
+| `architecture/auth-permissions-matrix.png` | `week-02/12-…` | Awaiting generation | Owner/Admin/Member/ai-on-behalf-of (real-user OBO) |
 | `architecture/api-surface-map.png` | `week-02/13-…` | Awaiting generation | every route + GraphQL |
 | `architecture/ai-system-context.png` | `week-02/14-…` | Awaiting generation | web→ai→mcp→backend |
 

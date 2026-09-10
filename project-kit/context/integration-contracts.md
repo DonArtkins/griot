@@ -19,7 +19,7 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | backend | `ConnectionStrings__Default` | SQL Server (compose: `Server=sababisha-sqlserver,1433;Database=griot;User Id=sa;Password=…`) |
 | backend | `JWT__Key` `JWT__Issuer` `JWT__Audience` | Token sign/validate |
 | backend | `Redis__Connection` | `sababisha-redis:6379` |
-| backend | `GRIOT_SERVICE_TOKEN` | AI/MCP service calls (Bearer) |
+| backend | `GRIOT_SERVICE_TOKEN` | AI/MCP service calls (Bearer `Authorization: Bearer {token}` + `X-On-Behalf-Of: {real User.Id}` header — OBO) |
 | backend | `Cors__AllowedOrigins` | Vercel origin prod; localhost dev |
 | backend | `BREVO_API_KEY` | Brevo SMTP/API key (`xkeysib-…`); also `Brevo__ApiKey` |
 | backend | `BREVO_FROM_EMAIL` `BREVO_FROM_NAME` | Fallback sender when no profile set |
@@ -31,7 +31,7 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | ai/mcp | `GRIOT_API_URL` `GRIOT_SERVICE_TOKEN` | API access |
 | ai | `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` | LLM keys ONLY in `ai/.env` |
 | backend | `TRIGGER_SECRET_KEY` | Backend → Trigger.dev REST enqueue (server-to-server; never exposed to web/mobile) |
-| backend | `WEBHOOK_SECRET` | Trigger.dev → backend HMAC callbacks (`X-Trigger-Signature`; read by WebhookController as `Webhook:Secret` ?? `WEBHOOK_SECRET`) |
+| backend | `WEBHOOK_SECRET` | Trigger.dev → backend HMAC callbacks (`X-Trigger-Signature`; read by `WebhookHmacMiddleware` as `Webhook:Secret` ?? `WEBHOOK_SECRET`) |
 | web | `VITE_TRIGGER_ACCESS_TOKEN` | Realtime WS access token — read-only Copilot stream delivery only |
 | infra | `SABABISHA_SA_PASSWORD` `SABABISHA_PG_PASSWORD` | local compose dev DB passwords |
 | backend (recovery only) | `POSTGRES_RECOVERY_TARGET_TIME` | PITR restore target, set automatically on the NEW restored Railway PostgreSQL service (`<service>-restored-YYYYMMDD-HHMM`); NOT part of normal configuration — see Database recovery contract below |
@@ -69,9 +69,18 @@ Queries: `me`, `workspace(id)`, `projects`, `board(id)`, `tasks(filter, sort)`, 
 
 `Users`, `Workspaces`, `WorkspaceMembers`, `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`, `OtpChallenges`, `Reports`. Enums: `TaskStatus`, `Priority`, `WorkspaceRole`, `NotificationType`, `TwoFactorMethod`. These names are used verbatim by web TS types, mobile Dart models, GraphQL SDL, and MCP tool schemas.
 
+## AI service-token & webhook contract (spec 09 — own-stack)
+
+Canonical: `docs/api/ai-service-token-contract.md`; owner spec `backend/project-kit/feature-specs/09-ai-service-token-and-webhooks.md`; orchestration authority `research/ai-integration.md` §2a.
+
+- **AI → .NET data plane (OBO):** `Authorization: Bearer {GRIOT_SERVICE_TOKEN}` **plus** `X-On-Behalf-Of: {Guid}` (real `Users.Id`) → `ServiceToken` auth scheme issues a **real-user On-Behalf-Of principal** — role `ai-on-behalf-of`, `auth_method=service_token_obo`, exactly four `scope` claims (`ReadWorkspace`, `CreateTask`, `AddComment`, `CreateNotification`). Constant-time token compare; missing/invalid header or unknown OBO user → 401. Routing: `MultiAuth` policy scheme forwards JWT-shaped bearers (2 dots) to `JwtBearer`, any other bearer to `ServiceToken`.
+- **Restricted surface:** deletes, invites, member management and `PATCH /api/tasks/bulk-status` → **403** for AI OBO callers (`ForbidIfAiCall()`; GraphQL `deleteWorkspace`/`deleteProject`/`deleteTask` + admin/owner-only mutations reject). No virtual `ai-agent` member exists.
+- **Trigger.dev → .NET webhook:** `WebhookHmacMiddleware` (before `UseAuthentication`) verifies `X-Trigger-Signature: sha256=<hex>` (HMAC-SHA256 of raw body) on `POST /api/webhooks/trigger`; 401 on mismatch/absent header, 503 if `Webhook:Secret`/`WEBHOOK_SECRET` unconfigured; controller returns 202.
+- **.NET → Trigger.dev enqueue:** `TriggerDevClient` — `POST {Trigger:ApiUrl}/api/v1/tasks/{taskId}/trigger` with Bearer `TRIGGER_SECRET_KEY` (default API `https://api.trigger.dev`); **enqueue-after-persist** — failure is logged and returns `false`, never rolls back the domain write.
+
 ## AI/MCP tool contract
 
-Tools (ids): `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`. Agent operates as a Level 4 planning loop requiring human approval gates for multi-step execution. All write via GraphQL with `GRIOT_SERVICE_TOKEN`; no deletes/invites.
+Tools (ids): `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`. Agent operates as a Level 4 planning loop requiring human approval gates for multi-step execution. All write via backend GraphQL/REST with `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO principal — four scopes, no deletes/invites; spec 09).
 
 ## CI/CD contract
 

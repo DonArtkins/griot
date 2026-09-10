@@ -33,7 +33,7 @@ Query recipes: `LOGGING-AUDIT-REPORT.md` §5.
 4. **Activity feed writer** — `DomainService` mutations additionally insert `ActivityLogs` (workspace, actor, action, entity) so `GET /api/workspaces/{id}/activity` returns real data for the first time.
 5. **Retention** — `usp_PruneObservabilityLogs` (idempotent SQL file under `Griot.Infrastructure/Sql/`): deletes `ApiLogs` > 90 days, `ErrorLogs` > 90 days after `FixedAt`, `AuditLogs` > 365 days (compliance tail), `ActivityLogs` > 180 days. Wired as a documented release/CI-offline step (no cron in-app v1).
 6. **Auth events** — login success/fail, refresh rotate, replay-revoke, logout write `AuditLogs` (`Action ∈ {Auth.Login, Auth.Refresh, Auth.RefreshReplayRevoked, Auth.Logout}`) so security incidents are reconstructable.
-7. **AI/MCP calls** — service-token requests are just authenticated requests; `ApiLogs.UserId` records the `ai-agent` principal id (post spec 09), giving AI attribution for free. `ai/`'s verification gate ("audit log rows present for every tool call") becomes testable.
+7. **AI/MCP calls** — service-token requests are just authenticated requests; `ApiLogs.UserId` records the real OBO user id (post spec 09 — `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of`, role `ai-on-behalf-of`), giving AI attribution for free. `ai/`'s verification gate ("audit log rows present for every tool call") becomes testable.
 
 ## Routes (owned by spec 16, consumed here)
 

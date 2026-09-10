@@ -33,8 +33,8 @@ Root shared skills + `mcp/.agents/skills/` (`mcp-sdk-tools`, `mcp-contract-testi
 
 ## Hard Rules
 
-1. Tools never bypass the backend API.
-2. Write tools mirror the approve-gate: they execute only what the backend allows (ai-agent principal).
+1. Tools never bypass the backend API. Send Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of: {real User.Id}` from trusted caller context; never use a synthetic member or a model-supplied identity.
+2. Write tools mirror the approve-gate: they execute only what the backend allows (real-user OBO principal — 4 scopes, no deletes/invites).
 3. MCP is a data/tool surface, not an orchestration trigger: external MCP clients get data through the backend GraphQL only — they never enqueue Trigger.dev tasks or receive Trigger.dev credentials (orchestration contract: `research/ai-integration.md` §2a).
 
 **Engineering Excellence. Production Mindset. Professional Impact. Rocket**

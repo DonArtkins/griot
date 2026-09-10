@@ -23,13 +23,14 @@
 - Argon2 for passwords; JWT 15-min; refresh hashed + rotated + family revoke on reuse.
 - Redis sliding-window rate limit on login; query-cost guard on `/graphql`.
 - CORS allow-list: Vercel origin prod, localhost dev.
-- Service token → `ai-agent` principal (reduced role). HMAC on `/api/webhooks/trigger`.
+- Service token + `X-On-Behalf-Of` → real-user OBO principal (role `ai-on-behalf-of`, 4 scopes; deletes/invites → 403). HMAC on `/api/webhooks/trigger` (`WebhookHmacMiddleware`, before auth).
 - Prompt-injection: user text is data, never instructions.
 
 ## Verification (before "done")
 
 - `dotnet build` + `dotnet test` green.
 - Local compose stack healthy; `/health` answers.
+- Historical-schema SQL fixtures must seed only columns present at their target migration with parameterized SQL, then apply later migrations. Do not use the current EF entity mapping to insert into an older schema (`SqlAuthFixture` regression: missing `EmailVerified`).
 - Postman collection updates committed together with any API change.
 
 ## Implemented authentication contract (Feature 07)
