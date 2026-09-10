@@ -24,6 +24,7 @@ qa/
 2. `research/week-06-quality-engineering-foundations.md` + `research/week-07-real-world-qe-practice.md`.
 3. `qa/project-kit/context/{test-pyramid,environments,coverage-gate,code-standards}.md`.
 4. Current spec.
+5. For API testing (specs 04–05): `backend/project-kit/feature-specs/20-observability-logging-pipeline.md` §routes (folder 14 trail assertions) and backend spec 18 (pagination/sort contract for strict assertions).
 
 ## Required Skills
 
@@ -43,7 +44,7 @@ Root shared skills + `qa/.agents/skills/` (all seven suites). Apply the relevant
 
 ## Hard Rules
 
-1. The Postman collection (backend feature 08) is the contract suite - Newman reuses it; never a throwaway.
+1. The Postman collection (backend feature 08) is the contract suite - Newman reuses it; never a throwaway. **Folder 14 (`Audit — Logs & Trails`) ships tolerant assertions now; tighten to strict after backend 20/18/19/22 land (spec 20 §acceptance defines the strict set).**
 2. No LLM in CI: golden transcripts (mock), MSW-stubbed copilot, MCP contract tests.
 3. Service-layer + auth coverage first; presentation second; aggregate-only passes are failures.
 4. Manual/UAT runs against the deployed system, not just localhost.

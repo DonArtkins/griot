@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 11 → 10). Kit written (10 specs). **Not started.** 9 of 10 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Spec 10 is deliberately held out of P1: it needs ai 01–02 (see P2 in the roadmap).
+**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10). Kit written (10 specs). **Not started.** 9 of 10 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Spec 10 is deliberately held out of P1: it needs ai 01–02 (see P2 in the roadmap).
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|

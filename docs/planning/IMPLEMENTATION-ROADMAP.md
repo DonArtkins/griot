@@ -12,7 +12,7 @@ This file answers one question: **after finishing the current spec, which layer'
 ## Phase Map (canonical sequence)
 
 ```
-P0  Backend close-out   backend 09 → 11 → 10                     [Week 2 close-out]
+P0  Backend close-out   backend 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10   [Week 2 close-out]
 P1  Web core            web 01 → 02 → … → 09                     [Week 3]
 P2  AI hop + Copilot    ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05   [own-stack]
 P3  Mobile              mobile 01 → 02 → … → 07                  [Week 4]
@@ -21,13 +21,18 @@ P5  MCP                 mcp 01 → 02 → 03 → 04 → 05               [own-st
 P6  Quality Engineering qa 01 → 02 → … → 13                     [Weeks 6–7]
 ```
 
-### P0 — Backend 09 → 11 → 10 (finish the gateway specs)
+### P0 — Backend 09 → 20 → 18 → 19 → 22 → 21 → 11 → 10 (gateway specs + the 2026-09-10 observability/hardening wave)
 
 | Next | Why it must be first |
 |---|---|
 | **09 AI service token + webhooks** | The single most-blocking remaining spec. `GRIOT_SERVICE_TOKEN` (restricted `ai-agent` principal) + HMAC `/api/webhooks/trigger` is the *only* door AI agents (ai 01–05) and MCP tools (mcp 03) may walk through. Nothing in `ai/` or `mcp/` can meet acceptance criteria without it. Depends only on spec 07 (done). |
-| **11 Blob storage** | Needs only 01/02/04 (all ✅). Web 07 (task attachments) and mobile parity want real file upload/download URLs; shipping it in P0 means the Web phase never has to stop for a backend detour. |
-| **10 API documentation** | Needs 04–08 (all ✅). Last backend spec; freezes the API surface into reference docs right before Web consumes it — and is the contract artifact QA 04/05 polish against. |
+| **20 Observability & logging pipeline** | The 2026-09-10 audit proved `ApiLogs`/`ErrorLogs`/`AuditLogs`/`ActivityLogs` have **zero writers** (spec + ADR-004). Every later layer reads these tables: infra 07 alerts, qa 04/05 assertions, ai's audit gate, the incident runbook. Filling them is the first hardening gate. No schema change (ADR-002 tables already exist). |
+| **18 Search, filter, paginate, sort** | Uniform capped/whitelisted query contract over all list endpoints — the read plane that 19's cache keys and 21's scale-out assume. Builds directly on 20's log routes. |
+| **19 Caching & rate limiting** | Redis cache-aside (dashboard/board/unread) + per-route limiter partitions (auth/webhook/GraphQL) + GraphQL cost caps. Protects everything 20–18 built; uses 18's query shapes for cache keys. |
+| **22 Notification fan-out (in-app + email)** | Needs 20's event hooks (audit/activity writes) and 19's limiter partitions; reuses spec-12 email infra. Gives web 09 / mobile 07 a live producer instead of empty reads. |
+| **21 DB triggers, backups, restore readiness** | Audit triggers write the same `AuditLogs` table 20 fills — triggers land **after** 20 so dedupe conventions exist. Backup chain + restore drill are the "attack/crash cannot render us useless" guarantee. Infra-side compose sync rides infra 03/06 (P4). |
+| **11 Blob storage** | Needs only 01/02/04 (all ✅). Web 07 (task attachments) and mobile parity want real file upload/download URLs; shipping it before P1 means the Web phase never stops for a backend detour. |
+| **10 API documentation** | Needs 04–08 + the hardened surface (18–22) documented. Last backend spec; freezes the API surface into reference docs right before Web consumes it — and is the contract artifact QA 04/05 polish against. |
 
 ### P1 — Web 01–09 (Week 3 system, no AI needed)
 

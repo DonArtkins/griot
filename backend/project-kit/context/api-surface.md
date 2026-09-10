@@ -32,9 +32,11 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET/POST | `/api/notifications` · POST `/api/notifications/read-all` | list / mark all read | authenticated |
 | PATCH | `/api/notifications/{id}/read` | mark one notification read | authenticated |
 | GET | `/api/notifications/unread-count` | unread notification count | authenticated |
+| GET/PUT | `/api/notifications/preferences` | notification prefs (self; creates defaults) — **spec 22 PLANNED** | authenticated |
+| POST | `/api/notifications/fanout` | event → in-app+email fan-out — **spec 22 PLANNED** | service token only |
 | GET | `/api/dashboard/summary?workspaceId=` | dashboard via `usp_GetDashboardSummary` (one round-trip; Phase 1: Redis 60s cache) | workspace member |
-| GET | `/api/logs/errors` | error log (Owner/Admin) | Owner/Admin |
-| GET | `/api/logs/audit?entityType=&entityId=` | audit log | Owner |
+| GET | `/api/logs/errors` | error log — persisted by backend spec 20 (PLANNED; Owner/Admin) | Owner/Admin |
+| GET | `/api/logs/audit?entityType=&entityId=` | audit log — persisted by backend spec 20 (PLANNED; Owner) | Owner |
 | POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) | HMAC only |
 | GET | `/health` | liveness (health checks) | public |
 
@@ -90,7 +92,7 @@ All CRUD orchestration (specs 13–17) lives in `IDomainService`/`DomainService`
 - Errors: 404 for not found/not-owned (never disclose existence), 400 validation, 401 auth, 403 role, 409 conflict/illegal state, 429 rate limit.
 - Every response carries `X-Request-Id` (request-id middleware; logs correlated by it).
 - **`PATCH /api/tasks/bulk-status`**: 409 for any invalid task id in batch (not 404/400); full rollback via `usp_BulkUpdateTaskStatus`; 400 only for pre-validation failures (empty array, malformed body).
-- Pagination: fixed page size, stable order (tasks by `(ColumnId, Position)`); cursor or skip/take.
+- Pagination: fixed page size, stable order (tasks by `(ColumnId, Position)`); cursor or skip/take. **Superseded by backend spec 18 (PLANNED): uniform `page`/`pageSize` (cap 100, 400 outside 1–1000 validation, clamped >100) + per-endpoint `sortBy` whitelist + `sortDir` + `q` search + `PagedResult<T>` envelope with `X-Total-Count`/`X-Page`/`X-Total-Pages` headers.**
 - Latency budgets (p95): board read < 500 ms, dashboard < 500 ms, login < 300 ms, bulk-status < 800 ms.
 - Postman collection (`Postman/Griot.postman_collection.json`) mirrors every route; Newman reuses it in CI (qa).
 
@@ -99,6 +101,18 @@ All CRUD orchestration (specs 13–17) lives in `IDomainService`/`DomainService`
 Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register) + `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; per-purpose branded Brevo template — `auth-contract.md` §Email. Registration returns 201 after SQL persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+## Observability & protection contracts (specs 18–22 — PLANNED)
+
+| Spec | Contract summary |
+|---|---|
+| **20** | `ApiLoggingMiddleware` → `ApiLogs` (every request, IP masked, `RequestId` = `X-Request-Id`); unhandled exceptions → `ErrorLogs` + RFC 7807 `application/problem+json`; `IAuditService` → `AuditLogs` before/after JSON on every state-changing write (REST + GraphQL + auth events); `ActivityLogs` written by mutations (feed becomes real); retention proc `usp_PruneObservabilityLogs` (90/90/365/180-day); log writes are failure-isolated (never fail the request) |
+| **18** | uniform `page`/`pageSize` (cap 100)/`sortBy` whitelist/`sortDir`/`q` + `PagedResult<T>` (`items,page,pageSize,totalCount,totalPages`) + `X-Total-Count`/`X-Page`/`X-Total-Pages` headers; violations → 400 ProblemDetails |
+| **19** | Redis cache-aside (`cache:dashboard:{ws}` 60s, `cache:board:{id}` 30s, `cache:notif:unread:{user}` 15s; `X-Cache: HIT/MISS`; fail-open) + limiter partitions auth 10/min/IP, webhook 60/min, GraphQL mutations 30/min, depth 10 / complexity 1000 (unchanged global 100/min) |
+| **21** | `AFTER INS/UPD/DEL` triggers on TaskItems/WorkspaceMembers/Invites/Attachments → `AuditLogs` (`DB.`-prefixed actions; app rows unprefixed); FULL nightly + DIFF 15min + LOG 10min backups on `sababisha_mssql_backup` + restore drill runbook |
+| **22** | fan-out matrix (Assignment/Mention/DueDate/System → sender keys noreply/support/noreply/team+admin); new `NotificationPreferences` (1:1 Users) + `GET/PUT /api/notifications/preferences` + service-token-only `POST /api/notifications/fanout`; email best-effort (failure → `ErrorLogs`, request still succeeds) |
+
+Audit + incident runbook: `docs/observability/LOGGING-AUDIT-REPORT.md` (what/where/why/when/trigger/spillover/user-count query recipes); decision: `docs/decisions/ADR-004-observability-pipeline-and-db-resilience.md`.
 
 ## Communication contracts (Spec 12 — own-stack)
 

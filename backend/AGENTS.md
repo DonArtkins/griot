@@ -36,7 +36,7 @@ Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, thrott
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P0 — current.** Backend specs 01–08, 12 (Email-only), 13–17 are ✅. Remaining order: **09** (AI service token + webhooks — the gateway that unblocks all of `ai/` + `mcp/`) → **11** (blob storage — unblocks web/mobile attachment UI) → **10** (API docs — freezes the surface before Web consumes it). When 10 lands, P0 closes and the **Web system (P1)** becomes the active layer. Track state in `backend/project-kit/context/progress-tracker.md`; never reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
+**Phase P0 — current.** Backend specs 01–08, 12 (Email-only), 13–17 are ✅. Remaining order: **09** (AI service token + webhooks — the gateway that unblocks all of `ai/` + `mcp/`) → **20** (observability pipeline — fills ApiLogs/ErrorLogs/AuditLogs/ActivityLogs; audit found zero writers) → **18** (search/filter/pagination/sorting) → **19** (caching + rate-limit partitions) → **22** (notification fan-out in-app + email) → **21** (DB audit triggers + backup chain + restore drill) → **11** (blob storage) → **10** (API docs — freezes the hardened surface before Web consumes it). Rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004. When 10 lands, P0 closes and the **Web system (P1)** becomes the active layer. Track state in `backend/project-kit/context/progress-tracker.md`; never reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
 
 ## Verification Gates
 

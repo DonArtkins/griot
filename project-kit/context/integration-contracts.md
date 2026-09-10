@@ -25,6 +25,8 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | backend | `BREVO_FROM_EMAIL` `BREVO_FROM_NAME` | Fallback sender when no profile set |
 | backend | `BREVO_SENDER_<KEY>_EMAIL` `_NAME` `_REPLYTO` | Sender identities: SECURITY, ADMIN, NOREPLY, SUPPORT, INFO, TEAM |
 | backend | `CLOUDINARY_URL` (or `CLOUDINARY_CLOUD_NAME` `_API_KEY` `_API_SECRET`) | Attachment blob storage via `CloudinaryDotNet` (server-to-server; secret never exposed to web/mobile) |
+| backend | `Web__BaseUrl` | Web origin used in notification email deep links (spec 22, planned) |
+| backend | `RateLimit__Auth__PermitLimit` etc. | Per-route limiter partitions (spec 19, planned; defaults documented in spec 19) |
 | web | `VITE_API_URL` | deployed API base |
 | ai/mcp | `GRIOT_API_URL` `GRIOT_SERVICE_TOKEN` | API access |
 | ai | `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` | LLM keys ONLY in `ai/.env` |

@@ -9,7 +9,7 @@
 | 01 | QE fundamentals doc | Pending (no code deps — gap filler) | — |
 | 02 | Manual testing excellence | Pending (gap filler) | — |
 | 03 | Test management in Jira | Pending (gap filler) | — |
-| 04 | API testing mastery (Postman) | Pending | backend 08 ✅ (base collection) |
+| 04 | API testing mastery (Postman) | Pending | backend 08 ✅ (base collection); folder 14 strict mode waits on backend 20 ✅ |
 | 05 | Newman + contract testing | Pending | qa 04, **infra 05** (CI jobs) |
 | 06 | xUnit (.NET) suites | Pending | backend 04–07 ✅ |
 | 07 | Jest + RTL suites | Pending | web code (P1) |

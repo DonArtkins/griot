@@ -60,6 +60,11 @@ Full diagram source: `PROMPTS/week-02/01-database-schema-erd-figma-make.md` + `0
 
 **Decision gate:** Add Phase 2 indexes only after k6 load tests prove p95 board reads exceed 500ms target under sustained load (500 concurrent users, 5 req/s/user for 10 min). See `docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` §3.
 
+### Audit triggers & backup chain (planned — spec 21, ADR-004)
+- `AFTER INSERT/UPDATE/DELETE` triggers on `TaskItems`, `WorkspaceMembers`, `Invites`, `Attachments` writing `AuditLogs` with `DB.`-prefixed actions (app `IAuditService` rows stay the primary, non-prefixed path — spec 20).
+- Recovery model `FULL` + nightly FULL / 15-min DIFF / 10-min LOG backups on the `sababisha_mssql_backup` volume (opt-in compose sidecar, `profile: backup`); restore drill runbook: `docs/database/BACKUP-RESTORE-DRILL.md` (created with spec 21).
+- Retention: `usp_PruneObservabilityLogs` (spec 20) — ApiLogs/ErrorLogs 90d, AuditLogs 365d, ActivityLogs 180d.
+
 ## 5. Stored procedures (Dapper hot paths)
 
 - `usp_BulkUpdateTaskStatus(@WorkspaceId, @TaskIds TVP, @Status)` — atomic bulk status update (transaction), `SYSUTCDATETIME()` on Update.

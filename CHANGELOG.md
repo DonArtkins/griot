@@ -2,6 +2,22 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-09-10 (Observability & audit system audit + hardening wave specs 18–22)
+
+### Added
+- **Five implementation-ready backend specs** (planning artifacts on this branch; each ships on its own feature branch):
+  `18-search-filter-pagination-sorting.md`, `19-caching-and-rate-limiting.md`, `20-observability-logging-pipeline.md`,
+  `21-database-resilience-backups-triggers.md`, `22-notification-fanout-email-inapp.md`.
+- **`docs/observability/LOGGING-AUDIT-REPORT.md`** — source-level audit: `ApiLogs`/`ErrorLogs`/`AuditLogs`/`ActivityLogs` have entities, DbSets, indexes and role-gated read routes but **zero writers**; exception handler persists nothing; no DB triggers; no SQL Server backup chain; one global rate-limit window; no notification producer. Includes the incident answer matrix, per-layer sync table, and SQL query recipes.
+- **`docs/decisions/ADR-004-observability-pipeline-and-db-resilience.md`** — decision record for the pipeline + triggers/backups + protection design and the ordering rationale.
+- **`docs/observability/OBSERVABILITY-HARDENING-2026-09-10.md`** — the old-state vs new-state comparison: every concern (logging, error handling, forensics, triggers, backups, rate limits, caching, pagination, notifications, Postman, docs) before/after, why it changed, per-layer impact, and the cross-layer implementation flow.
+
+### Changed
+- **P0 reordered (canonical):** backend 09 → **20 → 18 → 19 → 22 → 21** → 11 → 10 — synced across `docs/planning/IMPLEMENTATION-ROADMAP.md`, `docs/DEPENDENCY-AUDIT.md`, root + backend `AGENTS.md`, backend progress tracker.
+- `backend/project-kit/context/api-surface.md`: planned routes/preferences + spec-18 query contract pointers (labeled PLANNED).
+- `backend/Postman/Griot.postman_collection.json`: new folder 14 "Observability & audit" (logs read guard tests + audit-trail assertion; strict assertions activate when specs 18–22 land).
+- `docs/observability/MONITORING.md`: PLANNED-vs-implemented status labels so alert queries are not mistaken for live evidence.
+
 ## [Unreleased] — 2026-09-10 (Cross-system implementation roadmap + tracker completeness audit)
 
 ### Added

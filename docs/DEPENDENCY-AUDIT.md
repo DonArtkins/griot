@@ -3,7 +3,7 @@
 **Generated:** 2026-09-08 · **Updated:** 2026-09-10
 **Purpose:** System-wide audit of all feature spec dependencies to ensure correct implementation order and prevent dependency violations.
 
-> **2026-09-10:** This file audits *within-system* spec ordering. The **cross-system layer order** (which system's which spec comes next, and why) is now canonical in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — P0 backend 09→11→10 → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa. It also resolves the web 10 ↔ ai 02 circular reference (see the roadmap P2 section and the build-order note added to `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`).
+> **2026-09-10:** This file audits *within-system* spec ordering. The **cross-system layer order** (which system's which spec comes next, and why) is now canonical in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — P0 backend 09→20→18→19→22→21→11→10 (2026-09-10 observability/hardening wave inserted; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` §3 + ADR-004) → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa. It also resolves the web 10 ↔ ai 02 circular reference (see the roadmap P2 section and the build-order note added to `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`).
 
 ## Critical Findings
 
@@ -35,15 +35,21 @@
 | 07 | Auth: JWT + Argon2 | 04, 02 (controllers + table) | ✅ Yes |
 | 08 | API testing (Postman) | 04-07 (routes + auth) | ✅ Yes (after 07) |
 | 09 | AI service token | 07 (auth middleware) | ✅ Yes (after 07) |
-| 10 | API documentation | 04-07, 08 (routes + Postman) | ✅ Yes (after 08) |
+| 10 | API documentation | 04-07, 08, **18-22** (routes + Postman + hardened surface) | ✅ Yes (last) |
 | 11 | Blob storage | None listed | ✅ Yes (independent) |
+| 12 | Communication (Brevo, Email-only) | 07 (auth), Redis | ✅ Yes (done) |
+| 18 | Search/filter/pagination/sorting | 04-08, 13-17 (list endpoints) | ✅ Yes (after 20 in P0 order) |
+| 19 | Caching & rate limiting | 18 (query contract), 07 (Redis) | ✅ Yes (after 18) |
+| 20 | Observability pipeline | 02 (log tables exist), 04-08 (write paths) | ✅ Yes (**first hardening spec after 09**) |
+| 21 | DB triggers + backups | 02 (schema), 20 (AuditLogs dedupe) | ✅ Yes (after 20) |
+| 22 | Notification fan-out | 16 (routes), 12 (email), 20 (event hooks) | ✅ Yes (after 20) |
 
 **Corrected Implementation Order (canonical):**
-1. 01 → 02 → 03 → 04 → 05 → 06 → 07 ✅ (done, unchanged)
-2. **08** (Postman) — next branch: `feature/backend/08-api-testing-postman`
-3. 09 (AI service token — needs 07)
-4. 10 (API docs — needs 04–07 + 08)
-5. 11 (Blob storage — needs only 01/02/04; may run in parallel once 04 exists, not gated behind 08–10)
+1. 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 ✅ (done, unchanged); 12–17 ✅ (done)
+2. **09** (AI service token — needs 07) — next branch: `feature/backend/09-ai-service-token-and-webhooks`
+3. **20 → 18 → 19 → 22 → 21** (2026-09-10 observability + hardening wave; 20 first because ops/qa/ai read its tables — rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` §3 + ADR-004)
+4. 11 (Blob storage — needs only 01/02/04)
+5. 10 (API docs — last, freezes the hardened surface for Web/QA)
 
 ---
 
