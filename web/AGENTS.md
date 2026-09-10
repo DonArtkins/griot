@@ -37,6 +37,10 @@ web/
 
 Root shared skills (`contract-sync`, `git-branch-flow`, `throttling-prevention`) + `web/.agents/skills/` (`vite-react-setup`, `material-ui-theme`, `apollo-graphql`, `tanstack-rest`, `auth-and-zustand`). Follow the relevant `SKILL.md` exactly.
 
+## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
+
+**Phase P1 — the next layer after backend P0 closes (backend 09 → 11 → 10).** Own order: **01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09**, then the P2 AI hop (ai 01 → ai 02) unblocks **spec 10 (Copilot panel)**. Do not start 10 before ai 02 exists. Entry branch: `feature/web/01-react-setup-vite`. Track state in `web/project-kit/context/progress-tracker.md`.
+
 ## Verification Gates
 
 - `npm run lint && npm run typecheck && npm test && npm run build` all green.

@@ -34,6 +34,10 @@ backend/
 
 Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, throttling-prevention) and `backend/.agents/skills/` (dotnet-ef-core, sql-server-2022, dapper-stored-procs, hotchocolate-graphql, jwt-argon2-auth) and follow the relevant `SKILL.md` exactly.
 
+## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
+
+**Phase P0 — current.** Backend specs 01–08, 12 (Email-only), 13–17 are ✅. Remaining order: **09** (AI service token + webhooks — the gateway that unblocks all of `ai/` + `mcp/`) → **11** (blob storage — unblocks web/mobile attachment UI) → **10** (API docs — freezes the surface before Web consumes it). When 10 lands, P0 closes and the **Web system (P1)** becomes the active layer. Track state in `backend/project-kit/context/progress-tracker.md`; never reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
+
 ## Verification Gates
 
 - `dotnet build` clean; `dotnet test` green (xUnit, incl. refresh-rotation replay + bulk-update atomicity).
@@ -63,8 +67,12 @@ Outbound messaging is **Email only** (SMS/WhatsApp/Contacts/automations removed 
 in this branch). Every transactional email goes through `IEmailService`
 (`BrevoEmailService`, best-effort, non-throwing) with per-purpose sender identities
 (`Brevo:Senders:<Key>`, reply-to per profile). OTP uses `security`, the admin new-user
-notice uses `admin`. Redis gate: `ratelimit:otp:request:{email}` 3/15min before Brevo is
-called — Brevo's 300/day free cap is never reachable from app code.
+notice uses `admin`. Best-effort is scoped to **registration only** (register always
+returns 201; a Brevo failure there is logged, not surfaced). `/api/auth/otp/request`
+is the one caller that surfaces delivery failure: Brevo reject/outage → **HTTP 502**
+(202 on success; 401 unknown email; 429 rate-limited). Redis gate:
+`ratelimit:otp:request:{email}` 3/15min before Brevo is called. Brevo's 300/day free
+cap is a real operational budget the OTP window slows but does not make unreachable.
 Full contract: `docs/communication/COMMUNICATION-GUIDE.md`; owner spec:
 `feature-specs/12-communication-channels-brevo.md`.
 

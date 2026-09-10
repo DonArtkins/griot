@@ -32,6 +32,10 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 8. `PROMPTS/` for the Figma Make / FigJam / agent prompts that produce each system's designs (ERD before schema, wireframes before UI).
 9. `diagrams/**` for approved Figma Make/FigJam artifacts that govern implementation.
 
+## Where We Are — Implementation Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
+
+The cross-system build order is **P0 backend 09→11→10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–05 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–05 → P6 qa 01–13**. Right now: backend specs 01–08, 12 (Email-only), 13–17 are ✅ — **the next spec is backend 09 (AI service token + webhooks)**, the gateway that unblocks all of `ai/` + `mcp/`. Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
+
 ## Required Skills
 
 **CRITICAL DIRECTIVE: check `.agents/skills/` and the current system's `.agents/skills/` before any implementation.**
@@ -66,7 +70,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Stack at a Glance
 
-Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. Communication [own-stack]: Brevo transactional Email only — multi-sender identities (`Brevo:Senders:<Key>`, reply-to per profile) — see `docs/communication/COMMUNICATION-GUIDE.md`. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v3 Level-4 Autonomous Agents, MCP — orchestrated by the .NET backend only (Trigger.dev = compute adapter, never a data owner; web/mobile never touch Trigger.dev; contract: `research/ai-integration.md` §2a).
+Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. Communication [own-stack]: Brevo transactional Email only — multi-sender identities (`Brevo:Senders:<Key>`, reply-to per profile) — see `docs/communication/COMMUNICATION-GUIDE.md`. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v3 Level-4 Autonomous Agents, MCP — orchestrated by the .NET backend only (Trigger.dev = compute adapter, never a data owner; web/mobile never trigger or poll Trigger.dev, web may consume the scoped, read-only Copilot stream; contract: `research/ai-integration.md` §2a).
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 

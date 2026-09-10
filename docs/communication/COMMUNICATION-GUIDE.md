@@ -6,8 +6,10 @@ This is the single source of truth for how Griot talks to users and operators.
 Outbound messaging is **Email only** (SMS/WhatsApp/Contacts/automations were removed from
 code in the same branch — user decision: only transactional Email is needed). All email
 runs through **Brevo** (`POST /v3/smtp/email`, one account/API key — 300 emails/day free
-cap). Delivery is **best-effort by design**: every send is fire-and-forget with structured
-logging; a Brevo outage never fails registration, login or any other API call.
+cap). Delivery is **best-effort for registration only**: register sends fire-and-forget
+with structured logging and never fail the 201 response. `/api/auth/otp/request` is the
+one caller that surfaces delivery failure (HTTP 502 on Brevo reject/outage). Login sends
+no email.
 
 ---
 
@@ -28,8 +30,9 @@ logging; a Brevo outage never fails registration, login or any other API call.
   the user (`security` sender) + admin "New user registered" notice to
   `Brevo:ContactToEmail` (`admin` sender); `/api/auth/otp/request` -> OTP email.
 - **Redis gate before Brevo:** the OTP request route enforces `ratelimit:otp:request:{email}`
-  3/15min; the API global rate limiter caps 100/min/caller. Brevo's 300/day cap is
-  therefore never reachable from app code.
+  3/15min; the API global rate limiter caps 100/min/caller. This slows abuse but does NOT
+  make Brevo's 300/day cap mathematically unreachable — the cap is an operational budget
+  to monitor, not a hard guarantee (see §4/§7).
 - Future task/notification/agent callers add calls via `IEmailService` - never Brevo directly.
 
 ## 2. Sender identities (your `from:` question)
@@ -82,8 +85,12 @@ Brevo free email cap = **300 emails/day**. Griot protects itself in TWO layers:
 | API global limiter (existing) | 100/min per caller | -- | HTTP layer |
 
 The Redis window is checked **before** any Brevo HTTP call -- an exhausted window returns
-429 with `Retry-After` without firing a request. Budget: with 300/day and OTP at most
-3/15min/email, daily testing of ~30 users x 10 emails each stays far inside the free cap.
+429 with `Retry-After` without firing a request. Budget example: with OTP at most
+3/15min/email and a 300/day account cap, one full OTP cycle per user (1 email) means
+~300 users/day max; even at the 3-email window maximum, ~100 users doing 3 requests each
+exhausts the day -- shared-IP test days hit this quickly (502s from
+`/api/auth/otp/request` are the symptom). Plan a paid tier or spread signups before any
+multi-user event.
 
 ## 5. Configuration summary
 

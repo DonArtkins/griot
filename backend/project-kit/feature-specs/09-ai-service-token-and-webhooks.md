@@ -8,11 +8,11 @@ NEW FEATURE (`[own-stack]` — the AI boundary defined in `research/ai-integrati
 
 The trusted AI-onboarding surface, in **both directions** (orchestration contract: `research/ai-integration.md` §2a):
 
-- **Trigger direction (.NET → Trigger.dev):** the backend enqueues AI tasks via Trigger.dev's REST API (server-to-server `TRIGGER_SECRET_KEY`) whenever something async or AI-related is needed — after validating/persisting the request. The backend is the only component (besides Trigger schedules) that triggers tasks.
+- **Trigger direction (.NET → Trigger.dev):** the backend enqueues AI tasks via Trigger.dev's REST API (server-to-server `TRIGGER_SECRET_KEY`) whenever something async or AI-related is needed — after validating/persisting the request. The backend is the only trigger source for request-originated work; the one exception is Trigger.dev's own cron scheduler, which starts the scheduled agents (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`) with no backend involvement (orchestration contract §2a).
 - **Callback direction (Trigger.dev → .NET):** `POST /api/webhooks/trigger` verifies Trigger.dev webhooks via HMAC (`X-Trigger-Signature`) so background runs write results back through the API.
 - **Service token (AI → .NET data plane):** `GRIOT_SERVICE_TOKEN` resolves to a dedicated `ai-agent` workspace principal with a reduced role (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites).
 
-.NET remains the **only writer of source-of-truth data**; Trigger.dev is a compute/orchestration adapter, never a data owner. Web/mobile never touch Trigger.dev — they call this API.
+.NET remains the **only writer of source-of-truth data**; Trigger.dev is a compute/orchestration adapter, never a data owner. Web/mobile never trigger or poll Trigger.dev for task triggering or status — they call this API. Sole exception: the web Copilot panel consumes Trigger.dev's realtime WS as a scoped, read-only streaming delivery channel (no triggering, no status polling); mobile has no such exception.
 
 ## Dependencies
 
@@ -49,7 +49,8 @@ RUN: `dotnet build`; test with a signed webhook fixture.
 # env additions:
 #   GRIOT_SERVICE_TOKEN=<long-random>       (shared with ai/mcp env)
 #   TRIGGER_SECRET_KEY=<server-to-server>   (backend → Trigger.dev REST; NEVER exposed to web/mobile)
-#   TRIGGER_WEBHOOK_SECRET=<from Trigger.dev>  (Trigger.dev → backend HMAC callbacks)
+#   WEBHOOK_SECRET=<from Trigger.dev>       (Trigger.dev → backend HMAC callbacks; read by
+#                                           WebhookController as Webhook:Secret ?? WEBHOOK_SECRET)
 ```
 
 ## Implementation Notes

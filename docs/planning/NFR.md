@@ -19,7 +19,7 @@
 | `POST /api/auth/refresh` | < 200 ms | — | — | rotation + Redis |
 | `POST /api/tasks` | < 400 ms | — | — | transaction + audit |
 | `PATCH /api/tasks/bulk-status` | < 800 ms | — | — | TVP proc, atomic |
-| `POST /api/tasks/{id}/attachments` | < 2 s | **< 1.5 s** (Vercel Blob) | — | 25 MB limit, Vercel CDN delivery |
+| `POST /api/tasks/{id}/attachments` | < 2 s | **< 1.5 s** (Cloudinary) | — | 25 MB limit, Cloudinary CDN delivery |
 | Web first paint (LCP) | < 2.5 s | — | **< 2 s** (code splitting) | Public shell; Lighthouse gate |
 | Web CLS | < 0.1 | — | — | layout stability |
 | Copilot first token (stream) | < 2 s | — | — | Trigger realtime; LLM latency not blocking UI |

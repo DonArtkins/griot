@@ -1,7 +1,9 @@
 # Dependency Audit — Feature Spec Implementation Order
 
-**Generated:** 2026-09-08  
+**Generated:** 2026-09-08 · **Updated:** 2026-09-10
 **Purpose:** System-wide audit of all feature spec dependencies to ensure correct implementation order and prevent dependency violations.
+
+> **2026-09-10:** This file audits *within-system* spec ordering. The **cross-system layer order** (which system's which spec comes next, and why) is now canonical in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — P0 backend 09→11→10 → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa. It also resolves the web 10 ↔ ai 02 circular reference (see the roadmap P2 section and the build-order note added to `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`).
 
 ## Critical Findings
 

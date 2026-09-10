@@ -24,11 +24,12 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | backend | `BREVO_API_KEY` | Brevo SMTP/API key (`xkeysib-…`); also `Brevo__ApiKey` |
 | backend | `BREVO_FROM_EMAIL` `BREVO_FROM_NAME` | Fallback sender when no profile set |
 | backend | `BREVO_SENDER_<KEY>_EMAIL` `_NAME` `_REPLYTO` | Sender identities: SECURITY, ADMIN, NOREPLY, SUPPORT, INFO, TEAM |
+| backend | `CLOUDINARY_URL` (or `CLOUDINARY_CLOUD_NAME` `_API_KEY` `_API_SECRET`) | Attachment blob storage via `CloudinaryDotNet` (server-to-server; secret never exposed to web/mobile) |
 | web | `VITE_API_URL` | deployed API base |
 | ai/mcp | `GRIOT_API_URL` `GRIOT_SERVICE_TOKEN` | API access |
 | ai | `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` | LLM keys ONLY in `ai/.env` |
 | backend | `TRIGGER_SECRET_KEY` | Backend → Trigger.dev REST enqueue (server-to-server; never exposed to web/mobile) |
-| backend | `TRIGGER_WEBHOOK_SECRET` | Trigger.dev → backend HMAC callbacks (`X-Trigger-Signature`) |
+| backend | `WEBHOOK_SECRET` | Trigger.dev → backend HMAC callbacks (`X-Trigger-Signature`; read by WebhookController as `Webhook:Secret` ?? `WEBHOOK_SECRET`) |
 | web | `VITE_TRIGGER_ACCESS_TOKEN` | Realtime WS access token — read-only Copilot stream delivery only |
 | infra | `SABABISHA_SA_PASSWORD` `SABABISHA_PG_PASSWORD` | local compose dev DB passwords |
 | backend (recovery only) | `POSTGRES_RECOVERY_TARGET_TIME` | PITR restore target, set automatically on the NEW restored Railway PostgreSQL service (`<service>-restored-YYYYMMDD-HHMM`); NOT part of normal configuration — see Database recovery contract below |
@@ -40,6 +41,9 @@ in the same branch). Email goes through `IEmailService` (`BrevoEmailService`,
 `POST /v3/smtp/email`) with per-purpose sender identities `Brevo:Senders:<Key>`
 (Key ∈ Security, Admin, NoReply, Support, Info, Team). Redis gate: OTP request
 3/15min per email (`ratelimit:otp:request:{email}`) + API global limiter 100/min.
+Best-effort delivery is scoped to **registration only** (register always returns 201);
+`/api/auth/otp/request` is the one caller that surfaces Brevo delivery failure as
+**HTTP 502** (202 on success, 401 unknown email, 429 rate-limited).
 Canonical: `docs/communication/COMMUNICATION-GUIDE.md`; owner spec
 `feature-specs/12-communication-channels-brevo.md`. No REST route changes.
 
@@ -75,7 +79,7 @@ GitHub Actions job names (qa owns suites, infra owns pipeline): `test-dotnet`, `
 
 Use the [auth contract](../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
-replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register) and `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; branded Brevo template per purpose (`auth-contract.md`). Registration returns 201 after SQL persistence; malformed refresh returns 401 and authenticated logout remains 204.
+replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202 on success; Brevo delivery failure surfaces as 502; `email_verify` auto-sent on register) and `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; branded Brevo template per purpose (`auth-contract.md`). Registration returns 201 after SQL persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -28,6 +28,10 @@ local    → docker compose up (api + sqlserver + postgres + redis + mcp)
 
 Root shared skills + `infra/.agents/skills/` (`docker-compose`, `vercel-deploy`, `railway-hosting`, `github-actions`).
 
+## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
+
+**Phase P4 (Week 5 system)** — after web (P1) + AI hop (P2) + mobile (P3), so CI (spec 05) can build/test/deploy every surface in one pass. Own order: **01 → 02 → 03 → 04 → 05 → 06 → 07**; spec 07 (Netdata) is a Phase-1 optimization gate — it must ship before public launch, not be deferred to QA. MCP (P5) consumes infra 02–04/06. Entry branch: `feature/infra/01-frontend-deployment-vercel`. Track state in `infra/project-kit/context/progress-tracker.md`.
+
 ## Verification Gates
 
 - `docker compose up` reproduces the full local topology and health checks pass.

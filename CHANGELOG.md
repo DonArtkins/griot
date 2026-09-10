@@ -2,6 +2,21 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-09-10 (Cross-system implementation roadmap + tracker completeness audit)
+
+### Added
+- **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — canonical cross-system build order (P0 backend 09→11→10 → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa) with per-phase rationale, the cross-system unlock edge list, and the web10↔ai02 circular-dependency resolution.
+- **Missing progress trackers created** for `ai/`, `mcp/`, `mobile/`, `infra/` (`<system>/project-kit/context/progress-tracker.md`) — the contract-sync gate and git-branch-flow skill require one tracker per system; these systems previously had none.
+
+### Changed
+- Root `AGENTS.md` + all 7 system `AGENTS.md` files now carry build-order pointer sections ("Where This System Sits in the Build Order" / "Where We Are") citing the roadmap as the single source of truth for "which spec next".
+- Root progress tracker: system status table rebuilt with roadmap phases; stale "infra 6 feature specs" fixed to 7; Next Steps point at P0 (backend 09 → 11 → 10) then the roadmap.
+- Backend progress tracker: Next Steps re-sequenced **09 → 11 → 10** with unlock rationale (09 gates `ai/`+`mcp/`; 11 unblocks attachment UI; 10 freezes the API surface pre-Web).
+- Web progress tracker: stale "no implementation until backend 04–06 live" removed; per-spec blockers added; web 10 explicitly deferred to P2 behind ai 01–02.
+- QA progress tracker: per-spec blockers; qa 01–03 flagged as zero-code-dep gap fillers; qa 05 pinned to infra 05.
+- `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`: build-order note added — ai 02's "web 10" dependency is contract-design, not build-order; implementation order is ai 01 → ai 02 → web 10.
+- `docs/DEPENDENCY-AUDIT.md`: header now delegates cross-system ordering to the roadmap.
+
 ## [Unreleased] — 2026-09-10 (Full REST surface specs 13–17 + Email-only communication)
 
 ### Added

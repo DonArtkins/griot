@@ -55,6 +55,18 @@ public class DomainService : IDomainService
         _activity = activity; _errors = errors; _audit = audit;
     }
 
+    // Attachment limits (spec 11 / api-surface "Attachment limits"): enforced in the
+    // application layer before any persistence — 25 MB inclusive, MIME allowlist.
+    public const long MaxAttachmentSizeBytes = 26_214_400; // 25 MB (inclusive upper bound)
+
+    public static readonly string[] AllowedAttachmentMimeTypes =
+    {
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"        // .xlsx
+    };
+
     // ══════════════════════ WORKSPACES ══════════════════════
 
     public async Task<List<WorkspaceDto>> GetWorkspacesAsync(Guid userId)
@@ -611,10 +623,15 @@ public class DomainService : IDomainService
         if (task is null || !await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.NotFound, "Task not found.");
         RequireText(request.FileName, "FileName is required.");
         RequireText(request.MimeType, "MimeType is required.");
+        var mimeType = request.MimeType.Trim();
+        if (request.SizeBytes < 0 || request.SizeBytes > MaxAttachmentSizeBytes)
+            throw new DomainError(DomainErrorKind.Validation, $"SizeBytes must be between 0 and {MaxAttachmentSizeBytes} bytes (25 MB).");
+        if (!AllowedAttachmentMimeTypes.Contains(mimeType, StringComparer.OrdinalIgnoreCase))
+            throw new DomainError(DomainErrorKind.Validation, $"MimeType '{mimeType}' is not allowed. Allowed: images (jpeg/png/gif/webp), PDF, .docx, .xlsx.");
         var attachment = new Attachment
         {
             Id = Guid.NewGuid(), TaskId = taskId, UploaderId = userId,
-            FileName = request.FileName.Trim(), MimeType = request.MimeType.Trim(),
+            FileName = request.FileName.Trim(), MimeType = mimeType,
             SizeBytes = request.SizeBytes, StorageUrl = request.Url ?? string.Empty,
             CreatedAt = DateTime.UtcNow
         };

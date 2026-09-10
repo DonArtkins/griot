@@ -29,6 +29,10 @@ qa/
 
 Root shared skills + `qa/.agents/skills/` (all seven suites). Apply the relevant `SKILL.md` per feature.
 
+## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
+
+**Phase P6 (Weeks 6–7)** — last: QA verifies the other six systems and needs the deployed topology for manual/UAT cycles. Specs 01–03 have zero code dependencies (gap fillers); 04's base collection exists (backend 08 ✅); 05 needs infra 05; 10–13 need everything deployed. Own order: **01 → … → 13**. Entry branch: `feature/qa/01-qe-fundamentals`. Track state in `qa/project-kit/context/progress-tracker.md`.
+
 ## Verification Gates (the product of this system)
 
 - `dotnet test` (xUnit + WebApplicationFactory) green, incl. refresh-rotation replay + bulk atomicity.

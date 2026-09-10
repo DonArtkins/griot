@@ -29,8 +29,8 @@ public class WebhookController : DomainControllerBase
         if (string.IsNullOrWhiteSpace(secret))
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Webhook secret not configured." });
 
-        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
-        var rawBody = (await reader.ReadToEndAsync()).Trim();
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: false);
+        var rawBody = await reader.ReadToEndAsync();
         var signatureHeader = (Request.Headers.TryGetValue("X-Trigger-Signature", out var sig) ? sig.ToString().Trim() : "");
         var expected = "sha256=" + Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(rawBody))).ToLowerInvariant();
         var matches = expected.Length == signatureHeader.Length

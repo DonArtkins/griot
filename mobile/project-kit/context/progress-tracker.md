@@ -1,0 +1,37 @@
+# Progress Tracker — Mobile (Flutter 3.19+ / Dart 3)
+
+## Current State
+
+**Phase P3** in `docs/planning/IMPLEMENTATION-ROADMAP.md`. Kit written (7 specs). **Not started.** Every mobile dependency is already-satisfied backend work (04–08, 07 auth ✅) — the system waits only for its roadmap slot after **P1 (web) + P2 (AI hop) complete**, because one spec runs at a time and web is the Week-3 deliverable.
+
+| Spec | Title | Status | Blocked by |
+|---|---|---|---|
+| 01 | Flutter app setup + theme | Pending (P3 entry point) | Flutter 3.19+ toolchain |
+| 02 | Login & auth screens | Pending | m 01, backend 07 ✅ |
+| 03 | REST API integration (dio) | Pending | m 02 |
+| 04 | GraphQL integration | Pending | m 01–02, backend 05 ✅ |
+| 05 | Advanced state (Riverpod) | Pending | m 03–04 |
+| 06 | Responsive cross-device UI | Pending | m 04–05 |
+| 07 | Notifications + device verification | Pending | m 02–06, backend 04 ✅; CI APK artifact arrives with infra 05 (P4) |
+
+## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P3)
+
+`mobile 01 → 02 → 03 → 04 → 05 → 06 → 07`
+
+**Why mobile after web/AI-hop:** bootcamp Week 4 follows Week 3; mobile is a companion surface (parity with web, not pixel-identical), so implementing it after the web patterns exist lets it copy proven data-layer/auth wiring instead of inventing it. **Known cross-phase item:** spec 07's "CI APK artifact" acceptance point is fulfilled by infra 05's Flutter job (P4) — emulator + physical-device verification happens in P3.
+
+## Next Steps
+
+1. Do not start until P2 (web 10 + ai 03–05) is complete.
+2. Then branch `feature/mobile/01-flutter-app-setup` and implement spec 01 only.
+3. Verification gates: `flutter analyze` clean; `flutter test` green; verified on Android emulator + one physical device.
+
+## Session Notes
+
+- **2026-09-03** — Mobile kit created (AGENTS, skills, contexts, 7 specs).
+- **2026-09-07** — Theme scaffolded ahead of spec 01: `lib/core/theme/theme.dart` (ThemeData + `GriotColors`/`GriotRadii` extensions) from the inspo-synthesized master design system.
+- **2026-09-10** — Orchestration boundary ratified: mobile never touches Trigger.dev or MCP — all data through the .NET API (`research/ai-integration.md` §2a).
+- **2026-09-10 (2)** — Tracker created during the cross-system audit (this system previously had none). Phase P3 position recorded above.
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

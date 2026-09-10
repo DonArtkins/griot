@@ -21,6 +21,10 @@ Stack: `@modelcontextprotocol/sdk` + zod, Node 20 (own lockfile). Transports: st
 
 Root shared skills + `mcp/.agents/skills/` (`mcp-sdk-tools`, `mcp-contract-testing`).
 
+## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
+
+**Phase P5 —** after infra (P4), because spec 04 deploys to Railway/Docker (needs infra 02–04/06) and spec 03 needs backend 09's service token. Nothing downstream waits on MCP, so the late slot costs nothing. Own order: **01 → 02 → 03 → 04 → 05** (01–02 technically unblocked anytime — Node 20 only). Entry branch: `feature/mcp/01-mcp-server-setup`. Track state in `mcp/project-kit/context/progress-tracker.md`.
+
 ## Verification Gates
 
 - `npm run lint && npm run typecheck && npm test` green (contract tests, mocked GraphQL).

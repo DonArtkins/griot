@@ -26,7 +26,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | PATCH | `/api/tasks/bulk-status` | TVP bulk status via `usp_BulkUpdateTaskStatus` (atomic; 409 on any invalid id in batch) | Owner/Admin/Member (workspace) |
 | GET/POST | `/api/tasks/{id}/comments` | list/create comments | workspace member |
 | PUT/DELETE | `/api/tasks/{id}/comments/{commentId}` | update/delete comment | workspace member |
-| GET/POST | `/api/tasks/{id}/attachments` | list attachment metadata / upload to Vercel Blob (Phase 1) | workspace member |
+| GET/POST | `/api/tasks/{id}/attachments` | list attachment metadata / upload to Cloudinary (Phase 1) | workspace member |
 | DELETE | `/api/tasks/{id}/attachments/{attachmentId}` | delete attachment (blob + DB metadata) | workspace member |
 | GET | `/api/workspaces/{id}/activity` | activity feed (paginated) | workspace member |
 | GET/POST | `/api/notifications` · POST `/api/notifications/read-all` | list / mark all read | authenticated |
@@ -38,12 +38,12 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) | HMAC only |
 | GET | `/health` | liveness (health checks) | public |
 
-## Attachment limits (Phase 1 — Vercel Blob)
-- **File size:** 25 MB per file (enforced via `[RequestSizeLimit(26_214_400)]`)
+## Attachment limits (Phase 1 — Cloudinary)
+- **File size:** 25 MB per file (26,214,400 bytes, inclusive — enforced in `DomainService.CreateAttachmentAsync` before persistence)
 - **Workspace quota:** 100 MB total per workspace (checked before upload)
-- **MIME types:** Whitelist (images, PDF, .docx, .xlsx); blacklist executables (.exe, .dll, .bat, .sh, .ps1)
-- **Storage:** Vercel Blob free tier (1 GB + 10 GB transfer/month). Public URLs served via Vercel CDN (512 MB cache limit per blob).
-- **Access control model:** Bearer-by-URL (Vercel Blob generates signed URLs with embedded tokens). Workspace membership checked at upload/delete; URL access relies on URL secrecy. For strict private access in Phase 3, migrate to R2 with authenticated download endpoints.
+- **MIME allowlist (enforced server-side, case-insensitive):** `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `application/pdf`, `.docx`, `.xlsx`; everything else → `DomainError(Validation)`
+- **Storage:** Cloudinary via `CloudinaryDotNet` (free tier ≈ 25 credits: 25 GB storage + 25 GB bandwidth/month). Media served via Cloudinary's CDN (`res.cloudinary.com`).
+- **Access control model:** Bearer-by-URL (Cloudinary asset delivery URLs are unguessable public URLs). Workspace membership checked at upload/delete; URL access relies on URL secrecy. For strict private access in Phase 3, migrate to R2 with authenticated download endpoints.
 - **Migration path (Phase 3):** Cloudflare R2 when egress >100 GB/month or when private access enforcement required. See `feature-specs/11-blob-storage-integration.md`.
 
 ## Pagination (Phase 1 — abuse prevention)

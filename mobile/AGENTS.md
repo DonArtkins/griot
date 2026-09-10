@@ -37,6 +37,10 @@ mobile/
 
 Root shared skills + `mobile/.agents/skills/` (`flutter-setup`, `riverpod-state`, `graphql-flutter`, `dio-rest`).
 
+## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
+
+**Phase P3 (Week 4 system)** — starts after P1 (web 01–09) + P2 (AI hop) complete; all backend deps (04–08, 07 auth) are already ✅. Own order: **01 → 02 → 03 → 04 → 05 → 06 → 07**. Known cross-phase item: spec 07's CI APK artifact is delivered by infra 05 (P4); emulator + physical-device verification happens here. Entry branch: `feature/mobile/01-flutter-app-setup`. Track state in `mobile/project-kit/context/progress-tracker.md`.
+
 ## Verification Gates
 
 - `flutter analyze` clean; `flutter test` green; `integration_test` passes on emulator.
