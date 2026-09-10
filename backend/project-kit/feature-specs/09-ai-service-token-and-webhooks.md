@@ -107,6 +107,19 @@ zero skipped tests. Build: zero warnings/errors. `/health`: `Healthy`.
 The fix and reproduction command are recorded in
 `docs/api/ai-service-token-contract.md` under verification evidence.
 
+## Pre-push watcher contention (2026-09-10)
+
+The first push was blocked by `MSB4018` while writing `Griot.Api.deps.json`;
+repeated builds also reported `MSB3026` for `Griot.Application.dll`. An existing
+`dotnet watch run` process was rebuilding the same outputs. A single-worker build
+still encountered contention, so no hook flags were changed.
+
+With operator approval, the existing watcher processes were temporarily paused
+while the unchanged pre-push hook ran, then automatically resumed. Verification:
+build 0 warnings/errors, all 71 SQL-enabled tests passed, and contract sync passed.
+No hook or verification gate was bypassed. Stop or pause the repository's development
+watcher during clean pre-push rebuilds, then restore it afterward.
+
 ## Implemented authentication contract (Feature 07)
 
 Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, status codes, JWT claims,

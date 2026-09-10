@@ -148,3 +148,16 @@ Run from `backend/` (empty Brevo keys prevent outbound test email):
 ```bash
 Brevo__ApiKey= BREVO_API_KEY= GRIOT_RUN_SQL_TESTS=1 dotnet test --no-restore --nologo -m:1
 ```
+
+## 7. Pre-push output-file contention (2026-09-10)
+
+The first push failed its build gate with `MSB4018` on `Griot.Api.deps.json`.
+Rebuilds also reported `MSB3026` on `Griot.Application.dll`, including a
+single-worker rebuild. A pre-existing `dotnet watch run` was rebuilding the same
+outputs; no production defect or hook syntax change was involved.
+
+With operator approval, temporarily pausing the existing watcher processes allowed
+the unchanged hook to pass: build 0 warnings/errors, 71 SQL-enabled tests passed,
+and contract sync passed. The watcher processes were automatically resumed after
+the hook completed. For future clean builds, stop or pause only the relevant
+development watcher, rerun every gate, and restore it afterward; do not skip hooks.
