@@ -47,7 +47,7 @@
 
 ### Implementation checklist
 - [ ] Add `MaxFileSizeBytes` constant (25 MB per attachment, 100 MB workspace quota)
-- [ ] Update `AttachmentService` to use Vercel Blob SDK (`@vercel/blob`)
+- [ ] Update the attachment path (`AttachmentController` → `DomainService.CreateAttachmentAsync`) to use Vercel Blob SDK (`@vercel/blob`)
 - [ ] Migrate `StorageUrl` semantics: local paths → public blob URLs
 - [ ] Add file-type validation (allow images/docs, block executables)
 - [ ] Create migration script: local files → blob storage (one-time, pre-production)

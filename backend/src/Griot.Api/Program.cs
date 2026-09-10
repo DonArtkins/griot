@@ -1,5 +1,7 @@
+using System.Text.Json.Serialization;
 using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics;
 using Griot.Api.GraphQL;
 using Griot.Api.GraphQL.DataLoaders;
 using Griot.Application.Interfaces.Repositories;
@@ -25,7 +27,13 @@ builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, relo
 builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
 
 // Controllers (thin wrappers only; business logic lives in Griot.Application services).
-builder.Services.AddControllers();
+// Enums serialize/deserialize as their string names (matches api-surface.md contract:
+// "Backlog"/"Todo"/"InProgress"/"InReview"/"Done", "Low/Medium/High/Urgent", etc).
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // Application services (wired for DI; full implementations per specs 06/08).
 builder.Services.AddScoped<IWorkspaceService, WorkspaceService>();
@@ -78,6 +86,7 @@ var defaultConnection = builder.Configuration.GetConnectionString("Default")
 builder.Services.AddPooledDbContextFactory<GriotDbContext>(options =>
 {
     options.UseSqlServer(defaultConnection);
+    options.UseLazyLoadingProxies();
 });
 
 // Also register as scoped for controllers that expect DbContext injection
@@ -195,15 +204,39 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Spec 04: global exception handler — every response carries X-Request-Id,
+// including 500s. Must wrap the request-id middleware so TraceIdentifier is
+// available; the handler re-applies the header after the downstream pipeline
+// (e.g. the dev exception page) clears response headers.
+app.UseExceptionHandler(appBuilder =>
+{
+    appBuilder.Run(async context =>
+    {
+        context.Response.Headers["X-Request-Id"] = context.TraceIdentifier;
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "text/plain";
+
+        if (context.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment())
+        {
+            var error = context.Features.Get<IExceptionHandlerFeature>()?.Error
+                        ?? context.Features.Get<IExceptionHandlerPathFeature>()?.Error;
+            await context.Response.WriteAsync(error?.ToString() ?? "Internal Server Error");
+        }
+        else
+        {
+            await context.Response.WriteAsync("Internal Server Error");
+        }
+    });
+});
+
 // Request-id middleware (spec 04: structured logging + stable request id on every response).
 app.Use(async (context, next) =>
 {
-    if (!context.Request.Headers.TryGetValue("X-Request-Id", out var requestId))
-    {
-        requestId = Guid.NewGuid().ToString("N");
-        context.Request.Headers["X-Request-Id"] = requestId;
-    }
+    var requestId = context.Request.Headers["X-Request-Id"].FirstOrDefault()
+                    ?? Guid.NewGuid().ToString("N");
 
+    context.Request.Headers["X-Request-Id"] = requestId;
+    context.TraceIdentifier = requestId;
     context.Response.Headers["X-Request-Id"] = requestId;
     await next(context);
 });

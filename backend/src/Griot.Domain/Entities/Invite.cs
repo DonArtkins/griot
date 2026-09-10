@@ -7,13 +7,13 @@ public class Invite
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid WorkspaceId { get; set; }
-    public Workspace Workspace { get; set; } = null!;
+    public virtual Workspace Workspace { get; set; } = null!;
     public string Email { get; set; } = string.Empty;
-    public WorkspaceRole Role { get; set; }
+    public virtual WorkspaceRole Role { get; set; }
     public string Token { get; set; } = string.Empty;
     public InviteStatus Status { get; set; }
     public Guid InvitedById { get; set; }
-    public User InvitedBy { get; set; } = null!;
+    public virtual User InvitedBy { get; set; } = null!;
     public DateTime ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

@@ -32,6 +32,7 @@ CREATE: agent definition; tools `get_board`, `get_task`, `list_boards`, `list_pr
 
 - Tool I/O has Zod schemas; reads only in this feature (write proposals land in feature 04).
 - Deterministic short-circuit for trivial lookups (cached snapshot) to cut cost.
+- Orchestration boundary (research/ai-integration.md §2a): the agent run is enqueued by the .NET backend (server-to-server trigger), results/stream ride the realtime channel to the web panel, and any persisted output is written back via the .NET API — never via SQL, never via a Trigger-owned store.
 
 ## Separation of Concerns
 

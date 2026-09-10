@@ -78,7 +78,7 @@
 
 **Implementation:**
 ```csharp
-// backend/Griot.Application/Services/DashboardService.cs
+// backend/Griot.Application/Services/DomainService.cs — GetDashboardSummaryAsync
 public async Task<DashboardSummary> GetSummaryAsync(Guid workspaceId, CancellationToken ct)
 {
     var cacheKey = $"dashboard:summary:{workspaceId}";
@@ -875,7 +875,7 @@ onError: (error, handler) async {
 
 ### 6.1 Phase 1 (production blockers)
 - [ ] **Backend Redis dashboard caching:**
-  - [ ] Add `DashboardService.GetSummaryAsync` with Redis cache (60s TTL)
+  - [ ] Add `DomainService.GetDashboardSummaryAsync` Redis caching (60s TTL)
   - [ ] Unit tests: cache hit/miss, invalidation, Redis failure (fall back to DB)
   - [ ] Integration tests: verify p95 <100ms on cache hit
 

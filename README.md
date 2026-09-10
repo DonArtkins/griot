@@ -13,7 +13,7 @@
 | Mobile | `mobile/` | Flutter 3.19+ · Dart 3 · Riverpod · graphql_flutter · dio |
 | DevOps / Infra | `infra/` | Docker 26+ · Compose v2 · Vercel · Railway · GitHub Actions |
 | Quality Engineering | `qa/` | xUnit · Jest+RTL · Flutter tests · Cypress · Newman · k6 · OWASP |
-| AI agents | `ai/` | Trigger.dev v3 (Copilot + scheduled agents) — [own-stack] |
+| AI agents | `ai/` | Trigger.dev v3 (Copilot + scheduled agents) — [own-stack] — orchestrated by the .NET backend only; web/mobile never touch Trigger.dev (`research/ai-integration.md` §2a) |
 | MCP server | `mcp/` | @modelcontextprotocol/sdk — [own-stack] |
 
 Each system is self-contained (own `AGENTS.md`, `.agents/skills/`, `project-kit/`). The root `AGENTS.md` + `docs/ARCHITECTURE.md` link them into one system.
@@ -133,7 +133,9 @@ Docker/env equivalents use `__` (e.g. `Brevo__ApiKey`, `BREVO_API_KEY`).
 > Rate limits: keep under 300/day total; each `/api/auth/otp/request` = 1 transactional email.
 
 Full detail + troubleshooting: `docs/security/AUTHENTICATION-GUIDE.md` §4.10/§7/§8 and `docs/api/auth-contract.md`.
-The full communication architecture — sender identities (no-reply/support/info/team/security/admin), SMS, WhatsApp, Brevo Automations wiring, rate-limit budget and Vercel/Railway env vars — lives in **`docs/communication/COMMUNICATION-GUIDE.md`** (spec 12).
+The communication architecture — Email-only (spec 12 final state): multi-sender identities
+(security/admin/noreply/support/info/team), rate-limit budget and Vercel/Railway env vars — lives in
+**`docs/communication/COMMUNICATION-GUIDE.md`**.
 
 ### 4. Database — EF Core migrations & stored procedures — from `backend/`
 
@@ -201,6 +203,8 @@ cd ai && npm run deploy                  # trigger deploy (production)
 
 cd mcp && npm install && node index.js   # start the MCP server (contract tests via npm test)
 ```
+
+> **Orchestration contract** (`research/ai-integration.md` §2a): Trigger.dev is a standalone compute/orchestration adapter — the **.NET backend triggers tasks** (server-to-server `TRIGGER_SECRET_KEY`) and **writes results back through the API** (`POST /api/webhooks/trigger` HMAC / `GRIOT_SERVICE_TOKEN` REST). Trigger.dev never owns domain data. Web and mobile never call Trigger.dev's public API — they call the .NET API; the only direct web↔Trigger channel is the read-only Copilot realtime stream (scoped access token).
 
 ### 8. End-to-end smoke check (backend)
 

@@ -19,6 +19,15 @@ ai/
 
 Copilot prompt -> `ai/` agent -> (tool calls) -> backend GraphQL -> SQL Server -> results streamed to web via Trigger realtime.
 
+## Orchestration contract (research/ai-integration.md §2a — authoritative)
+
+- **Standalone service:** `ai/` is a separate Node/TS project deployed independently (Trigger cloud, or a Docker container alongside the other services). This is where AI calls and long-running background work execute.
+- **.NET orchestrates:** the backend triggers tasks via Trigger.dev's REST API/SDK (`POST` by task ID) whenever something async or AI-related is needed. The backend validates/persists the request FIRST, then enqueues.
+- **Write-back:** every task result is written back by calling the .NET API (`POST /api/webhooks/trigger`, HMAC-verified, or service-token REST). **Trigger.dev never owns domain data** — .NET is the only writer of source-of-truth data.
+- **Frontend isolation:** web and mobile never touch Trigger.dev for triggering or status — they call the .NET API, which internally enqueues tasks, and poll .NET / use SignalR for status. Sole exception: the web Copilot panel consumes Trigger's realtime WS (scoped access token) as a read-only streaming delivery channel.
+- **Server-to-server secrets only:** `TRIGGER_SECRET_KEY` (backend → Trigger) and `TRIGGER_WEBHOOK_SECRET` (Trigger → backend HMAC) never reach the frontend or mobile.
+- **Why TS/Trigger.dev for AI:** TS-first AI SDKs (OpenAI/Anthropic/Vercel AI SDK/LangChain.js), built-in retries/concurrency/waitpoints for slow-streaming-retryable AI calls, and it keeps prompt orchestration + model-provider churn out of the domain API.
+
 ## Boundary
 
 - No DB credentials in `ai/`. No HTTP routes (`/api/webhooks/trigger` is the backend's, HMAC-verified).

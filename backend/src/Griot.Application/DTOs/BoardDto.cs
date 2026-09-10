@@ -18,3 +18,9 @@ public class CreateBoardRequest
     public string Name { get; set; } = string.Empty;
     public int Order { get; set; }
 }
+
+public class UpdateBoardRequest
+{
+    public string? Name { get; set; }
+    public int? Order { get; set; }
+}

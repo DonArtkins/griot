@@ -9,7 +9,13 @@ namespace Griot.Infrastructure.Persistence;
 
 public class GriotDbContext : DbContext
 {
-    public GriotDbContext(DbContextOptions<GriotDbContext> options) : base(options) { }
+        public GriotDbContext(DbContextOptions<GriotDbContext> options) : base(options) { }
+
+    // NOTE: OnConfiguring is intentionally NOT overridden. Lazy-loading proxies are
+    // configured exclusively through DI (AddPooledDbContextFactory / design-time factory).
+    // Calling UseLazyLoadingProxies() inside OnConfiguring throws
+    // "OnConfiguring cannot be used to modify DbContextOptions when DbContext
+    //  pooling is enabled" — the pooled factory is used by runtime + DataLoaders.
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Workspace> Workspaces => Set<Workspace>();
@@ -143,6 +149,9 @@ public class GriotDbContext : DbContext
             b.Property(t => t.Status).HasConversion<string>();
             b.Property(t => t.Priority).HasConversion<string>();
             b.Property(t => t.Position).HasColumnType("decimal(18,4)");
+
+            // BoardId is denormalized off the mandatory ColumnId mapping: it is
+            // mapped as a plain (non-null) column via the entity property.
 
             b.HasOne(t => t.Column)
                 .WithMany(c => c.TaskItems)

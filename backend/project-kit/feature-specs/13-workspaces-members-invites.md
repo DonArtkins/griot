@@ -12,7 +12,7 @@ auth-scoped persistence backed by EF Core via `IGenericRepository<T>`.
 ## Routes
 - `GET /api/workspaces` · `POST /api/workspaces` · `GET|PUT|DELETE /api/workspaces/{id}`
 - `GET|POST /api/workspaces/{id}/members` · `PATCH|DELETE /api/workspaces/{id}/members/{userId}`
-- `POST /api/workspaces/{id}/invites` · `POST /api/invites/{token}/accept`
+- `POST /api/workspaces/{id}/invites` · `GET /api/invites/{token}` · `POST /api/invites/{token}/accept`
 
 ## Role model
 - Owner: delete workspace, remove members, manage all
@@ -22,7 +22,7 @@ auth-scoped persistence backed by EF Core via `IGenericRepository<T>`.
 ## Implementation
 - `IDomainService` + `DomainService` (Workspace/WorkspaceMember/Invite repos)
 - `DomainControllerBase` (claim `sub` → Guid; `DomainError` → 400/401/403/404/409)
-- `WorkspaceController`, `InviteController`
+- `WorkspaceController`, `InviteController` (both delegate to `DomainService`)
 
 ## Acceptance (implemented)
 - [x] Workspace CRUD + membership scoped by role (401/403/404 paths tested)

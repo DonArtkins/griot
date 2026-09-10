@@ -11,5 +11,14 @@ public class AttachmentDto
     public string FileName { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
     public long SizeBytes { get; set; }
+    public string? Url { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+public class CreateAttachmentRequest
+{
+    public string FileName { get; set; } = string.Empty;
+    public string MimeType { get; set; } = string.Empty;
+    public long SizeBytes { get; set; }
+    public string? Url { get; set; }
 }

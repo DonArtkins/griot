@@ -110,7 +110,7 @@ When egress costs justify migration (>100 GB/month):
    - One-time script: `SELECT Id, StorageUrl FROM Attachments` → download from Vercel → upload to R2 → `UPDATE StorageUrl`
    - Cutover: update `BLOB_STORAGE_PROVIDER` env var → new uploads go to R2
 
-**Contract:** `AttachmentService` interface stays the same; only provider implementation changes.
+**Contract:** the attachment path stays the same (`AttachmentController` -> `IDomainService.CreateAttachmentAsync`, metadata @ `Attachments`); only the provider implementation changes (spec 17 ships metadata-only).
 
 ---
 
@@ -294,11 +294,11 @@ public class VercelBlobStorageService : IBlobStorageService
 builder.Services.AddHttpClient<IBlobStorageService, VercelBlobStorageService>();
 ```
 
-**AttachmentService changes:**
+**Attachment path changes (spec 17 metadata-only today; this spec adds real upload):**
 
 ```csharp
-// backend/Griot.Application/Services/AttachmentService.cs
-public class AttachmentService
+// backend/Griot.Application/Services/DomainService.cs (CreateAttachmentAsync) gains real blob wiring
+public class DomainService
 {
     private readonly IAttachmentRepository _repo;
     private readonly ITaskRepository _taskRepo;
@@ -317,7 +317,7 @@ public class AttachmentService
         _config = config;
     }
 
-    public async Task<Attachment> UploadAsync(Guid taskId, Guid uploaderId, IFormFile file, CancellationToken ct)
+    public async Task<AttachmentDto?> CreateAttachmentAsync(Guid taskId, CreateAttachmentRequest request, Guid userId)  // + IBlobStorageService upload
     {
         // SECURITY NOTE: This specification phase implementation has known issues that MUST be fixed before production:
         // 1. File validation: ContentType is client-controlled; add extension and magic-byte validation (see §7.1)
@@ -401,9 +401,9 @@ public class AttachmentService
 [ApiController]
 [Route("api/tasks/{taskId}/attachments")]
 [Authorize]
-public class AttachmentController : ControllerBase
+public class AttachmentController : DomainControllerBase
 {
-    private readonly AttachmentService _service;
+    private readonly IDomainService _domain;
 
     [HttpGet]
     public async Task<IActionResult> List(Guid taskId, CancellationToken ct)
@@ -495,7 +495,7 @@ extend type Mutation {
 ### 5.1 Unit tests (`Griot.Application.Tests`)
 
 ```csharp
-public class AttachmentServiceTests
+public class DomainServiceAttachmentTests
 {
     [Fact]
     public async Task UploadAsync_ExceedsFileSizeLimit_ThrowsValidationException()

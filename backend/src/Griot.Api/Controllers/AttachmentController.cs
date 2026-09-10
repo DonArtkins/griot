@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Griot.Application.DTOs;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
 
@@ -18,6 +19,10 @@ public class AttachmentController : DomainControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAttachments(Guid id)
     { try { return Ok(await _domain.GetAttachmentsAsync(id, CurrentUserId())); } catch (DomainError e) { return Handle(e); } }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateAttachment(Guid id, [FromBody] CreateAttachmentRequest request)
+    { try { return StatusCode(StatusCodes.Status201Created, await _domain.CreateAttachmentAsync(id, request, CurrentUserId())); } catch (DomainError e) { return Handle(e); } }
 
     [HttpDelete("{attachmentId}")]
     public async Task<IActionResult> DeleteAttachment(Guid id, Guid attachmentId)

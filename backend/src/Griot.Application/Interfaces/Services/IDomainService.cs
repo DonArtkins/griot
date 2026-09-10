@@ -38,6 +38,8 @@ public interface IDomainService
     Task<List<BoardDto>> GetBoardsAsync(Guid projectId, Guid userId);
     Task<BoardDto> CreateBoardAsync(Guid projectId, CreateBoardRequest request, Guid userId);
     Task<BoardDto?> GetBoardAsync(Guid id, Guid userId);
+    Task<BoardDto?> UpdateBoardAsync(Guid id, UpdateBoardRequest request, Guid userId);
+    Task<bool> DeleteBoardAsync(Guid id, Guid userId);
     Task<ColumnDto?> CreateColumnAsync(Guid boardId, CreateColumnRequest request, Guid userId);
     Task<ColumnDto?> UpdateColumnAsync(Guid id, UpdateColumnRequest request, Guid userId);
     Task<bool> DeleteColumnAsync(Guid id, Guid userId);
@@ -54,15 +56,22 @@ public interface IDomainService
     // ── Comments ──────────────────────────────────────────────────────────────
     Task<List<CommentDto>> GetCommentsAsync(Guid taskId, Guid userId);
     Task<CommentDto?> CreateCommentAsync(Guid taskId, CreateCommentRequest request, Guid userId);
+    Task<CommentDto?> UpdateCommentAsync(Guid taskId, Guid commentId, UpdateCommentRequest request, Guid userId);
+    Task<bool> DeleteCommentAsync(Guid taskId, Guid commentId, Guid userId);
 
     // ── Attachments (metadata only — spec 17) ─────────────────────────────────
     Task<List<AttachmentDto>> GetAttachmentsAsync(Guid taskId, Guid userId);
+    Task<AttachmentDto?> CreateAttachmentAsync(Guid taskId, CreateAttachmentRequest request, Guid userId);
     Task<bool> DeleteAttachmentAsync(Guid taskId, Guid attachmentId, Guid userId);
+
+    // ── Invites ───────────────────────────────────────────────────────────────
+    Task<InviteDto?> GetInviteByTokenAsync(string token);
 
     // ── Notifications ─────────────────────────────────────────────────────────
     Task<List<NotificationDto>> GetNotificationsAsync(Guid userId);
     Task<int> GetUnreadNotificationCountAsync(Guid userId);
     Task<bool> MarkAllNotificationsReadAsync(Guid userId);
+    Task<bool> MarkNotificationReadAsync(Guid notificationId, Guid userId);
 
     // ── Dashboard & Logs ──────────────────────────────────────────────────────
     Task<DashboardSummaryDto> GetDashboardSummaryAsync(Guid workspaceId, Guid userId);

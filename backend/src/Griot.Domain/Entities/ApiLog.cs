@@ -7,7 +7,7 @@ public class ApiLog
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid RequestId { get; set; }
     public Guid? UserId { get; set; }
-    public User? User { get; set; }
+    public virtual User? User { get; set; }
     public string Method { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public string? QueryString { get; set; }

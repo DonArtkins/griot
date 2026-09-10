@@ -6,7 +6,13 @@ NEW FEATURE (`[own-stack]` — the AI boundary defined in `research/ai-integrati
 
 ## What This Delivers
 
-The trusted AI-onboarding surface: `GRIOT_SERVICE_TOKEN` resolves to a dedicated `ai-agent` workspace principal with a reduced role (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites), and `POST /api/webhooks/trigger` verifies Trigger.dev webhooks via HMAC so background runs can request non-LLM work.
+The trusted AI-onboarding surface, in **both directions** (orchestration contract: `research/ai-integration.md` §2a):
+
+- **Trigger direction (.NET → Trigger.dev):** the backend enqueues AI tasks via Trigger.dev's REST API (server-to-server `TRIGGER_SECRET_KEY`) whenever something async or AI-related is needed — after validating/persisting the request. The backend is the only component (besides Trigger schedules) that triggers tasks.
+- **Callback direction (Trigger.dev → .NET):** `POST /api/webhooks/trigger` verifies Trigger.dev webhooks via HMAC (`X-Trigger-Signature`) so background runs write results back through the API.
+- **Service token (AI → .NET data plane):** `GRIOT_SERVICE_TOKEN` resolves to a dedicated `ai-agent` workspace principal with a reduced role (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites).
+
+.NET remains the **only writer of source-of-truth data**; Trigger.dev is a compute/orchestration adapter, never a data owner. Web/mobile never touch Trigger.dev — they call this API.
 
 ## Dependencies
 
@@ -14,7 +20,7 @@ The trusted AI-onboarding surface: `GRIOT_SERVICE_TOKEN` resolves to a dedicated
 
 ## Context To Read First
 
-- `research/ai-integration.md` §7 (security & guardrails)
+- `research/ai-integration.md` §2a (orchestration contract) + §7 (security & guardrails)
 - `backend/project-kit/context/api-surface.md` (webhook route)
 
 ## Agent Skills To Use
@@ -27,6 +33,7 @@ The trusted AI-onboarding surface: `GRIOT_SERVICE_TOKEN` resolves to a dedicated
 - `backend/src/Griot.Api/Auth/ServiceTokenHandler.cs` (converts token → ai-agent principal)
 - `backend/src/Griot.Api/Middleware/WebhookHmacMiddleware.cs`
 - `backend/src/Griot.Api/Controllers/WebhookController.cs`
+- `backend/src/Griot.Infrastructure/Integrations/TriggerDevClient.cs` (enqueue tasks by ID via Trigger.dev REST)
 
 ## Files
 
@@ -41,7 +48,8 @@ RUN: `dotnet build`; test with a signed webhook fixture.
 ```bash
 # env additions:
 #   GRIOT_SERVICE_TOKEN=<long-random>       (shared with ai/mcp env)
-#   TRIGGER_WEBHOOK_SECRET=<from Trigger.dev>
+#   TRIGGER_SECRET_KEY=<server-to-server>   (backend → Trigger.dev REST; NEVER exposed to web/mobile)
+#   TRIGGER_WEBHOOK_SECRET=<from Trigger.dev>  (Trigger.dev → backend HMAC callbacks)
 ```
 
 ## Implementation Notes
@@ -49,6 +57,8 @@ RUN: `dotnet build`; test with a signed webhook fixture.
 - `ai-agent` principal has a reduced role list and is workspace-scoped; the same policy code as any member.
 - HMAC verified in middleware before any handler runs; failures return 401.
 - The activity feed is the AI layer's audit + `summarize_project` source (no new tables).
+- Enqueue-after-persist: a request that needs AI work is validated/persisted first, then `TriggerDevClient` enqueues the task by ID. If the enqueue fails, the domain write stands (AI is a post-processing adapter, not part of the transaction).
+- Task results come back as HMAC-verified webhook calls or service-token REST writes — the backend stays the single writer of source-of-truth data.
 
 ## Separation of Concerns
 
@@ -70,6 +80,8 @@ AI scheduling, tool execution, LLM calls (all in `ai/`/`mcp/` systems).
 
 - [ ] Service token resolves to the restricted ai-agent principal; deletes/invites rejected
 - [ ] Webhook HMAC verified; bad signatures 401
+- [ ] `TriggerDevClient` enqueues a task by ID with `TRIGGER_SECRET_KEY`; enqueue failure does not roll back the domain write
+- [ ] Web/mobile never receive any Trigger.dev credential (no `TRIGGER_SECRET_KEY` outside backend env)
 - [ ] All AI tool calls are traceable to an ActivityLog row
 
 

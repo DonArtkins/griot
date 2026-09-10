@@ -26,7 +26,7 @@ The Week-6 step 5 deliverable for the backend: xUnit unit tests (services with m
 
 ## Files
 
-CREATE: `TaskServiceTests`, `AuthApiTests` (refresh replay + rate limit), `WorkspaceServiceTests`, `BoardQueryIntegrationTests`, dashboard proc tests.
+CREATE: `TaskServiceTests`, `AuthApiTests` (refresh replay + rate limit), `DomainServiceTests` (workspace/member/invite CRUD), `BoardQueryIntegrationTests`, dashboard proc tests.
 
 ## Implementation Notes
 

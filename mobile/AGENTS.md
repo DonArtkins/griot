@@ -48,6 +48,7 @@ Root shared skills + `mobile/.agents/skills/` (`flutter-setup`, `riverpod-state`
 1. Status change = picker, never drag-drop.
 2. Access token in memory; refresh in `flutter_secure_storage`; silent refresh on boot.
 3. Parity = feature-complete, not pixel-identical, to web.
+4. Mobile never touches Trigger.dev or the MCP server — any future AI/Copilot surface consumes the .NET API exclusively (single API surface; contract: `research/ai-integration.md` §2a).
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 

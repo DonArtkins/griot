@@ -8,8 +8,8 @@ backend/
 ├── global.json                  # SDK 8.0 pin
 ├── src/
 │   ├── Griot.Api/               # Program.cs, Controllers/, GraphQL/, Middleware/, Program.cs
-│   ├── Griot.Application/       # AuthService, WorkspaceService, ProjectService, BoardService,
-│   │                            #   TaskService, CommentService, NotificationService
+│   ├── Griot.Application/       # AuthService, TaskService (bulk-status), DomainService (specs 13–17 CRUD),
+│   │                            #   + legacy service scaffolds (Workspace/Project/Board/Comment/Notification, wired for DI only)
 │   ├── Griot.Domain/            # Entities/ + Enums/ (TaskStatus, Priority, WorkspaceRole, NotificationType)
 │   └── Griot.Infrastructure/    # Persistence/GriotDbContext.cs, Repositories/, Redis/, Migrations/, Sql/
 └── tests/Griot.Tests/           # xUnit + WebApplicationFactory
@@ -27,8 +27,8 @@ backend/
 ## Optimization layers (integrated phases)
 
 ### Phase 1: Production blockers (ship before launch)
-- **Blob storage service** (`Griot.Infrastructure.BlobStorage`): `IBlobStorageService` interface with Vercel Blob REST API implementation. Injected into `AttachmentService`. See `feature-specs/11-blob-storage-integration.md`.
-- **Dashboard summary caching** (`DashboardService`): Redis cache with 60s TTL. Key: `dashboard:summary:{workspaceId}`. Purge on workspace-level writes.
+- **Blob storage service** (`Griot.Infrastructure.BlobStorage`): `IBlobStorageService` interface with Vercel Blob REST API implementation. Injected into the attachment path (`AttachmentController` → `DomainService.CreateAttachmentAsync`). See `feature-specs/11-blob-storage-integration.md`.
+- **Dashboard summary caching**: Redis cache with 60s TTL around `DomainService.GetDashboardSummaryAsync`. Key: `dashboard:summary:{workspaceId}`. Purge on workspace-level writes.
 - **GraphQL DataLoader** (`Griot.Api/GraphQL/DataLoaders`): `AssigneeDataLoader`, `CommentDataLoader` batch queries per request. Eliminates N+1 (board with 50 tasks: 101 queries → 3 queries).
 - **Pagination middleware** (`Griot.Api/Middleware`): `MaxPageSize = 1,000` validation. Returns 400 if client requests >1k items.
 
