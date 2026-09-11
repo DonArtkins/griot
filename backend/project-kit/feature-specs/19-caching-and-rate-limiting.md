@@ -75,5 +75,14 @@ GraphQL persisted queries, output caching middleware (ASP.NET `OutputCache`) —
 - [ ] Redis down → all reads still succeed (fail-open test), error surfaced in `ErrorLogs`
 - [ ] `.env.example` + integration-contracts env table carry the `RateLimit__*` rows
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Cache keys gain the org prefix** (guide §1 contract): `cache:org:{orgId}:dashboard:{workspaceId}`, `cache:org:{orgId}:board:{boardId}:v{filterHash}`, `cache:org:{orgId}:notif:unread:{userId}` — a dual-org user's `select-organization` switch (spec 42 revision) changes the active partition; cross-org key reuse is impossible.
+- **Rate-limit partitions gain an org dimension:** per-org keys (`ratelimit:org:{orgId}:…`) where the guide requires it (fan-out, bulk, report generation partitions); the global 100/min window and auth/otp/webhook/graphql partitions keep their documented scopes unchanged.
+- **Invalidation stays key-deletion in the same write path**, now org-keyed; org lifecycle events flush org-scoped keys — suspend (`org_suspended` gate) and offboarding purge (spec 33) delete all `cache:org:{orgId}:*` keys of that tenant.
+- Fail-open semantics unchanged (Redis down → DB reads + warning log); org-stamped `ErrorLogs` rows (spec 51 revision) carry `OrganizationId`.
+- **Unvalidated reads (errors/audit logs) are still never cached** — observability must stay live per tenant; per-tenant log reads (spec 25 tiers) hit the DB directly.
+- OBO/AI requests cache under the same org partition as the delegated user's org (spec 44 revision) — the delegation's `OrganizationId`, never client input, selects the partition.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -13,6 +13,8 @@
 | 05 | Advanced state (Riverpod) | Pending | m 03–04 |
 | 06 | Responsive cross-device UI | Pending | m 04–05 |
 | 07 | Notifications + device verification | Pending | m 02–06, backend 04 ✅; CI APK artifact arrives with infra 05 (P4) |
+| 08 | Organization switching & role navigation | 📋 Spec written (PLANNED) — multi-tenant wave | m 02–06, backend 29/30/32–33, web 13–16 |
+| 09 | Client portal & handoff (mobile parity) | 📋 Spec written (PLANNED) — multi-tenant wave | m 02–08, backend 34/35/22, web 15/16 |
 
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P3)
 
@@ -32,6 +34,8 @@
 - **2026-09-07** — Theme scaffolded ahead of spec 01: `lib/core/theme/theme.dart` (ThemeData + `GriotColors`/`GriotRadii` extensions) from the inspo-synthesized master design system.
 - **2026-09-10** — Orchestration boundary ratified: mobile never touches Trigger.dev or MCP — all data through the .NET API (`research/ai-integration.md` §2a).
 - **2026-09-10 (2)** — Tracker created during the cross-system audit (this system previously had none). Phase P3 position recorded above.
+
+- **2026-09-11** — **Multi-Tenant Migration Wave (PLANNED):** specs 01–07 each gained a "Multi-Tenant Update (2026-09-11 — PLANNED)" section (JWT v2 claims `name`/`org`/`role`/`perms`, org switch via `POST /api/auth/select-organization`, `403 org_suspended`, org-scoped notifications, client-portal layouts; refresh tokens stay opaque in `flutter_secure_storage` — NOT JWTs). New specs **08** (organization switching & role navigation) and **09** (client portal & handoff mobile parity) written as PLANNED — no production code, no status changes to existing specs. Contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; mobile multi-tenant contract mirrored in `mobile/project-kit/context/integration-contracts.md`.
 
 ## Audit synchronization — 2026-09-11
 

@@ -75,5 +75,12 @@ Kubernetes, autoscaling (v2).
 - [ ] Runbooks complete (Railway primary, Render fallback, Azure variant)
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- `JWT__Key` (≥ 64 chars, CSPRNG, secret-store; rotation runbook in backend 30) and `SUPERADMIN__EMAIL`/`SUPERADMIN__PASSWORD` are Railway variables on the backend service — never committed; `Organizations__RetentionDays` default 30 (backend 33).
+- PITR unchanged and **platform-level**: a restored `<service>-restored-YYYYMMDD-HHMM` service restores ALL tenants atomically (tenancy is schema-level `OrganizationId` columns); no per-tenant restore exists — the per-org data path is the backend 33 export bundle.
+- Per-org export/restore drill note: periodically validate that an offboard export (backend 33) can be downloaded and inspected as the tenant-level "restore" path; PITR remains the incident mechanism.
+- Railway release command unchanged; migrations now include `AddMultiTenantColumns` (backend 29).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

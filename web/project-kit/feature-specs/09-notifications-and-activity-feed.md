@@ -47,5 +47,12 @@ Push notifications, email digests (backend/AI scheduling).
 - [ ] Activity feed renders recent actions with relative times
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Org-scoped feed: `Notifications` gain `OrganizationId`; the bell/popover and activity feed query only the active org, and switching orgs (web 05 `select-organization`) invalidates and refetches the feed — no cross-org unread leakage in badge counts (server partitions by `org` claim, backend 19/22 pattern).
+- Client feedback notifications: `ClientFeedback` events (New/Acknowledged/Resolved/Rejected, backend 34) route to the assigned ProjectManager as notification items with feedback kind + project context; deep-links open the client portal thread (web 15).
+- Handoff/maintenance notifications (backend 35): handoff-awaiting-acceptance and maintenance-request items appear in the same feed for Admin/PM; clients see only their own portal-scoped notifications.
+- Notification fan-out jobs carry the tenant id server-side (`org` claim → `OrganizationId`); the web simply renders whatever the org-scoped feed returns.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

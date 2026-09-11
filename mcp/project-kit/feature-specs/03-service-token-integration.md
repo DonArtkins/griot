@@ -49,5 +49,12 @@ CREATE: typed GraphQL client with Bearer `GRIOT_SERVICE_TOKEN` plus per-request 
 
 Each transport must test session A attempting to supply B's user/workspace identity, including report IDs and tool arguments: reject before dispatch; no cross-user result or count leakage. MCP writes require recorded user confirmation bound to tool, exact arguments/hash and identity; a client claim that an action is confirmed is insufficient. Until verified approval provenance exists, write tools remain unregistered. Never expose auth/OTP/delete/invite/member/status-update tools. `update_task_status` has no issued scope and is removed from the planned roster; do not map it to CreateTask.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- The OBO delegation gains `OrganizationId` (backend 29/30 bump): `ServiceToken:Delegations:{userId}` carries workspace IDs + scopes + the active org; every tool executes scoped to that org.
+- Trusted-identity rule extended to tenants: identity AND org come from the server-resolved delegation — never from model-generated tool arguments; an org A principal asking for org B data is rejected at the backend before dispatch (no client-side filtering).
+- Raw-log tools stay SuperAdmin/Dev tier only per backend 25: Admin/PM/Member/Client principals get the sanitized audit surface or a denial, never raw `/api/logs/audit`.
+- Contract mirrored in `mcp/project-kit/context/security.md` + integration-contracts when backend 29 ships; PLANNED — no code change yet.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

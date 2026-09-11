@@ -32,5 +32,12 @@
 
 `npm run lint && npm run typecheck && npm test && npm run build`; Cypress E2E with MSW-stubbed copilot + ops console.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Org context in the AI workspace: threads, memory (backend 26) and rendered answers are scoped to the active organization resolved from the JWT v2 `org` claim; the workspace header shows the active company; switching org switches the thread list (full cache reset).
+- Client boundary: for `Client`-role users the capability manifest exposes only client-scoped tools (progress questions + feedback); internal tools are hidden from the manifest and 403 server-side (backend 25 / ai 13).
+- SuperAdmin ops console stays platform-level: incident alerts (backend 27) and broadcasts operate across companies; broadcast compose previews recipient counts per company.
+- Report composition exports ride backend 24 with the active org's `CreateReport` scope; drafts never mix companies within a thread.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

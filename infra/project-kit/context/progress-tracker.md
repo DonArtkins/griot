@@ -28,6 +28,7 @@
 
 ## Session Notes
 
+- **2026-09-11 (multi-tenant wave sync)** — PLANNED wave per `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`: specs 01–07 each gained a "Multi-Tenant Update (2026-09-11 — PLANNED)" section (env parity: `JWT__Key` ≥ 64 chars, `SUPERADMIN__EMAIL/PASSWORD`, `Organizations:RetentionDays`; `AddMultiTenantColumns` via the release command; qa 14 isolation suite in CI; PITR unchanged — platform-level restore with backend 33 exports as the per-org path; per-tenant Netdata dashboards Phase 2 evidence-gated). No new spec, service, container or Railway variable mapping; existing statuses untouched.
 - **2026-09-03** — Infra kit created (AGENTS, skills, contexts, 7 specs).
 - **2026-09-10 (2)** — Tracker created during the cross-system audit (this system previously had none; root tracker also said "6 feature specs" — there are 7). Phase P4 position + Netdata Phase-1 gate recorded above.
 

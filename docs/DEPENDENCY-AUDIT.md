@@ -205,6 +205,26 @@ The AI 06/07 → web 11, AI 09 → web 12 and backend → AI/UI dependencies wer
 
 ---
 
+## Multi-Tenant Migration Wave — 2026-09-11 (PLANNED dependency edges)
+
+New nodes and edges (full contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment: `diagrams/erd/multi-tenant-amendment.md`; roadmap section: `docs/planning/IMPLEMENTATION-ROADMAP.md` §P0.5):
+
+| Upstream | Unblocks |
+|---|---|
+| backend 29 (Organizations schema + tenant isolation, Pool model) | 30, 31, 32, 33, 34, 35, all revision specs 36–51, web 13–16, mobile 08–09, ai 13–15, mcp 07, qa 14 |
+| backend 30 (JWT v2 claims + org switch + SuperAdmin bootstrap) | 31 (`perms` claim), 39/40 (REST/GraphQL authorization), web 05/07/13–16, mobile 02/08 |
+| backend 31 (RBAC + custom company roles) | 32 (role seeding at onboarding), 34 (client permissions), 25 (capability tiers incl. Client), web 13 |
+| backend 32 (company onboarding, SuperAdmin-only) | 33 (offboarding), web 14, ai 10 (platform ops agent) |
+| backend 33 (company offboarding: export → retention → purge) | qa 14 (purge/restore evidence), web 14 |
+| backend 34 (client portal + feedback + AI client boundary) | 35 (handoff needs the client relationship), web 15, mobile 09, ai 13, mcp 06/07 client variants |
+| backend 35 (handoff + client offboarding + maintenance) | web 16, ai 14 (manual generator), ai 15 (maintenance triage), backend 28 evidence extension |
+
+**Boundary unchanged:** AI (ai/ + mcp/) still never touches SQL Server or auth/OTP; the OBO principal now resolves **inside a tenant** (delegation gains `OrganizationId`); the spec-25 capability gateway gains a Client tier (progress-only capabilities); AI memory is org-stamped (backend 26) and never crosses tenants. SuperAdmin platform actions (backend 32/33) remain **human-only** — no AI path to company lifecycle.
+
+**Implemented backend specs are frozen** — multi-tenant behavior for them ships via revision specs 36–51 (mapping 36→01 … 51→20); originals stay untouched (user-directed numbering rule of this wave).
+
+---
+
 **Contract:** This audit ensures no feature is implemented before its dependencies exist. Progress trackers must reflect actual dependency order, not just sequential numbering.
 
 The auth repair also removes the accidentally retained obsolete Spec 07/Postman

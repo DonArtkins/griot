@@ -52,6 +52,13 @@ App-shell screens (feature 07).
 - [ ] `/` `/pricing` `/login` `/signup` render from Figma; auth works
 - [ ] GSAP only in this subtree; `npm run build` green; axe + Lighthouse pass
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Pricing page renders `OrganizationPlan` tiers (Free/Pro/Enterprise) as display/billing metadata only — no payments this wave (canonical guide §8 defers payments).
+- Company signup stays off the public shell this wave: onboarding is SuperAdmin-only (`POST /api/organizations`, backend 32); self-serve company signup is a later option. Landing copy says the company is onboarded by the Griot operator rather than promising self-serve signup.
+- Login returns the JWT v2 pair; a user with several org memberships (or none) routes to org selection (web 05) instead of straight into the app shell.
+- Public signup remains personal registration (existing email-OTP verify flow); `Owner` assignment happens at company onboarding by the SuperAdmin, never from the public form.
+- Marketing plan cards must not imply client-portal or platform-console features as purchasable add-ons this wave.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

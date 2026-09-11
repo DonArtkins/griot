@@ -64,5 +64,14 @@ One reviewed SQL Server migration through the existing release procedure; no new
 
 `dotnet build`, SQL-enabled `dotnet test`, Postman evidence folder and contract-sync. No production data migration until the ERD gate passes.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Lifecycle evidence extends to handoff/maintenance/client-offboarding events (spec 35):** the `Kind` registry gains PLANNED handoff/maintenance/client-offboarding kinds (handoff checklist completion, AI-manual generation accepted by the client, client offboard, maintenance request/response) — append-only, same `schemaVersion: 1` discipline, never a silent change to `ProjectStatus`/`TaskStatus`.
+- **Evidence rows become org-resolvable:** `ProjectEvidence` resolves its `OrganizationId` through the project's org (or carries the stamp with the spec-37 migration) and every evidence read/write runs inside `ITenantContext` — spec 24's eligibility checks then run per-org on org-stamped `AuditLogs`/`ActivityLogs` (spec 51 revision).
+- **`ProjectStatus` Handoff/Maintenance/PostDeploymentSupport transitions (append-only enum gains) may require the matching evidence record** before the transition completes — closing an ordinary task is never proof (the original contract, extended to the new close-out states).
+- Authorization unchanged in shape: workspace Owner/Admin human records evidence, **AI OBO 403 before lookup**, no delete route, corrections append via `SupersedesId` — cross-org references (linked task/baseline/evidence) fail closed without cross-workspace disclosure.
+- Handoff/client-offboarding evidence is consumed by spec 24's report registry and spec 28's CAB/post-deployment templates only within the same org; client-visible evidence is limited to progress-view facts (spec 34/40 revisions).
+- Run/page metadata and `RunId` discipline are unchanged by tenancy; duplicate pages still 409.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

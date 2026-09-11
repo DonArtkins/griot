@@ -100,6 +100,10 @@ research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
 
+## Multi-Tenant Migration Wave — 2026-09-11 [own-stack] (PLANNED)
+
+Backend owns the tenant foundation: specs **29–35** (29 Organizations schema + Pool-model isolation via `ITenantContext` + EF global query filters; 30 JWT v2 claims `name/org/role/perms` + `POST /api/auth/select-organization` + SuperAdmin bootstrap + `JWT__Key` ≥512-bit policy — refresh tokens stay opaque, never JWTs; 31 RBAC: system roles Owner/Admin/ProjectManager/Member/Client + Admin/PM-created custom roles from a fixed permission catalogue; 32 SuperAdmin company onboarding/suspend/reactivate; 33 offboarding export → 30-day retention → purge; 34 client portal + `ClientFeedback` + AI client boundary; 35 handoff + AI-generated client manual + client offboarding + maintenance) plus revision specs **36–51** for every *implemented* backend feature (36→01 … 51→20 — the implemented spec files themselves stay frozen). Spec 29 requires the Figma-Make-approved ERD amendment `diagrams/erd/multi-tenant-amendment.md` first (hard rule 4). Canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`. Includes the workspace POST fix: `CreateWorkspaceAsync` must hydrate member user data (`displayName`/`email`/`avatarUrl`) so POST responses match GET.
+
 ## Audit synchronization — 2026-09-11
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.

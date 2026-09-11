@@ -53,6 +53,16 @@ research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
 
+## Multi-Tenant Migration Wave (2026-09-11 — PLANNED)
+
+User-directed planning wave (canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; ERD amendment: `diagrams/erd/multi-tenant-amendment.md`). Griot becomes a multi-tenant platform: the operator (**SuperAdmin**) onboards Companies (`Organizations`); each company has an **Admin** (owner — ALL projects inside that company only), ProjectManagers manage their assigned projects, and **Clients** get a satisfaction-first portal. JWT v2 (backend 30): access token claims `name`/`org`/`role`/`perms`; refresh tokens stay opaque by design (NOT JWTs). AI adds **three new PLANNED specs** and a **client capability tier**:
+
+- **`feature-specs/13-client-support-agent-and-client-boundary.md`** — client-facing agent answers only from client-scoped data (progress, public PM responses, handoff docs); feedback triage digests route to the assigned PM via backend notifications; golden transcripts assert the boundary (no cross-tenant data, no internal data to clients).
+- **`feature-specs/14-handoff-user-manual-generator.md`** — generates the client user manual from project history + boards/columns + the handoff checklist; writes `HandoffDocuments` (`Kind = Manual`, `GeneratedByAi = true`) via backend 35 **through the spec 20 outbox**; idempotent and human-reviewable before submit; never invents credentials.
+- **`feature-specs/15-maintenance-phase-triage-agent.md`** — post-deployment support triage: typed severity classification, KB/manual section suggestions (org-scoped), draft PM responses for human send; memory org-stamped.
+
+**Client capability tier (PLANNED, backend 25 extension):** an effective `Client` role selects a reduced agent/manifest surface — client-scoped read tools + `submit_feedback` only. Internal capability tools (task/comment write proposals, executor plans, BI internals, raw logs, assignment/memory suggestions) are absent from client manifests; "what can you do?" answers from the live manifest; direct invocation of absent tools is denied server-side. Specs 01–12 each carry a "Multi-Tenant Update (2026-09-11 — PLANNED)" section: org-stamped payloads/events, per-org scheduling + tenant-aware budgets, org+role-context proposals, per-org reports (+ client progress variant), per-org executor bounds, org-stamped memory, SuperAdmin-delegated platform ops agent, org-scoped institutional memory and role/permission-aware (custom-role-respecting) suggestions. Nothing in this wave changes the implemented status of existing specs, and no production code exists yet.
+
 ## Audit synchronization — 2026-09-11
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.

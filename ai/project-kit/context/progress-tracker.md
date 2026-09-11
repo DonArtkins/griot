@@ -19,6 +19,9 @@
 | 10 | Incident summaries and confirmed notices | Pending | backend 27, ai 09, web 12 |
 | 11 | Institutional memory and pattern detection | Pending | backend 26/28, ai 09, web 12 |
 | 12 | Explainable assignment suggestions | Pending | ai 11, web 12; human write path |
+| 13 | Client support agent + client boundary | 📋 Spec written (PLANNED) — multi-tenant wave | ai 02/05/09, backend 25/26/29/34/22 |
+| 14 | Handoff user-manual generator | 📋 Spec written (PLANNED) — multi-tenant wave | ai 02/03/05/07, backend 20/24/11/29/35 |
+| 15 | Maintenance-phase triage agent | 📋 Spec written (PLANNED) — multi-tenant wave | ai 02/05/09/11/14, backend 20/22/25/26/29/35 |
 
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P2)
 
@@ -41,6 +44,8 @@
 - **2026-09-03** — AI kit created (AGENTS, skills, contexts, 5 specs).
 - **2026-09-10** — Trigger.dev orchestration contract ratified (`research/ai-integration.md` §2a): Trigger.dev is a compute/orchestration adapter, never a data owner; the .NET backend is the only task trigger and the only writer of source-of-truth data; web/mobile never call Trigger.dev (exception: read-only Copilot realtime stream).
 - **2026-09-10 (2)** — Tracker created during the cross-system audit (this system previously had none, violating the contract-sync + git-branch-flow requirement of one tracker per system). Phase P2 position + the web10↔ai02 cycle resolution recorded above.
+
+- **2026-09-11 (multi-tenant wave sync)** — **Multi-Tenant Migration Wave (PLANNED):** specs 01–12 each gained a "Multi-Tenant Update (2026-09-11 — PLANNED)" section (org-stamped payloads/threads/memory, per-org scheduling + `budget:org:{orgId}:…` budgets, org+role-context proposals, per-org reports + client progress variant, per-org executor bounds, SuperAdmin-delegated platform ops agent, org-scoped memory reuse, role/permission-aware suggestions respecting custom roles). New specs **13** (client support agent + client boundary), **14** (handoff user-manual generator via spec 20 outbox) and **15** (maintenance-phase triage) written as PLANNED, plus the client capability tier (backend 25 extension). No production code; no status changes to existing specs. Contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; AI multi-tenant contract mirrored in `ai/project-kit/context/stack-contract.md`.
 
 ## Audit synchronization — 2026-09-11
 

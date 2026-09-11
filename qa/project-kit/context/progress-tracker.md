@@ -19,6 +19,7 @@
 | 11 | DevOps/TDD >80% coverage gate | Pending | all code (P0–P4), infra 05 |
 | 12 | Manual cycles + defects + internal QE | Pending | deployed system |
 | 13 | Perf benchmarks + UAT + exec report | Pending | everything deployed |
+| 14 | Multi-tenant isolation suite | 📋 Spec written (PLANNED) — multi-tenant wave | backend 29–35, qa 04–06/10, infra 05 |
 
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P6)
 
@@ -34,6 +35,7 @@
 
 ## Session Notes
 
+- **2026-09-11 (multi-tenant wave sync)** — PLANNED wave per `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`: specs 01–13 each gained a "Multi-Tenant Update (2026-09-11 — PLANNED)" section (multi-tenant manual/Jira matrix in 02/03; org routes + JWT v2 claims + negative cross-tenant tests in 04/05; isolation integration tests in 06; org switcher + client-portal Jest tests in 07; Flutter org-switch tests in 08; multi-tenant E2E journeys in 09; k6 multi-tenant + OWASP IDOR/IDOT in 10; `IPermissionService` coverage in 11; multi-tenant UAT + evidence in 12/13) and NEW spec 14 (multi-tenant isolation suite) was written. No production code; existing statuses untouched.
 - **2026-09-10 (2)** — Layer-order audit (docs-only): tracker rebuilt with per-spec blockers; qa 01–03 identified as zero-code-dep gap fillers; qa 04's base collection already exists (backend 08 ✅); qa 05 pinned to infra 05. Canonical P6 order per `docs/planning/IMPLEMENTATION-ROADMAP.md`.
 - **2026-09-03** - QA kit created.
 

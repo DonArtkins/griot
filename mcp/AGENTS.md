@@ -63,6 +63,15 @@ Each transport must test session A attempting to supply B's user/workspace ident
 ## Audit synchronization — 2026-09-11
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+## Multi-Tenant Migration Wave (2026-09-11 — PLANNED)
+
+MCP becomes org-aware (canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`):
+
+- **Tenant context:** every tool resolves the active organization from the delegated OBO principal (JWT v2 `org` claim resolved server-side, backend 29/30) — never from a client header, tool argument or model output; the delegation grant gains `OrganizationId` (mcp 03 bump).
+- **Role-aware results per backend 25 tiers:** SuperAdmin/Dev, Admin (ALL projects inside their company only), PM, Member, Client (portal read-only). Raw-log tools stay SuperAdmin/Dev tier.
+- **NEW spec 07 (PLANNED):** tenant-scoped tool manifest v3 — companies list (SuperAdmin tier), client-portal read-only tools (Client tier), handoff/maintenance read tools; manifest served per role tier.
+- **Specs 01–06** each carry a "Multi-Tenant Update (2026-09-11 — PLANNED)" section; cross-tenant negative tool tests extend mcp 05.
+- All of the above is PLANNED — no production code; implemented-status claims elsewhere in this file are unchanged until each spec ships on its own feature branch.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -62,5 +62,12 @@ Existing Trigger cloud project and provider; artifacts go through backend 11/24.
 
 Consume only backend-validated complete runs from the source manifest. Typed RunId/Page/TotalPages/TotalResults columns must cover all declared pages and exactly the declared result count with unique case IDs. Do not reconstruct completeness from ContentJson or treat an incomplete replacement as completed evidence. Missing evidence remains an explicit eligibility failure in backend 24.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Reports are per-org: generation jobs carry `organizationId` from backend 24 (org-stamped job/eligibility); every aggregate computes within the active organization only — no cross-tenant rollups.
+- Add the **client progress report variant** for `Client` recipients: percent-complete, milestones, activity digest — no internal board internals; gated by the capability gateway (backend 25 bump) and the ai 13 client boundary.
+- Saved artifacts retain the org stamp alongside the source data tier, so per-tenant log/report reads (backend 25, mcp 07) stay possible.
+- Report jobs under a suspended org are rejected (`403 org_suspended`) before any model spend.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

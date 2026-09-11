@@ -45,5 +45,12 @@ Web parity pixel-matching.
 - [ ] Board usable on phone + tablet; status picker accessible
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Add the organization switcher to the responsive shells (app-bar / drawer entry at every breakpoint; detail in spec 08).
+- Client-portal layouts: progress view (percent-complete, milestones, recent-activity digest) adapted for phone/tablet using the existing breakpoints — board internals stay out of the client surface.
+- Admin/PM/Member dashboards gain an org-context header (active organization + effective role); parity with the web 15/16 reference UIs is feature-complete, not pixel-identical.
+- A suspended-org state layout (read-only banner + switch-org CTA) is included in the responsive variants.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

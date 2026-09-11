@@ -43,5 +43,12 @@ CREATE: proposal schema (type, payload, targetRef); tools return proposals (neve
 - [ ] Stale/duplicate proposals handled
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Proposals carry org + role context (`organizationId`, effective role, `perms` keys from the JWT v2 claims) so the web approval card shows exactly who/where a write lands.
+- Client-role sessions are restricted to feedback-shaped proposals only (comment/suggestion on their `ProjectClients`-attached projects); every other proposal type is rejected before the model composes it — the full client boundary lives in ai 13.
+- Stale/expiry re-validation also re-checks active-org match: a proposal approved after an organization switch is stale and must be re-proposed (the token `org` claim changed).
+- Custom roles (`custom:{roleId}`) are respected via the manifest/`perms` claim; the agent never infers permissions beyond what the token carries.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

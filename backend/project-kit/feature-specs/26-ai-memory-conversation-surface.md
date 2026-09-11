@@ -71,5 +71,14 @@ Existing SQL Server migration and Trigger cloud compute. No vector database, new
 
 `dotnet build`, SQL-enabled `dotnet test`, Postman thread/memory privacy tests, contract-sync; mocked callbacks and vectors, no LLM in CI.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Memory/conversations become org-stamped:** `ConversationThread`, `ConversationMessage`, `UserPreference` and `KnowledgeLesson` carry `OrganizationId` (proposed schema, pre-ERD-approval) — retrieval filters **org first, then workspace/project**, so memory **never crosses tenants** even when the same human belongs to two orgs.
+- Conversation context endpoint resolves the active org from the token's `org` claim; a `select-organization` switch (spec 42 revision) changes the visible thread/memory context — threads of the other org are simply absent, never disclosed.
+- Lesson corpus caps stay per workspace; **cross-workspace pooling** and **cross-org pooling** are both out of scope (org boundary is absolute — deep employee behavioral modeling across orgs remains out of scope per this spec's existing rule).
+- Callback binding (spec 20's HMAC inbox) is **org-stamped** (spec 44 revision): the durable job is bound to org + workspace + owner + purpose; a callback cannot persist into a foreign org's thread/lesson/preference.
+- Revoked membership or org suspension blocks retrieval/writes immediately through the org gate (writes 403 `org_suspended`, reads per spec 32 semantics); delete-thread/correction semantics unchanged.
+- Cross-user transport tests gain cross-org cases: a dual-org user resuming thread/preference/lesson reads of the inactive org is the same fail-closed case as a foreign user.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -1,0 +1,17 @@
+# Stack Contract — AI Agents (Trigger.dev v4) [own-stack]
+
+AI agents are Trigger.dev v4 (pinned 4.5.16, ai 01) compute/orchestration adapters — never data owners. All data flows through the .NET API with `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {real User.Id}` (`research/ai-integration.md` §2a). LLM keys live only in `ai/.env`.
+
+## Multi-Tenant contract (PLANNED — 2026-09-11 wave)
+
+Canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`. Everything below is PLANNED (2026-09-11 wave) — not implemented acceptance evidence.
+
+- **Org-stamped OBO delegation:** `ServiceToken:Delegations:{userId}` grants become scoped per organization (backend 29–33). Every task invocation resolves the OBO principal AND the active `org` claim from the backend job context (JWT v2 claims `name`/`org`/`role`/`perms`, owner backend 30); run metadata, payloads, idempotency keys and audit rows carry `organizationId`. The client never invents or accepts a caller-supplied org value; runs **fail closed** when no org context is resolvable.
+- **Client capability tier (backend 25 extension; ai 13):** an effective `Client` role selects a reduced manifest — client-scoped read tools (progress, milestones, activity digest, PM responses, handoff docs) + `submit_feedback` only. Internal capability tools (task/comment write proposals, executor plans, BI internals, raw logs, assignment/memory suggestions) are absent from client manifests; absent-tool direct invocation is denied server-side. Feedback triage digests route to the assigned PM via backend 22 notifications — the agent never sends to clients directly.
+- **Memory org-stamping (backend 26/29; ai 09/11/15):** conversation threads, curated lessons, fingerprints and embeddings are keyed/stored with `OrganizationId`; retrieval filters by the active organization BEFORE ranking — org A memory never reaches org B sessions. Offboarding (backend 33) purges/anonymizes org lessons on the retention schedule.
+- **New agent inputs (PLANNED):** ai 13 — `ProjectClients` attachments, `ClientProjectViewDto` (percent/milestones/digest), `ClientFeedback` (Kind/Status/PmResponse); ai 14 — `ProjectHandoffs.ChecklistJson`, boards/columns structure, task aggregates, backend 28 evidence; ai 15 — maintenance requests (project status `Maintenance`/`PostDeploymentSupport`), ai 14 manual sections, ai 11 org-scoped lessons. ai 14 write-back rides the **spec 20 outbox** (durable, job-bound, replay-safe) into backend 35 `HandoffDocuments` (`Kind = Manual`, `GeneratedByAi = true`), ≤64 KiB callbacks, human-reviewed before client publish.
+- **Suspended orgs:** writes and org-scoped fan-out are rejected with `403 org_suspended`; reads stay scoped. Budget/idempotency keys partition per org (`budget:org:{orgId}:…`, `org:{orgId}:…`).
+- **Platform-level agent (ai 10):** the SuperAdmin ops agent operates as a SuperAdmin-delegated principal for company lifecycle/broadcasts (backend 27/32/33); per-org incident summaries carry nullable `OrganizationId` on log rows (platform events stay null).
+
+---
+**HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

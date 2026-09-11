@@ -50,5 +50,12 @@ Mutations through GraphQL (use REST).
 - [ ] Task detail + comments load; refetch after any local write
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- GraphQL requests carry no tenant parameter: org context is derived server-side from the access token's `org` claim (HotChocolate tenant middleware, backend 29) — the mobile client sends only the Bearer token.
+- After an organization switch, rebuild the GraphQL client/link so the new token pair is used and previously fetched reads are invalidated (explicit-refetch discipline already forbids stale cache assumptions).
+- Server-side cross-tenant isolation (EF Core global query filters, backend 29) means the client never filters by org manually — queries (`me`, `board(id)`, `tasks`, `dashboardSummary`) return only active-organization data.
+- A `Client`-role session gets client-portal-shaped reads only (progress view fields); board internals are simply absent from the authorized GraphQL surface (backend 34).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

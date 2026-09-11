@@ -69,6 +69,15 @@ research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
 
+## Multi-Tenant Migration Wave (2026-09-11 — PLANNED)
+
+User-directed planning wave (canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment: `diagrams/erd/multi-tenant-amendment.md`). Griot becomes a multi-tenant platform: the operator (**SuperAdmin**) onboards Companies (`Organizations`); each company has an **Admin** (owner — sees ALL projects inside that company only), ProjectManagers manage their assigned projects, and **Clients** get a satisfaction-first portal. Mobile adds **two new PLANNED specs** (order after backend 20: backend 29 → 30 → 31 → 32 → 33 → 34 → 35, then the existing hardening order; mobile specs land with their web/backend counterparts, spec 10-last rule unchanged):
+
+- **`feature-specs/08-organization-switching-and-role-navigation.md`** — org switcher (`POST /api/auth/select-organization` re-issues the token pair), role-aware navigation (dashboard shell vs client-portal shell from the `role` claim), suspended-org state (`403 org_suspended`), Admin/PM/Member views parity with web.
+- **`feature-specs/09-client-portal-and-handoff-mobile-parity.md`** — client progress view (percent-complete, milestones, activity digest), feedback/suggestions (`ClientFeedback`), handoff acceptance, maintenance/post-deployment requests (backend 34/35; web 15/16 reference UIs).
+
+**JWT v2 handling (PLANNED, owner: backend 30):** the access token adds claims `name`, `org`, `role`, `perms`; mobile parses these on login and after every org switch. **The refresh token stays opaque by design — it is NOT a JWT and is never parsed client-side; it remains in `flutter_secure_storage` exactly as implemented (jwt.io decoding it blank is correct behavior).** Access tokens stay in memory; lifetimes unchanged. Specs 01–07 carry a "Multi-Tenant Update (2026-09-11 — PLANNED)" section each; nothing in this wave changes the implemented status of existing specs, and no production code exists yet.
+
 ## Audit synchronization — 2026-09-11
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.

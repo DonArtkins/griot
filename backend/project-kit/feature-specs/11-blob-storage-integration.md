@@ -732,5 +732,14 @@ Add to `Postman/Griot.postman_collection.json`:
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Blob key convention gains the org prefix:** every uploaded artifact is stored under `org/{orgId}/…` (e.g. `org/{orgId}/attachments/{taskId}/…`) so the store is physically partitioned per tenant on top of the API isolation (specs 29/50 revisions).
+- **Per-org export bundles (spec 33):** the offboarding export bundle (JSON of every org row + manifest + checksum) is delivered as blob artifacts under `org/{orgId}/exports/…` with the download link emailed via the spec-45 lifecycle purposes; artifacts expire with the 30-day retention window.
+- **Handoff documents (specs 35/50):** `HandoffDocuments.BlobKey` (nullable until spec 11 ships) resolves under `org/{orgId}/handoff/…`; the AI-generated client user manual (`Kind=Manual, GeneratedByAi=true`) is a private artifact of the same org-partitioned store.
+- **Private artifact tier (spec 24):** report PDF/CSV artifacts use `org/{orgId}/reports/…` and download links recheck org + data tier + deletion state on every fetch — public blob URLs remain a documented v1 risk until signed URLs (v2, org-scoped TTL) are evaluated.
+- Quotas: the 100 MB workspace validation stays v1; an **org-level quota** is PLANNED display metadata only (OrganizationPlan carries no payments this wave).
+- Cloudinary → R2 migration path is unchanged by tenancy (org prefix survives the config swap).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -49,5 +49,12 @@ Reuse Trigger cloud and backend storage; no new service or vector database. Cros
 
 `npm run lint && npm run typecheck && npm test` (mocked LLM, no network in CI) — golden transcripts incl. manifest-driven + memory-turn fixtures.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Conversation memory is org-stamped: threads and context retrieval are keyed by (user, organization); switching organizations starts a fresh thread surface — org A memory is never retrieved in org B sessions (backend 26/29).
+- Capabilities-manifest answers ("what can you do?") reflect the active org's effective role and `perms` claim, including `custom:{roleId}` roles — answers change per role AND per org.
+- Chart payloads and "add to report" actions are computed within the active org's data only; report composition rides ai 07's per-org pipeline.
+- Client-role sessions use only the client boundary surface (ai 13) — the BI copilot never renders internal BI data into a client thread.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

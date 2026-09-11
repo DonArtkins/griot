@@ -36,5 +36,11 @@ CREATE: `docs/COVERAGE-GATE.md` - thresholds, weighting rule, and how to read th
 - [ ] Coverage report artifact uploaded each run
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Coverage gate extended: `IPermissionService` (org-role + permission resolution incl. `custom:{roleId}`) added to the ≥80% service-layer/auth enforcement set.
+- The cross-tenant isolation suite (qa 14) runs as a blocking CI job next to the coverage steps; a red isolation job blocks merges like any coverage failure.
+- Threshold weighting rule unchanged; isolation evidence recorded in `docs/TENANT-ISOLATION-EVIDENCE.md`.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

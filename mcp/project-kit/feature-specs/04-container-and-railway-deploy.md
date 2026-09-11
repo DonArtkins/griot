@@ -48,5 +48,11 @@ MODIFY: compose + Railway runbooks - `mcp` service env `GRIOT_API_URL`, `GRIOT_S
 - [ ] Railway deployment reachable; `claude mcp add` (remote) connects
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Env unchanged: `GRIOT_API_URL` + `GRIOT_SERVICE_TOKEN` remain the only MCP container env; the active org is a per-session property of the delegated principal — never an env var, container property or Railway variable.
+- Contract note: Streamable HTTP sessions bind user + workspace + active org; stdio profiles bind the operator-configured user/org.
+- No new container, port, service or compose change (infra 03/04 topology untouched); contract-sync only when backend 29/30 land.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

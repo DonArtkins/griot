@@ -63,6 +63,14 @@ The current REST transport uses JSON refresh tokens for Postman/mobile. Web
 HttpOnly cookie transport in the design remains a backend prerequisite for web
 Feature 05; do not treat the cookie diagrams as live behavior or store tokens in
 localStorage. SQL Server owns refresh rows; Redis currently owns login limits.
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- JWT v2 claims handling: on boot/refresh, decode the access token's added claims — `name` (DisplayName), `org` (active OrganizationId; absent for platform-only sessions), `role` (`super_admin`, the organization role, or `custom:{roleId}`), `perms` (space-separated permission keys) — into `authStore` client state (memory only, never `localStorage`).
+- Org switching UX: `POST /api/auth/select-organization` re-issues the whole token pair (access + opaque refresh rotation); on success update the store, reset the Apollo cache (web 04) and invalidate org-scoped TanStack queries. A multi-org user without an active org lands on the org-selection screen; a SuperAdmin platform session (no `org`) lands on the platform console.
+- Opaque refresh note (unchanged, by design): the refresh token stays a rotating opaque 64-hex token — never a JWT; jwt.io showing it blank is correct behavior and the web must never attempt to decode it.
+- Role-based route guards: `RequireAuth` is joined by `RequirePerm`/`RequireRole` guards reading `role`/`perms` — company admin console (web 13) gated on `org.members.manage`/`org.roles.manage`, platform console (web 14) on `role == super_admin`, client portal (web 15) on the `Client` org role, handoff/maintenance (web 16) on PM/Admin perms.
+- Visibility mirrors, never enforces: Owner/Admin see ALL projects inside their company only, PM only assigned projects, Member only their memberships, Client only attached projects — the server is the boundary (backend 29 query filters).
+- Suspended-org handling: `403 org_suspended` surfaces a read-only banner and disables write affordances client-side while the server enforces.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

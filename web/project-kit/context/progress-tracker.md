@@ -19,6 +19,10 @@
 | 11 | AI Reports & Audit Center (award-grade UX) | Pending (**P2**) | w 10, **ai 06–07 + backend 24** |
 
 | 12 | Persistent AI workspace, charts, review cards | Pending | ai 09, backend 25/26/27; ai 10–12 integrate later |
+| 13 | Company admin console (members/custom roles/all-projects/settings) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 07; backend 29/30/31 (PLANNED) |
+| 14 | SuperAdmin platform console (companies/onboard/offboard/lifecycle) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05; backend 29/30/32/33 (PLANNED) |
+| 15 | Client portal UI (progress/feedback/handoff acceptance/maintenance) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 16; backend 29/30/34/35 (PLANNED) |
+| 16 | Project handoff & maintenance UI (PM side) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 07, 15; backend 29/30/35, blob 11, ai 14 (PLANNED) |
 
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P1–P2)
 
@@ -27,6 +31,8 @@
 **Why web is the next layer after backend:** it is the bootcamp's next graded week (Week 3), the primary demo surface, and every dependency is already green. **The web10↔ai02 cycle is resolved in the roadmap:** ai 02's spec references web 10 as its *consumer* (contract-design dependency, not build-order) — build ai 01–02 first, then web 10, then ai 04's propose-before-write wraps the panel's approval cards.
 
 ## Session Notes
+
+- **2026-09-11 (multi-tenant wave sync)** — Canonical contract read (`docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`): tenant = Organization (Company), pool model, JWT v2 (`name`/`org`/`role`/`perms`), opaque refresh, `POST /api/auth/select-organization`. Added web specs 13–16 (company admin console · SuperAdmin platform console · client portal · PM handoff/maintenance) as **PLANNED**; appended "Multi-Tenant Update (2026-09-11 — PLANNED)" to specs 01–12; `web/AGENTS.md` + `web/project-kit/context/integration-contracts.md` (new) carry the JWT v2 / select-organization / new-route contract. No production code; no existing statuses changed; contract-sync run pending (planning-only docs).
 
 - **2026-09-11 (superpowers wave sync)** — Added web spec 11 (AI Reports & Audit Center: reports gallery + audit explorer + Copilot deep-links; award-grade UX bar: design-system tokens, WCAG AA, skeleton/empty/error states, virtualization, Lighthouse ≥ 90, `inspo/` Foundrie pass). P2 slot after ai 07/backend 24. No production code; contract-sync run.
 

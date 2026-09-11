@@ -65,5 +65,14 @@ Existing backend migration/release only; no new container or configurable role a
 
 `dotnet build`, SQL-enabled `dotnet test`, Postman tier matrix, contract-sync. Include direct endpoint calls as well as manifest tests.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Role tiers extended with a Client tier + client capability gateway:** a client OBO principal (`OrganizationRole.Client` via `ProjectClients`, spec 34) resolves only `client.read_progress` / `client.add_feedback` capabilities — progress-only, feedback-only; no internal task/board tool ever enters the client manifest, and ai 13 consumes the same restricted manifest.
+- **`log.read_tier` permission keys gate org-tier log reads:** per-tenant reads resolve from the spec-51 revision's org-stamped `ApiLogs`/`ErrorLogs`/`AuditLogs`/`ActivityLogs`; an org Admin gets the sanitized audit projection **within own org only**; platform (NULL-org) rows never leak to org readers — **raw logs stay SuperAdmin/Dev** (unchanged).
+- **Capabilities manifest gains org context:** `{toolId, allowedOperations, dataTier, organizationId, workspaceId}` — resolved from the caller's org role + the delegation's `OrganizationId`; a cross-org tool invocation is rejected **before** any data access.
+- OBO delegation gains `OrganizationId` (spec 44 revision); the service token itself still never confers platform authority; client OBO reads use only client-scoped data (ai 13's boundary).
+- Suspended/offboarding org: capability resolution still runs (reads allowed) but write capabilities are suppressed by the `org_suspended` gate (spec 32/39 revisions).
+- Cross-user transport tests (mcp 03/06) gain cross-org cases; aggregates still must not reveal the existence or count of inaccessible records.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

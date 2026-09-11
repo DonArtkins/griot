@@ -13,6 +13,7 @@ This file answers one question: **after finishing the current spec, which layer'
 
 ```
 P0  Backend close-out   backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10   [Week 2 close-out + AI-superpowers/2FA/BI/ops wave]
+P0.5 Multi-tenant wave  backend 29 → 30 → 31 → 32 → 33 → 34 → 35 (+ revisions 36–51; web 13–16, mobile 08–09, ai 13–15, mcp 07, qa 14)   [2026-09-11 multi-tenant migration wave — see §P0.5 below]
 P1  Web core            web 01 → 02 → … → 09                     [Week 3]
 P2  AI hop + Copilot    ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12   [own-stack + superpowers + BI/ops wave]
 P3  Mobile              mobile 01 → 02 → … → 07                  [Week 4]
@@ -39,6 +40,18 @@ P6  Quality Engineering qa 01 → 02 → … → 13                     [Weeks 6
 | **26 Conversations and curated memory** | Private threads, explicit preferences and permission-filtered lessons; callbacks bound to durable jobs. |
 | **27 Incident alerts and confirmed notices** | Fixed SuperAdmin alerts plus human-confirmed broadcasts/workspace role-check reminders. |
 | **10 API documentation** | Needs 04–08 + the hardened surface (18–28) documented, including the 25–28 routes/capability contracts and spec-10 as the last backend spec; freezes the API surface into reference docs right before Web consumes it — and is the contract artifact QA 04/05 polish against. Any surface excluded is documented explicitly with rationale in the spec. |
+
+### P0.5 — Multi-Tenant Migration Wave (2026-09-11, PLANNED — backend 29–35 new + 36–51 revisions; cross-system bumps)
+
+**Rationale (user-directed, research-backed):** Griot becomes a multi-tenant platform — the operator (SuperAdmin) onboards **Companies (Organizations)**, each company has an **Admin (owner)** who sees ALL projects inside their company only, ProjectManagers manage their projects, Members execute, and **Clients** get a satisfaction-first portal (progress view + feedback + handoff + maintenance). Research: `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md`; canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment: `diagrams/erd/multi-tenant-amendment.md`.
+
+**Spec-numbering rules of this wave (do not deviate):**
+- Implemented backend specs (01–09, 12, 13–17, 20) are **frozen** — their multi-tenant behavior is delivered by NEW revision specs **36–51** (one per implemented spec, mapping 36→01 … 51→20). The originals stay untouched.
+- Unimplemented backend specs (10, 11, 18, 19, 21–28) are **modified in place** (each carries a "Multi-Tenant Update (2026-09-11 — PLANNED)" section).
+- NEW multi-tenant feature specs are **29–35** (foundation, JWT v2, RBAC, onboarding, offboarding, client portal, handoff/maintenance).
+- Cross-system: all other layers' existing specs are modified in place, and new specs added — **web 13–16** (company admin console, SuperAdmin platform console, client portal UI, handoff/maintenance UI), **mobile 08–09** (org switching, client portal parity), **ai 13–15** (client support agent + boundary, handoff manual generator, maintenance triage), **mcp 07** (tenant-scoped tools v3), **qa 14** (multi-tenant isolation suite).
+
+**Canonical implementation order after spec 20:** **29 → 30 → 31 → 32 → 33 → 34 → 35** (tenant foundation first — every later spec assumes `OrganizationId` and the JWT v2 claims exist) → then the existing P0 hardening order **18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27** → revision specs **36–51** land with the implementation branch that touches their base feature (priority: 37, 39, 40, 46–49, then the rest) → **10** (API docs) last, freezing the full multi-tenant surface. Every spec still ships one-at-a-time on its own feature branch (hard rule).
 
 ### P1 — Web 01–09 (Week 3 system, no AI needed)
 

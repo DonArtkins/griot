@@ -43,5 +43,11 @@ CREATE: `docs/QE-FUNDAMENTALS.md` - map each testing type to a Griot surface/sui
 - [ ] KPI definitions + targets recorded
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- The testing-type map gains **tenant isolation** (IDOR/IDOT across organizations) as a named suite mapped to a Griot surface (backend 29–35 + qa 14).
+- KPI set extends with cross-tenant leak count (target: zero) as a tracked Week-6/7 metric; any leak = Blocker severity in the taxonomy.
+- Vocabulary: roles SuperAdmin / Admin / ProjectManager / Member / Client join the persona definitions used by every later suite.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

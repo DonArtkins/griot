@@ -34,6 +34,14 @@ Week 2. Spec 20 is implemented on `feature/backend/20-observability-logging-pipe
 | 26 | Conversations, preferences and curated memory | PLANNED |
 | 27 | Incident alerts and confirmed notices | PLANNED |
 | 28 | Project lifecycle report evidence | PLANNED (before 24) |
+| 29 | Multi-tenant foundation (Organizations + tenant isolation) | PLANNED — multi-tenant wave (after 20) |
+| 30 | Auth & JWT v2 (role/tenant claims + org switch + SuperAdmin bootstrap) | PLANNED — multi-tenant wave (needs 29, 31) |
+| 31 | RBAC v2 (system + custom company roles) | PLANNED — multi-tenant wave (needs 29, 30) |
+| 32 | Company onboarding & platform management (SuperAdmin) | PLANNED — multi-tenant wave (needs 29–31) |
+| 33 | Company offboarding (export → retention → purge) | PLANNED — multi-tenant wave (needs 32) |
+| 34 | Client portal (progress views + feedback + AI boundary) | PLANNED — multi-tenant wave (needs 29–31) |
+| 35 | Project handoff, client offboarding & maintenance | PLANNED — multi-tenant wave (needs 34) |
+| 36–51 | Multi-tenant revisions of implemented specs 01→20 (36→01 … 51→20; one NEW spec each, originals frozen) | PLANNED — land with the branches touching their base features |
 
 > **One-spec-per-branch:** specs 23, 24, 25, 26, 27 and 28 are six separate PLANNED features — this tracker row-group records planning only. Each implementation ships on its own feature branch and its own PR (`feature/backend/23-…`, `feature/backend/24-…`, …, `feature/backend/28-…`), never batched. Spec 12 is already implemented; its DKIM/DMARC doc correction in this planning wave does not re-open that feature.
 
@@ -109,4 +117,11 @@ Current implementation remains backend 09 review hardening; next is backend 20 a
 Review corrections are documented in `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`: backend 24/28 schema proposals, backend 27 incident/delivery boundaries, notification availability and final documentation dependencies are synchronized. AI 01 pins the existing Trigger.dev v4 decision to 4.5.16. Future features remain PLANNED. The user authorized this one-time review-batch grouping and commit/push on 2026-09-11 ("COMMIT AND PUSH TO GITHUB" in response to the exception request). Build, 108 SQL-enabled tests, API health, clean npm install/imports and contract-sync passed; details are recorded in the ledger. Future features remain on separate branches/PRs; backend 20 starts only after backend 09 review approval.
 
 ---
+
+### 2026-09-11 — Multi-Tenant Migration Wave (PLANNED, spec-writing only)
+
+User-directed wave per `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md`: Griot becomes multi-tenant (SuperAdmin onboards Companies → company Admin → PMs/Members/Clients + client portal/handoff/maintenance). Canonical contract `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment `diagrams/erd/multi-tenant-amendment.md` (Figma approval required before spec 29 ships — hard rule 4). Implemented backend specs are FROZEN — new revision specs 36–51 deliver tenant behavior; specs 10, 11, 18, 19, 21–28 carry appended "Multi-Tenant Update (2026-09-11 — PLANNED)" sections; JWT skills installed (`.agents/skills/jwt-{decode,encode,validate}`). This wave does not update implemented statuses. Spec 20 implementation continues in the other session; the wave lands after it (order 29 → … → 35, then the hardening order).
+
+---
+
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

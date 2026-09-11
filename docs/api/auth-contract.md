@@ -106,6 +106,20 @@ The following is the PLANNED extension of the email-OTP contract (owner: `backen
 
 Brevo sends for all OTP purposes come from the single verified sender `Brevo:FromEmail` (2026-09-11: the `Brevo:Senders:<Key>` profile map was removed; see `docs/communication/COMMUNICATION-GUIDE.md` §2/§7b).
 
+## PLANNED — JWT v2: role + tenant claims (multi-tenant wave, backend spec 30 — NOT yet implemented)
+
+Owner: `backend/project-kit/feature-specs/30-auth-jwt-v2-role-tenant-claims.md`; canonical rationale `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §4. This is the PLANNED extension of the implemented Feature-07 contract above; it moves into the implemented tables when spec 30 ships:
+
+- **Access token gains claims** (existing `sub`, `email`, `jti`, `iss=Griot`, `aud=GriotClients`, 15-min HS256 unchanged):
+  - `name` — `Users.DisplayName`
+  - `org` — the active `OrganizationId` (multi-tenant; absent for platform-only SuperAdmin sessions)
+  - `role` — effective role in the active org (`super_admin`, `owner`, `admin`, `project_manager`, `member`, `client`, or `custom:{roleId}`)
+  - `perms` — space-separated permission keys for the active role
+- **`GET /api/auth/organizations`** → 200, caller's organization memberships. **`POST /api/auth/select-organization`** `{organizationId}` → 200 new token pair with the new `org` claim; 403 not an active member; 404 unknown organization. Claims re-derive on refresh (role changes take effect within one refresh).
+- **Refresh tokens remain opaque** (64-hex, SHA-256 at rest, rotation + family revoke — unchanged). They are **not JWTs and must never encode user data**; jwt.io decoding them blank is correct behavior.
+- **Signing key policy:** production `JWT__Key` ≥ 64 chars (512 bits), CSPRNG-generated, platform secret store only, never committed; verification at jwt.io succeeds **only with the real configured key** (jwt.io's `a-string-secret-at-least-256-bits-long` string is a placeholder). Key rotation runbook: dual-key validation window in spec 30.
+- **SuperAdmin bootstrap:** `SUPERADMIN__EMAIL` (+ optional `SUPERADMIN__PASSWORD` first-boot) upgraded idempotently on startup, audit-logged.
+
 ## Verification
 
 From `backend/`, run `dotnet build --no-incremental` and

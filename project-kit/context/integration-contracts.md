@@ -68,6 +68,17 @@ Prefix `/api`. Auth module `register/login/refresh/logout/otp/request/verify`; t
 
 Queries: `me`, `workspace(id)`, `projects`, `board(id)`, `tasks(filter, sort)`, `notifications`, `dashboardSummary`, `workspaceReports`. (Includes Report entity from System Reports). Mutations mirror REST. Fields/entities named exactly per ERD.
 
+## Multi-Tenant contract (2026-09-11 wave — PLANNED)
+
+Canonical: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment: `diagrams/erd/multi-tenant-amendment.md`; owner specs: backend 29–35 (+ revisions 36–51).
+
+- **Tenant** = `Organization` (a Company). Pool model: shared schema, every tenant-owned table carries `OrganizationId`; isolation = `ITenantContext` (JWT `org` claim) + EF Core global query filters + repository guard (SQL Server has no RLS). `Users`/`RefreshTokens` stay global.
+- **New entities** (ERD approval pending): `Organizations`, `OrganizationMembers`, `Roles`, `OrganizationInvites`, `ProjectClients`, `ClientFeedback`, `ProjectHandoffs`, `HandoffDocuments`, `OrganizationLifecycleEvents`. New enums: `OrganizationStatus` (`Active`/`Suspended`/`Offboarding`/`Archived`), `OrganizationPlan`, `OrganizationRole` (`Owner`/`Admin`/`ProjectManager`/`Member`/`Client`/`Custom`), `PlatformRole` (`User`/`SuperAdmin`), `ClientFeedbackKind/Status`, `HandoffStatus`, `HandoffDocumentKind`, `LifecycleEventKind`; `ProjectStatus` gains `Handoff`/`Maintenance`/`PostDeploymentSupport`.
+- **Roles:** SuperAdmin = platform operator (onboards/suspends/offboards companies; `SUPERADMIN__EMAIL` bootstrap); Admin = company owner (ALL projects in own company only); ProjectManager = assigned projects; Member; Client = progress view + feedback. Admin/PM create custom roles from the fixed permission catalogue (`org.read, org.settings.manage, org.members.manage, org.roles.manage, org.projects.view_all, project.manage, task.manage, comment.write, client.manage, client.feedback.read, client.feedback.respond, report.generate, log.read_tier`).
+- **JWT v2 (backend 30 — PLANNED):** access token gains `name`, `org` (active OrganizationId), `role`, `perms`; 15-min HS256 unchanged; **`POST /api/auth/select-organization`** re-issues the pair on org switch; **refresh tokens stay opaque 64-hex (never a JWT — refresh semantics are unchanged)**. Signing key `JWT__Key` ≥ 64 chars (512 bits) in production, secret-store only.
+- **Env additions (PLANNED):** `JWT__Key` policy, `SUPERADMIN__EMAIL`, `SUPERADMIN__PASSWORD` (first-boot), `Organizations:RetentionDays` (offboarding, default 30).
+- **Platform/lifecycle routes (PLANNED):** `POST /api/organizations` (SuperAdmin onboard), `GET /api/organizations[/{id}]`, `POST /api/organizations/{id}/suspend|reactivate|transfer-ownership|offboard`; org-scoped `roles`, `members`, `invites`; client surface `GET /api/client/projects[/{id}/progress]`, `POST /api/client/projects/{id}/feedback`, handoff + maintenance routes (backend 35). Suspended orgs: writes 403 `org_suspended`, reads allowed.
+
 ## Entities & enums (owned by the approved ERD)
 
 `Users`, `Workspaces`, `WorkspaceMembers`, `Invites`, `Projects`, `Boards`, `Columns`, `TaskItems`, `Comments`, `Attachments`, `ActivityLogs`, `Notifications`, `RefreshTokens`, `OtpChallenges`, `Reports`. Enums: `TaskStatus`, `Priority`, `WorkspaceRole`, `NotificationType`, `TwoFactorMethod`. These names are used verbatim by web TS types, mobile Dart models, GraphQL SDL, and MCP tool schemas.

@@ -81,5 +81,14 @@ GRIOT_RUN_SQL_TESTS=1 dotnet test --no-restore --nologo -m:1
 python3 ../scripts/check-contract-sync.py
 ```
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Step-up is required for org lifecycle destructive actions (PLANNED additions to the guarded action list):** `Organization.TransferOwnership` and `Organization.OffboardStart` (SuperAdmin), plus the company-Admin destroy actions the tenant wave adds — a suspend/offboard/transfer routed without a valid 5-minute `stepup` claim is 403/409 exactly like the existing v1 list.
+- **Step-up tokens gain an `org` claim binding:** a step-up issued while active org A cannot authorize an action in org B — `RequireStepUp` validates purpose + action + org; `select-organization` after issuance invalidates the claim.
+- **AI stays permanently 403 on the whole surface (unchanged):** OBO callers never request/verify OTP or touch org lifecycle routes; `RejectAiOnAuthSurface()` guards extend to the new lifecycle endpoints.
+- `Auth.*`/`Auth.StepUp.*` audit rows (spec 20) carry `OrganizationId` (spec 51 revision) so every OTP/step-up event answers "which tenant".
+- Delete-account flow additionally **revokes `OrganizationMembers` rows** (all orgs) alongside refresh families/invites; reset-password and login-2FA semantics are unchanged by the wave.
+- The guarded-action list update is **contract-synced** (this table + `docs/api/auth-contract.md` PLANNED section + Postman folder 01 + `Security:StepUpActions` default) in the same branch.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

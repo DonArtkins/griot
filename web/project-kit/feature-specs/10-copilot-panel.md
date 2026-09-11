@@ -52,6 +52,12 @@ Agent scheduling, tool definitions (ai/mcp systems).
 - [ ] Proposed mutations require approval; approved mutations write via REST and update caches
 - [ ] Stubbed copilot E2E test green in CI
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- AI answers scoped to the active org: the Copilot stream rides the JWT v2 token whose `org` claim resolves the tenant server-side; the panel displays the active company context next to the thread so the user always knows the scope.
+- Client boundary: for `Client`-role users the Copilot answers only from client-scoped data (client progress view + their feedback), enforced by the capability gateway (backend 25, ai 13) — the panel never offers internal-board mutations to clients.
+- Approval cards stay org-scoped: approved mutations perform org-scoped REST writes; a proposed write against another company is impossible without an explicit `select-organization` switch (web 05).
+- SuperAdmin: the Copilot inside the platform console (web 14) runs in platform scope (no `org` claim) — the panel must not assume an active company exists and must render that state.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

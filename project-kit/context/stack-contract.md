@@ -65,6 +65,10 @@ configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
+## Multi-Tenant Migration Wave — 2026-09-11 [own-stack] (PLANNED)
+
+Tenancy model decision for this wave: **Pool model** (shared SQL Server 2022 schema, `OrganizationId` per tenant row, EF Core global query filters + `ITenantContext` from the JWT `org` claim; SQL Server has no RLS, so the repository guard + integration tests are part of the contract). Canonical: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment: `diagrams/erd/multi-tenant-amendment.md`. No stack substitution: .NET 8 / EF Core 8 / SQL Server 2022 / Redis / Brevo / HotChocolate all carry the tenant dimension without new infrastructure. New env (PLANNED): `JWT__Key` ≥64 chars, `SUPERADMIN__EMAIL`, `SUPERADMIN__PASSWORD`, `Organizations:RetentionDays`.
+
 ## Trigger.dev version correction — 2026-09-11
 
 [own-stack] Preserve the v4 adoption from commit `7e90c5b`; the previous v3 descriptions were stale. The [vendor migration notice](https://trigger.dev/docs/migrating-from-v3) records the v3 cloud shutdown on July 1, 2026. AI 01 pins CLI/SDK/react-hooks together at 4.5.16. No task or cloud deployment is claimed by this dependency correction.

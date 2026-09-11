@@ -78,5 +78,14 @@ No new container. Reuse email sender `admin` for operator notices, existing veri
 
 The user approved keeping this planning correction on the backend 09 review branch for this batch on 2026-09-11, directing "COMMIT AND PUSH TO GITHUB" in response to the exception request. See `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md` for the bounded exception. Future production implementation still requires its own feature branch/PR; this approval does not approve schema implementation or merge.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **SuperAdmin broadcasts are the platform channel:** `all_users` / `all_admins` audiences are platform-wide (draft rows carry NULL `OrganizationId`); delivery/audience resolution never enters the tenant scope bypass except to *read* the platform audience — and the audience IDs are operator-provisioned, never model-supplied.
+- **Org-scoped confirmed notices for the company Admin (PLANNED):** a company Admin drafts/confirms notices within **own org only** (audience hash includes the `OrganizationId`); cross-org recipient injection is rejected before preview, and an Admin can never draft platform broadcasts or another org's notices.
+- **Incident summaries gain the tenant dimension:** incident aggregates/snapshots carry the `OrganizationId` from the org-stamped `ErrorLogs` (spec 51 revision), so per-tenant incident views are possible while platform incidents (NULL org) remain platform-only — feeding spec 25's tier matrix.
+- Org lifecycle notices (suspend/offboard/export — specs 32/33) route through the **same draft/confirm channel intents** as maintenance notices when the audience is larger than a single owner email (single-owner cases stay spec 45's one-per-event lifecycle emails).
+- Authorization matrix unchanged: **every route in this spec is AI OBO 403**, including for a SuperAdmin OBO principal; cross-org attempts by an Admin never disclose the foreign org's existence.
+- Broadcast/notice `Notifications` rows carry `OrganizationId` (spec 22/49 revisions) — the platform broadcast rows carry NULL org and are visible to every user, org-independent.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

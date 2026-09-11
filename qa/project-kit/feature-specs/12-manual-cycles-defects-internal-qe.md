@@ -36,5 +36,10 @@ CREATE: `docs/MANUAL-CYCLE-REPORT.md` - per-cycle summary, defect list with seve
 - [ ] Traceability matrix maintained
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Multi-tenant manual cycles executed against the deployed Railway/Vercel with two seeded companies + the Client persona (org-switch, suspend, feedback, handoff paths).
+- Defect taxonomy adds tenant-severity: a cross-tenant leak is Blocker regardless of affected scope; tenant defects trace to backend 29–35 requirements (qa 14 parity).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

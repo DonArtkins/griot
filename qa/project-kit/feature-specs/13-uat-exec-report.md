@@ -36,5 +36,11 @@ CREATE: k6 regression run (3 scripts vs Week-6 baseline) + report; UAT script + 
 - [ ] Executive summary + final test strategy produced
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- UAT script includes the Client persona journey: progress view → feedback → handoff acceptance → maintenance request (backend 34/35 parity).
+- Exec summary verdict is gated on the isolation suite (qa 14) green: any cross-tenant leak = **not ready**, regardless of other pass rates.
+- k6 regression gains the many-tenant scenario vs the qa 14 multi-tenant baseline; evidence in `docs/TENANT-ISOLATION-EVIDENCE.md`.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

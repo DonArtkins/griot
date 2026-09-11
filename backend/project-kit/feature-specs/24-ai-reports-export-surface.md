@@ -84,5 +84,14 @@ Reuse SQL Server, backend 11 blob service and Trigger cloud. Durable outbox retr
 
 `dotnet build`, SQL-enabled `dotnet test`, Postman eligibility/download/replay/tier tests and contract-sync. Ai 07 golden render fixtures are a later integration gate.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Reports become per-org scoped:** `Report` rows are stamped with `OrganizationId` (resolved via the workspace's org) and every create/list/get/download/delete runs inside `ITenantContext` — EF global query filters (spec 37) make cross-org reads empty; the workspace-scoped and org-scoped boundaries compose (org → workspace → data tier).
+- **Client-facing progress report type (PLANNED, spec 34 view)** joins the template registry — evidence-gated like every other template; client downloads recheck `ProjectClients` attachment and never expose internal board internals (dedicated client-view DTO/fields only).
+- **Blob artifacts under `org/{orgId}/reports/…`** (spec 11's Multi-Tenant Update) — private download links recheck org + tier + deletion state on every fetch.
+- **CreateReport (fifth OBO scope, spec 09/44 revisions)** is capability-gated within the OBO user's org: delegation `OrganizationId` must match the active tenant and the target workspace's org — a mismatch is rejected before job creation; AI still never deletes or signs off a report.
+- Aggregation/pagination queries gain `@OrganizationId` (spec 38 revision); `(CreatedAt, Id)` cursors unchanged; suspended/offboarding org **freezes generation** (org lifecycle interplay — writes 403 `org_suspended`).
+- `audit-summary` reports read the org-stamped `AuditLogs`/`ActivityLogs` (spec 51 revision) and feed spec 25's per-tenant tiers; platform (NULL-org) rows are never aggregated into org reports.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

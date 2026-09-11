@@ -137,6 +137,12 @@ research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
 
+## Multi-Tenant Migration Wave — 2026-09-11 [own-stack] (PLANNED)
+
+User-directed planning wave (research: `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md`; canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment: `diagrams/erd/multi-tenant-amendment.md`). Griot becomes a **multi-tenant platform**: the operator (**SuperAdmin** — you, owner of Griot) onboards **Companies (`Organizations`)**, each company has an **Admin (owner)** who sees ALL projects **inside that company only**, ProjectManagers manage their projects, and **Clients** get a satisfaction-first portal (progress view + feedback + handoff + maintenance). Pool tenancy model; `OrganizationId` on every tenant table; JWT v2 access tokens carry `name`/`org`/`role`/`perms` while **refresh tokens stay opaque by design** (they are not JWTs — jwt.io decoding them blank is correct); production `JWT__Key` ≥ 512 bits, secret-store only.
+
+**Spec-numbering rule of this wave:** implemented backend specs are **frozen** — their multi-tenant behavior ships via NEW revision specs **36–51** (36→01 … 51→20); unimplemented backend specs are bumped in place; NEW multi-tenant specs are **29–35**. Other layers: all existing specs bumped + **web 13–16, mobile 08–09, ai 13–15, mcp 07, qa 14** added. Order after backend 20: **29 → 30 → 31 → 32 → 33 → 34 → 35**, then the existing hardening order, revisions landing with the branches that touch their base features, **10** last. JWT skills installed for agents: `.agents/skills/jwt-{decode,encode,validate}/` (`npx skills add jsonwebtoken/jwt-skills`). Roadmap: `docs/planning/IMPLEMENTATION-ROADMAP.md` §P0.5; dependency edges: `docs/DEPENDENCY-AUDIT.md`.
+
 ## Audit synchronization — 2026-09-11
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
