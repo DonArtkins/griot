@@ -2,6 +2,20 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
+## [Unreleased] — 2026-09-11 (Backend spec 20: observability & logging pipeline)
+
+### Added
+- **Backend spec 20 implemented** on `feature/backend/20-observability-logging-pipeline` (finish-up wave):
+  - `ObservabilityPruneSqlTests` (SQL-gated, `GRIOT_RUN_SQL_TESTS=1`) — seeds 91/181/366-day boundary rows via EF then re-ages them with parameterized raw SQL (GriotDbContext.UpdateTimestamps overwrites CreatedAt on Added entities), applies `usp_PruneObservabilityLogs` and proves the retention contract: old ApiLogs/AuditLogs/ActivityLogs pruned, unfixed ErrorLogs survive the tail, resolved old errors pruned, second run idempotent.
+  - Error-log triage is now audited: `UpdateErrorLogStatusAsync` writes an `AuditLogs` row (`ErrorLog.FixStatusChanged`) in the same transaction as the FixStatus change.
+  - Auth audit events finalized: login success, attributable login failure, refresh rotate, replay-revoke (reuse + rotation-conflict family revocations) and logout each write one durable `AuditLogs` row via `IAuditService.RecordAsync` (own transaction, best-effort with documented unavailability — a 401 never becomes a 500; unknown emails are not audited; no tokens/hashes/OTP codes in rows).
+  - `TelemetryWriter` clamps `ApiLogs.DurationMs` to ≥ 1 at persist time (acceptance contract: `DurationMs > 0` on every row, even sub-millisecond requests).
+- **Postman folder 14 tightened** — `entityType=Task` (matches the spec 16/18 query contract) and `Audit — trail captured` now asserts a non-empty audit array for the task created by folder 7 (spec 20 makes the durable trail mandatory).
+
+### Changed
+- **Docs flipped from PLANNED to IMPLEMENTED** for the spec 20 writers: spec 20 status + pipeline sections, `docs/observability/MONITORING.md` (§2–§3), `docs/observability/HOW-LOGGING-WORKS.md` (status, delivery classes, middleware order), `docs/planning/IMPLEMENTATION-ROADMAP.md` P0 row, backend progress tracker. The durable outbox/webhook-inbox/idempotency store inside spec 20 stays PLANNED until Trigger.dev callers ship (webhook remains 503 on valid HMAC by design).
+
+
 ## [Unreleased] — 2026-09-11 (AI superpowers & critical-action OTP planning wave [own-stack])
 
 ### Review corrections (2026-09-11)

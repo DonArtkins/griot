@@ -1,6 +1,6 @@
 # How Griot's Logging Works — ApiLogs · ErrorLogs · AuditLogs · ActivityLogs
 
-**Owner:** `backend/project-kit/feature-specs/20-observability-logging-pipeline.md` · **The gap it closes (audit):** `docs/observability/LOGGING-AUDIT-REPORT.md` · **Status:** describes the PLANNED spec 20 pipeline — the four tables exist in the schema today; the writers ship with backend spec 20.
+**Owner:** `backend/project-kit/feature-specs/20-observability-logging-pipeline.md` · **The gap it closes (audit):** `docs/observability/LOGGING-AUDIT-REPORT.md` · **Status:** IMPLEMENTED (2026-09-11) — describes the live spec 20 pipeline: the four tables and their writers are on `feature/backend/20-observability-logging-pipeline`. The durable outbox/webhook-inbox/idempotency store inside spec 20 remains PLANNED until Trigger.dev callers ship.
 
 ## The one-sentence story
 
@@ -25,7 +25,7 @@ Client ─ X-Request-Id: abc123 ─▶ RequestIdMiddleware (assigns/normalizes)
    Response carries X-Request-Id: abc123  ◀── the same id every table stored
 ```
 
-**Delivery classes (PLANNED):** AuditLogs and ActivityLogs persist in the same SQL transaction as the domain mutation. A mandatory audit failure prevents success and rolls the mutation back. External jobs use a transactional outbox; post-commit delivery failures retry without undoing domain state. ApiLogs/ErrorLogs are best-effort bounded telemetry; overflow warns and coverage gaps remain visible. Telemetry isolation does not mean that lossless audit is possible while all durable storage is unavailable.
+**Delivery classes (IMPLEMENTED):** AuditLogs and ActivityLogs persist in the same SQL transaction as the domain mutation (audit rows are queued into the scoped change tracker and committed by the caller's `SaveChanges`). A mandatory audit failure prevents success and rolls the mutation back. External jobs use a transactional outbox (PLANNED inside spec 20 until Trigger.dev callers ship); post-commit delivery failures retry without undoing domain state. ApiLogs/ErrorLogs are best-effort bounded telemetry (bounded queue + worker flush + shutdown drain); overflow warns and coverage gaps remain visible. Telemetry isolation does not mean that lossless audit is possible while all durable storage is unavailable.
 
 ## The four tables (what each one is for)
 
@@ -46,7 +46,7 @@ One user click can produce **all four rows** — see the worked example below.
 
 ## Retention (bounded, compliance-aware)
 
-`usp_PruneObservabilityLogs` (spec 20, offline release step) deletes: `ApiLogs` > 90 days, `ErrorLogs` > 90 days after `FixedAt`, `AuditLogs` > 365 days (compliance tail), `ActivityLogs` > 180 days. Idempotent SQL file under `Griot.Infrastructure/Sql/`; applied by the same release step as specs 03/21. Volume bound: ~90 days × ~50k req/day ≈ 4.5M `ApiLogs` rows (see `docs/planning/CAPACITY-PLAN.md`).
+`usp_PruneObservabilityLogs` (spec 20, offline release step) deletes: `ApiLogs` > 90 days, `ErrorLogs` > 90 days after `FixedAt`, `AuditLogs` > 365 days (compliance tail), `ActivityLogs` > 180 days. Idempotent SQL file under `Griot.Infrastructure/Sql/`; applied by the same release step as specs 03/21. **IMPLEMENTED + TESTED:** `ObservabilityPruneSqlTests` (`GRIOT_RUN_SQL_TESTS=1`) seeds 91/181/366-day boundary rows and proves the retention contract incl. the "unfixed errors survive" rule and second-run idempotency. Volume bound: ~90 days × ~50k req/day ≈ 4.5M `ApiLogs` rows (see `docs/planning/CAPACITY-PLAN.md`).
 
 ## Worked example — "move one task"
 
@@ -66,7 +66,7 @@ Later, support searches ErrorLogs by requestId, finds the AuditLogs Before/After
 
 ## Middleware and recovery status
 
-Current Program.cs keeps UseExceptionHandler first, then request ID, HTTPS/CORS, rate limiter, HMAC, authentication, authorization and endpoints. ApiLoggingMiddleware is not implemented. Spec 20 captures before early exits and finalizes after response status/auth are known; this is how 401/404/429 and handled 500s are included. Current 500 is text/plain; ProblemDetails is planned. Raw query secrets are redacted before truncation.
+Program.cs (spec 20, implemented) registers `UseExceptionHandler → request-ID → ApiLoggingMiddleware → HTTPS redirect → CORS → rate limiter → WebhookHmacMiddleware → authentication → authorization → endpoints`. Capture starts before early exits and finalizes from response completion after authentication/exception handling — this is how 401/404/429 and handled 500s are recorded with the actual status and resolved user (null when auth was never reached). 500s are RFC 7807 `application/problem+json` with `traceId`/`requestId`; raw query secrets are redacted before truncation.
 
 Spec 20 also owns durable enqueue recovery, the signed timestamp/event-ID/job-bound callback inbox and the 24-hour request-hash/response idempotency store. Until then verified callbacks return 503 and no production caller should rely on enqueue recovery. See its concrete acceptance tests.
 
