@@ -14,8 +14,11 @@ contexts, `DevObservabilitySeeder` migration-race resilience, migration
 (17 tenant-filtered entities, 30 org indexes, idempotent ownership-chain backfill +
 quarantine org) and ERD Amendment v2. Verified: `dotnet build` 0W/0E; `dotnet test` 152
 passed / 8 SQL-skipped / 0 failed. **Outstanding before COMPLETE:** tenancy ERD approval
-(`diagrams/erd/multi-tenant-amendment.md`) and migration apply on the user's machine
-(`dotnet ef database update --project src/Griot.Infrastructure --startup-project src/Griot.Api`).
+(`diagrams/erd/multi-tenant-amendment.md`) only — the migration-apply gate is CLOSED
+(2026-09-11: the cascade variant failed with SQL 1785, was regenerated as
+`20260911190926` with org FKs ON DELETE NO ACTION, the database was rebuilt from all
+migrations, and the user's `dotnet ef database update` now reports the database is
+already up to date).
 See the [preflight findings and completion plan](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
 for the pre-implementation snapshot.
 
