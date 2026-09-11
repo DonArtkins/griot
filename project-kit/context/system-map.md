@@ -9,7 +9,7 @@
 └───────┬───────────────────────────────────────────────┬───────────┘
         │ REST/GraphQL (Bearer JWT)                      │ Trigger realtime (WS)
 ┌───────▼─────────────────────────────┐   ┌──────────────▼───────────┐
-│  backend/  ASP.NET Core 8 (one proc)│   │  ai/  Trigger.dev v3     │
+│  backend/  ASP.NET Core 8 (one proc)│   │  ai/  Trigger.dev v4     │
 │  REST controllers + HotChocolate    │◄──►│  agents · tasks · skills │
 │  Griot.Application services         │HTTP│  (own lockfile)          │
 │  Griot.Domain entities              │HMAC│                          │

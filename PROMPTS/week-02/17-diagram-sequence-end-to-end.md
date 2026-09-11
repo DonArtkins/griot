@@ -15,7 +15,7 @@
 3. **API — backend** (REST controllers + GraphQL resolvers → Griot.Application)
 4. **SQL Server** (16 tables: Users, Workspaces, …, TaskItems, ActivityLogs, Notifications, AuditLogs)
 5. **Redis** (rate-limit, refresh metadata, token budgets)
-6. **ai/ agent** (Trigger.dev v3 — `griotCopilot` / scheduled)
+6. **ai/ agent** (Trigger.dev v4 — `griotCopilot` / scheduled)
 7. **mcp/ server** (8 MCP tools)
 8. **External AI client** (Claude Desktop / Cursor / Cline)
 9. **Email provider** (SMTP)

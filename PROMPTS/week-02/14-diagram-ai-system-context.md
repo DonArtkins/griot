@@ -9,7 +9,7 @@
 ## 1. Actors / components
 
 - **Web Copilot panel** (app shell right rail) — streams answers + renders approval cards; mutations approved → app calls REST itself.
-- **AI Agents (Trigger.dev v3)** — `griotCopilot` agent + scheduled tasks (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`); streaming to web via realtime WS.
+- **AI Agents (Trigger.dev v4)** — `griotCopilot` agent + scheduled tasks (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`); streaming to web via realtime WS.
 - **MCP Server** (`mcp/`) — tools `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `add_comment`, `get_activity_feed`, `summarize_project`; stdio + Streamable HTTP.
 - **Backend API** — GraphQL with Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of: {real User.Id}` resolves a real-user OBO principal (`ai-on-behalf-of`). Exactly four scopes are issued: ReadWorkspace, CreateTask, AddComment, CreateNotification; there is no `UpdateTaskStatus` scope. Status updates use existing task APIs and real-user RBAC; bulk status, deletes, invites and member management are denied to AI OBO callers. In-app Copilot writes remain propose-only and execute as the user after approval. HMAC protects `/api/webhooks/trigger`.
 - **SQL Server** — source of truth; **AI never touches directly**.
@@ -33,7 +33,7 @@ AI system context diagram for Griot. Build it with these components and flows:
 
 COMPONENTS:
 - Left group "WEB": box "Web Copilot panel (app-shell right rail, chat UI)"; box "External AI clients (Claude Desktop / Cursor / Cline)".
-- Center group "ai/ (Trigger.dev v3)": box "griotCopilot agent" + box "scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder"; small box "token budget (Redis)" attached.
+- Center group "ai/ (Trigger.dev v4)": box "griotCopilot agent" + box "scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder"; small box "token budget (Redis)" attached.
 - Lower-left group "mcp/": box "Griot MCP server" listing the 8 tools: list_projects, list_boards, get_board, get_task, create_task, add_comment, get_activity_feed, summarize_project.
 - Right group "backend": box "API — GraphQL + /api/webhooks/trigger" with badges "GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → real-user OBO principal (ai-on-behalf-of): ReadWorkspace, CreateTask, AddComment, CreateNotification" and "HMAC X-Trigger-Signature". Show no synthetic member and no fifth scope; bulk status, deletes, invites and member management are denied.
 - Far right: box "SQL Server 2022 (source of truth)" with a BIG RED X annotation "AI NEVER writes to SQL Server directly — every read/write through the API".

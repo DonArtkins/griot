@@ -1,4 +1,4 @@
-# Progress Tracker — AI Agents (Trigger.dev v3) [own-stack]
+# Progress Tracker — AI Agents (Trigger.dev v4) [own-stack]
 
 ## Current State
 
@@ -46,6 +46,10 @@
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 AI kit now has 12 planned specs. Institutional memory is ai 11; assignment suggestions ai 12. No direct SQL, auto-commit, silent assignment or borrowed mutation scopes.
+
+## CodeRabbit follow-up — 2026-09-11
+
+Review corrections are documented in `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`: backend 24/28 schema proposals, backend 27 incident/delivery boundaries, notification availability and final documentation dependencies are synchronized. AI 01 pins the existing Trigger.dev v4 decision to 4.5.16. Future features remain PLANNED. The user authorized this one-time review-batch grouping and commit/push on 2026-09-11 ("COMMIT AND PUSH TO GITHUB" in response to the exception request). Build, 108 SQL-enabled tests, API health, clean npm install/imports and contract-sync passed; details are recorded in the ledger. Future features remain on separate branches/PRs; backend 20 starts only after backend 09 review approval.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

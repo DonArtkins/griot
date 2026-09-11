@@ -259,7 +259,7 @@ This means `CREATE DATABASE Griot` already succeeded earlier — you're just try
 | **Docker containers** | No GUI installed by default — you're using `docker` CLI commands (`docker ps`, `docker compose ps`, `docker logs <name>`) | Docker Desktop has a GUI but isn't installed here; not required |
 | **DBeaver (SQL Server / Postgres)** | `dbeaver &` from a terminal, or "DBeaver Community" in the app menu | Browsing tables, running queries, checking migrations landed — see §6.3 for connect/disconnect steps |
 | **MCP Inspector** | `npx @modelcontextprotocol/inspector` (bare, no flags — see prep doc gotcha 9), then open the printed `http://127.0.0.1:6274/...` link in a browser | Only needed when working on the `mcp/` folder |
-| **Trigger.dev dashboard** | `https://cloud.trigger.dev` in a browser, log in with the account from `npx trigger.dev@latest login` | For monitoring the AI/agent layer's background jobs |
+| **Trigger.dev dashboard** | `https://cloud.trigger.dev` in a browser, log in with the account from `npm exec --no -- trigger login` | For monitoring the AI/agent layer's background jobs |
 | **Jira** | Wherever Sababisha's Jira workspace URL is — bookmark it | Test/project management, per the bootcamp guide |
 
 Quick reference for checking what's currently running, any time:

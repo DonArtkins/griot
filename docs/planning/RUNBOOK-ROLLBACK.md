@@ -16,7 +16,7 @@
 
 ### AI agents (Trigger.dev)
 1. Trigger dashboard → the task/agent → **Deactivate** (stops scheduled runs).
-2. Redeploy the last-good version via `npx trigger.dev@4.0.0 deploy` from `ai/` (version is pinned in `ai/package.json` devDependencies — use the exact version recorded there, not `@latest`).
+2. Redeploy the last-good version via `npm run deploy` from `ai/` (version is pinned in `ai/package.json` devDependencies — use the exact version recorded there, not `@latest`).
 
 ### Mobile
 - APK artifact is immutable per release; rollback = install the previous APK (documented in the release note).

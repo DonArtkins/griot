@@ -16,7 +16,7 @@ Backend 09 (service delegation/allowlist), 16/18 (scoped reads/pagination), 20 (
 
 ## Context To Read First
 
-`docs/api/ai-service-token-contract.md`, root integration contract, approved ERD and `diagrams/erd/ai-planning-amendments.md`. Skills: contract-sync, dotnet-ef-core, Context7.
+`docs/api/ai-service-token-contract.md`, root integration contract, approved ERD and `docs/planning/AI-SCHEMA-PROPOSALS-2026-09-11.md`. Skills: contract-sync, dotnet-ef-core, Context7.
 
 ## Files Owned
 

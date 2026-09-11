@@ -106,7 +106,7 @@ jobs:
 
 ### 6.5 Deploying the AI layer (see `ai-integration.md`)
 
-- **`ai/`** (Trigger.dev v3) → Trigger-hosted or self-hosted on Railway; scheduled + agent runs are durable and observable from the Trigger dashboard. Env: `GRIOT_SERVICE_TOKEN`, `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`, `GRIOT_API_URL`.
+- **`ai/`** (Trigger.dev v4) → Trigger-hosted or self-hosted on Railway; scheduled + agent runs are durable and observable from the Trigger dashboard. Env: `GRIOT_SERVICE_TOKEN`, `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`, `GRIOT_API_URL`.
 - **`mcp/`** (Griot MCP server) → Docker image, run in **Streamable HTTP** mode on Railway/Render (one extra service in the compose file); stdio mode stays for local Claude/Cursor use.
 - Both are added to the same GitHub Actions pipeline (own lockfiles; `npm run lint && npm run typecheck && npm test` gate).
 
