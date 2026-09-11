@@ -13,7 +13,7 @@
 | Mobile | `mobile/` | Flutter 3.19+ · Dart 3 · Riverpod · graphql_flutter · dio |
 | DevOps / Infra | `infra/` | Docker 26+ · Compose v2 · Vercel · Railway · GitHub Actions |
 | Quality Engineering | `qa/` | xUnit · Jest+RTL · Flutter tests · Cypress · Newman · k6 · OWASP |
-| AI agents | `ai/` | Trigger.dev v4 (Copilot + scheduled agents) — [own-stack] — orchestrated by the .NET backend only; web/mobile never trigger or poll Trigger.dev, web may consume the scoped, read-only Copilot stream (`research/ai-integration.md` §2a) |
+| AI agents | `ai/` | Trigger.dev v3 (Copilot + scheduled agents) — [own-stack] — request-driven runs are orchestrated by the .NET backend; scheduled agents start through Trigger.dev's cron scheduler. Web/mobile never trigger or poll Trigger.dev, and web may consume the scoped, read-only Copilot stream (`research/ai-integration.md` §2a) |
 | MCP server | `mcp/` | @modelcontextprotocol/sdk — [own-stack] |
 
 Each system is self-contained (own `AGENTS.md`, `.agents/skills/`, `project-kit/`). The root `AGENTS.md` + `docs/ARCHITECTURE.md` link them into one system.

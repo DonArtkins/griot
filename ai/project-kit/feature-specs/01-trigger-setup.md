@@ -27,11 +27,12 @@ The `ai/` npm package initialized and connected to a Trigger.dev project: toolbo
 **Resolved contract:** Trigger.dev v4 [own-stack], preserving the v4 adoption in commit `7e90c5b`. Pin `trigger.dev`, `@trigger.dev/sdk` and `@trigger.dev/react-hooks` to **4.5.16** in both manifest and lockfile. Use the repository's Node 20 toolchain. The [official migration notice](https://trigger.dev/docs/migrating-from-v3) retires v3 deployments on April 1, 2026 and shuts v3 down on July 1, 2026; downgrading to v3 cannot bootstrap this cloud-only system. Architecture/research references to v3 were stale. Context7 confirms the v4 import is `@trigger.dev/sdk`.
 
 ```bash
-cd ai  # from the repository root
-npm ci
-npm exec --no -- trigger --version  # must print 4.5.16
-npm exec --no -- trigger login
-npm exec --no -- trigger init --project-ref <PROJECT_REF>
+mkdir -p ai && cd ai
+npm ci   # installs the RESOLVED pinned CLI, not a drifted one
+npm exec -- trigger --version   # commit the result — must match the pinned version
+npm exec -- trigger login
+npm exec -- trigger init --skip-package-install --project-ref <PROJECT_REF>
+# Resolve/review compatible exact SDK/react-hooks/zod versions before adding them.
 ```
 
 **Version pinning:** Dev/deploy use the installed CLI through package scripts. Review any generated manifest/lockfile diff after init; it must preserve the exact compatible package set. Login, project creation, task implementation and deployment remain pending AI 01; package synchronization is not evidence those acceptance criteria passed.

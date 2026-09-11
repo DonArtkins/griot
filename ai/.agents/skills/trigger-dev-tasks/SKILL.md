@@ -10,11 +10,9 @@ metadata:
 ## Setup
 
 ```bash
-cd ai
-npm ci
-npm exec --no -- trigger --version # 4.5.16, as pinned in package.json
-npm exec --no -- trigger login
-npm exec --no -- trigger init --project-ref <PROJECT_REF>
+cd ai && npx trigger.dev@latest login
+npx trigger.dev@latest init --skip-package-install --project-ref <PROJECT_REF>
+npm i @trigger.dev/sdk @trigger.dev/react-hooks
 ```
 
 ## Patterns

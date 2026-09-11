@@ -426,10 +426,9 @@ flutter                           # NOT YET INSTALLED on this machine — see go
 
 ```bash
 cd ~/sababisha/projects/gtp/griot/ai && nvm use     # .nvmrc → 20 (pinned)
-npm ci
-npm exec --no -- trigger login                 # connect to the Trigger.dev cloud project
-npm exec --no -- trigger init --project-ref <PROJECT_REF>
-npm ci # retain the reviewed 4.5.16 CLI/SDK/react-hooks set
+npx trigger.dev@latest login                 # connect to the Trigger.dev cloud project
+npx trigger.dev@latest init --skip-package-install --project-ref <PROJECT_REF>
+npm install @trigger.dev/sdk @trigger.dev/react-hooks
 echo "ANTHROPIC_API_KEY=…" >> .env           # LLM keys live ONLY here, never in web/
 
 cd ~/sababisha/projects/gtp/griot/mcp && npm init -y
