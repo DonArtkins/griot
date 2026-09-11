@@ -26,13 +26,13 @@ The `ai/` npm package initialized and connected to a Trigger.dev project: toolbo
 
 ```bash
 mkdir -p ai && cd ai
-npx trigger.dev@3 login
-npx trigger.dev@3 init --project-ref <PROJECT_REF>
-npm i @trigger.dev/sdk @trigger.dev/react-hooks
-npm i zod
+npm ci
+npm exec -- trigger login
+npm exec -- trigger init --project-ref <PROJECT_REF>
+# Resolve/review compatible exact SDK/react-hooks/zod versions before adding them.
 ```
 
-**Version pinning (mandatory):** Record the exact `trigger.dev` CLI version installed in `ai/package.json` under `devDependencies` (e.g. `"trigger.dev": "3.x.y"`). All subsequent `deploy` and `dev` commands (DEPLOYMENT.md, RUNBOOK-ROLLBACK.md) use the pinned version — never `@latest`. Run `npx trigger.dev --version` after init and commit the result.
+**Version pinning (mandatory):** Record the exact `trigger.dev` CLI version installed in `ai/package.json` under `devDependencies` (e.g. `"trigger.dev": "3.x.y"`). All subsequent `deploy` and `dev` commands (DEPLOYMENT.md, RUNBOOK-ROLLBACK.md) use the pinned version — never `@latest`. The current pre-scaffold manifest pins CLI 4.0.0 while the architecture says v3. Resolve this compatibility discrepancy explicitly before implementing ai 01: pin a supported compatible set and update stack-contract.md if adopting v4. No package upgrade is performed by this planning audit. Run `npm exec -- trigger --version` after init and commit the result.
 
 ## Files Owned
 
@@ -51,15 +51,15 @@ CREATE: `ai/agents.ts` stub, `ai/tasks/health.ts` (runnable scheduled task), `ai
 ## Separation of Concerns
 
 - AI orchestration only here; no DB, no HTTP routes.
-- Standalone service: deployed independently (Trigger cloud or own Docker container) and triggered only by the .NET backend (research/ai-integration.md §2a). Tasks never write domain data directly — write-back goes through the .NET API (webhook HMAC or service-token REST).
+- Standalone service: deployed independently (Trigger cloud) and triggered only by the .NET backend (research/ai-integration.md §2a). Tasks never write domain data directly — write-back goes through the .NET API (webhook HMAC or service-token REST).
 
 ## Docker & Deploy
 
-- Deployed to Trigger cloud (or self-hosted Railway); dev via `npx trigger.dev dev`.
+- Deployed to Trigger cloud only; local dev via `npm run dev` (the package script uses the exact installed CLI). Self-hosted control planes are out of scope.
 
 ## Assignment / Acceptance Criteria
 
-- [ ] `npx trigger.dev dev` runs the health task
+- [ ] `npm run dev` runs the health task with the pinned CLI
 - [ ] `.env.example` matches the ai rows in root `integration-contracts.md`
 
 

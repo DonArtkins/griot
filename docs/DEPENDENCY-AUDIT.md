@@ -1,11 +1,17 @@
 # Dependency Audit — Feature Spec Implementation Order
 
-**Generated:** 2026-09-08 · **Updated:** 2026-09-10
+**Generated:** 2026-09-08 · **Updated:** 2026-09-11
 **Purpose:** System-wide audit of all feature spec dependencies to ensure correct implementation order and prevent dependency violations.
 
-> **2026-09-10:** This file audits *within-system* spec ordering. The **cross-system layer order** (which system's which spec comes next, and why) is now canonical in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — P0 backend 09→20→18→19→22→21→11→10 (2026-09-10 observability/hardening wave inserted; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` §3 + ADR-004) → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa. It also resolves the web 10 ↔ ai 02 circular reference (see the roadmap P2 section and the build-order note added to `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`).
+> **2026-09-10:** This file audits *within-system* spec ordering. The **cross-system layer order** (which system's which spec comes next, and why) is now canonical in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — P0 backend 09→20→18→19→22→21→23→11→28→24→25→26→27→10 (2026-09-10 observability/hardening wave + 2026-09-11 AI-superpowers/OTP/BI wave inserted; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` §3 + ADR-004) → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–10 (web 11/12 inserted at their dependency points) → P3 mobile → P4 infra → P5 mcp (06) → P6 qa. It also resolves the web 10 ↔ ai 02 circular reference (see the roadmap P2 section and the build-order note added to `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`).
 
-> **2026-09-11:** New PLANNED specs — backend **23** (critical-action OTP/step-up), backend **24** (AI reports & export surface + FIFTH OBO scope `CreateReport`), ai **06–08** (knowledge+auditor · reports PDF/CSV · advanced executor), web **11** (Reports & Audit Center), mcp **06** (v2 report/audit tools). Roadmap P0: … → 21 → 23 → 11 → 24 → 10; P2 adds ai 06 → ai 07 → web 11 → ai 08; P5 adds mcp 06. No AI spec touches auth/OTP (backend 23).
+> **2026-09-11:** New PLANNED specs — backend **23** (critical-action OTP/step-up), backend **24** (AI reports & export surface + FIFTH OBO scope `CreateReport`), ai **06–08** (knowledge+auditor · reports PDF/CSV · advanced executor), web **11** (Reports & Audit Center), mcp **06** (v2 report/audit tools). Roadmap P0: … → 21 → 23 → 11 → 28 → 24 → 10; P2 adds ai 06 → ai 07 → web 11 → ai 08; P5 adds mcp 06. No AI spec touches auth/OTP (backend 23).
+
+## Current audit — 2026-09-11
+
+Canonical P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. Canonical P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Spec counts: backend 28, web 12, mobile 7, infra 7, qa 13, ai 12, mcp 6 (85 total). New memory/evidence/assignment plans are unimplemented and require design approval. Backend 20 remains next after backend 09 review. The September 11 planning records are not backdated; historical September 8–10 notes below describe those earlier snapshots.
+
+The AI 06/07 → web 11, AI 09 → web 12 and backend → AI/UI dependencies were incorrectly bidirectional. Owner specs now list downstream systems as consumers; web 11 precedes ai 08, and web 12 precedes ai 10–12.
 
 ## Critical Findings
 
@@ -18,7 +24,7 @@
 - **08 = API testing (Postman)** ← implement AFTER 07 (file: `08-api-testing-postman.md`)
 - All ~65 references across all 7 systems updated atomically in this branch.
 
-**Canonical next-step rule:** Spec 07 (Auth) is ✅ **Done**. Implement **08 (Postman)** next. Next branch: `feature/backend/08-api-testing-postman`.
+**Canonical next-step rule (review-fixed 2026-09-10):** superseded — 08 is ✅ and 09 is ✅ (delivered on `feature/backend/09-ai-service-token-and-webhooks`). **Next spec after user review: backend 20** (observability pipeline) on `feature/backend/20-observability-logging-pipeline`.
 
 ---
 
@@ -37,7 +43,7 @@
 | 07 | Auth: JWT + Argon2 | 04, 02 (controllers + table) | ✅ Yes |
 | 08 | API testing (Postman) | 04-07 (routes + auth) | ✅ Yes (after 07) |
 | 09 | AI service token | 07 (auth middleware) | ✅ Yes (after 07) |
-| 10 | API documentation | 04-07, 08, **18-22** (routes + Postman + hardened surface) | ✅ Yes (last) |
+| 10 | API documentation | 04-07, 08, **18-27** (routes + Postman + hardened surface) | ✅ Yes (last) |
 | 11 | Blob storage | None listed | ✅ Yes (independent) |
 | 12 | Communication (Brevo, Email-only) | 07 (auth), Redis | ✅ Yes (done) |
 | 18 | Search/filter/pagination/sorting | 04-08, 13-17 (list endpoints) | ✅ Yes (after 20 in P0 order) |
@@ -46,14 +52,20 @@
 | 21 | DB triggers + backups | 02 (schema), 20 (AuditLogs dedupe) | ✅ Yes (after 20) |
 | 22 | Notification fan-out | 16 (routes), 12 (email), 20 (event hooks) | ✅ Yes (after 20) |
 | 23 | Critical-action OTP & step-up | 07 (OTP), 12 (email), 20 (audit), 16 (guarded routes) | ✅ Yes (after 21) |
-| 24 | AI reports & export surface | 07/09 (auth/OBO), 11 (blob), 16/20 (reads/audit), 23 (AI boundary) | ✅ Yes (after 11 + 20) |
+| 24 | AI reports & export surface | 07/09 (auth/OBO), 11 (blob), 16/20 (reads/audit), 23 (AI boundary), 28 (evidence) | ✅ Yes (after 11 + 20) |
+| 25 | Role-tiered log access + AI capability gateway | 09 (OBO), 20 (logs), 24 (audit-summary) | ✅ Yes (after 24) |
+| 26 | AI memory & conversation surface | 16 (reads), 20 (audit), 25 (tiers) | ✅ Yes (after 25) |
+| 27 | Incident alerting & confirmed notices | 12, 19/20, 22/23/25 | ✅ Yes (after 26) |
+| 28 | Project lifecycle report evidence | 13–18, 20/23 | ✅ Yes (after 11, before 24) |
 
 **Corrected Implementation Order (canonical):**
 1. 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 ✅ (done, unchanged); 12–17 ✅ (done)
-2. **09** (AI service token — needs 07) — next branch: `feature/backend/09-ai-service-token-and-webhooks`
+2. **09** (AI service token) — implemented; current review hardening stays on its existing branch. Backend 20 is next after review.
 3. **20 → 18 → 19 → 22 → 21** (2026-09-10 observability + hardening wave; 20 first because ops/qa/ai read its tables — rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` §3 + ADR-004)
-4. 11 (Blob storage — needs only 01/02/04)
-5. 10 (API docs — last, freezes the hardened surface for Web/QA)
+4. **23** (critical-action OTP & step-up — human-only; AI OBO 403)
+5. **11** (Blob storage — needs only 01/02/04; also hosts spec-24 report artifacts)
+6. **24 → 25 → 26 → 27** (AI superpowers data/ops plane: reports → capability gateway + log tiers → memory/conversations → alerting/broadcasts)
+7. 10 (API docs — last, freezes the hardened surface 18–27 for Web/QA)
 
 ---
 
@@ -71,6 +83,8 @@
 | 08 | Kanban interactions | 07, Backend 06 | ✅ Yes |
 | 09 | Notifications | 07, Backend 04–06 | ✅ Yes (updated) |
 | 10 | Copilot panel | 05, 07, AI 02 | ✅ Yes |
+| 11 | Reports/Audit Center | web 10, ai 06/07, backend 24/25/28 | ✅ Before ai 08 |
+| 12 | Persistent AI workspace | ai 09, backend 25/26/27 | ✅ Before ai 10–12 |
 
 **Status:** ✅ All dependencies correct. Web specs reference Backend 07 (auth) correctly in specs 03 and 05.
 
@@ -104,8 +118,18 @@
 | 06 | Knowledge agent & system auditor | 02, 05, Backend 16/20/24 | ✅ Yes (P2 wave) |
 | 07 | Report generation (PDF + CSV) | 02/03/05, Backend 11/24 | ✅ Yes (P2 wave) |
 | 08 | Advanced executor (Level 4) | 02/04/05/06/07, Backend 09/20/23/24 | ✅ Yes (P2 wave) |
+| 09 | Agentic BI copilot + memory | 02/05/06/07, Backend 24/25/26 | ✅ Yes (P2 wave) |
+| 10 | SuperAdmin ops agent | 05/09, Backend 20/25/26/27 | ✅ Yes (P2 wave) |
 
 **Status:** ✅ All dependencies correct. AI specs correctly reference Backend 09 (service token).
+
+| 06 | Scoped knowledge/auditor | ai 05, backend 24/25/28 | Before web 11 |
+| 07 | Evidence template reports | ai 05, backend 24/25/28 | Before web 11 |
+| 08 | Approved executor | web 11, backend 20/24 | After web 11 |
+| 09 | BI/threads/manifest | backend 25/26, ai 06/07 | Before web 12 |
+| 10 | Ops summaries/notices | backend 27, web 12 | After web 12 |
+| 11 | Institutional memory | backend 26/28, web 12 | After ai 10 |
+| 12 | Explainable assignments | ai 11, web 12 | After ai 11 |
 
 ---
 

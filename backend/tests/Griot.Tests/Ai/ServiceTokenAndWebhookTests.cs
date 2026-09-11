@@ -83,11 +83,22 @@ internal sealed class TestUserRepositoryStub : Griot.Application.Interfaces.Repo
 
 public class ServiceTokenHandlerTests
 {
-    private static ServiceTokenHandler BuildHandler(string? configuredToken, DefaultHttpContext ctx)
+    private static ServiceTokenHandler BuildHandler(string? configuredToken, DefaultHttpContext ctx,
+        bool grantEnabled = true, string? expiry = null, string? grantUser = null, string? grantScope = null,
+        bool environmentFallback = false)
     {
         var inMemory = new Dictionary<string, string?>();
         if (configuredToken is not null)
-            inMemory["ServiceToken:Key"] = configuredToken;
+            inMemory[environmentFallback ? "GRIOT_SERVICE_TOKEN" : "ServiceToken:Key"] = configuredToken;
+        if (environmentFallback) inMemory["ServiceToken:Key"] = "   ";
+        if (grantEnabled)
+        {
+            var prefix = $"ServiceToken:Delegations:{grantUser ?? TestUserRepositoryStub.TestOboUserId.ToString("D")}";
+            inMemory[$"{prefix}:ExpiresAtUtc"] = expiry ?? DateTimeOffset.UtcNow.AddMinutes(15).ToString("O");
+            inMemory[$"{prefix}:WorkspaceIds:0"] = "22222222-2222-2222-2222-222222222222";
+            for (var i = 0; i < AiAccess.Scopes.Count; i++)
+                inMemory[$"{prefix}:Scopes:{i}"] = i == 0 && grantScope is not null ? grantScope : AiAccess.Scopes[i];
+        }
 
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(inMemory)
@@ -232,13 +243,38 @@ public class ServiceTokenHandlerTests
         var result = await handler.AuthenticateAsync();
         var scopes = result.Principal!.FindAll("scope");
 
-        Assert.Contains(scopes, c => c.Value == ServiceTokenHandler.ScopeReadWorkspace);
-        Assert.Contains(scopes, c => c.Value == ServiceTokenHandler.ScopeCreateTask);
-        Assert.Contains(scopes, c => c.Value == ServiceTokenHandler.ScopeAddComment);
-        Assert.Contains(scopes, c => c.Value == ServiceTokenHandler.ScopeCreateNotification);
+        Assert.Equal(new[]
+        {
+            ServiceTokenHandler.ScopeReadWorkspace, ServiceTokenHandler.ScopeCreateTask,
+            ServiceTokenHandler.ScopeAddComment, ServiceTokenHandler.ScopeCreateNotification
+        }.OrderBy(s => s), scopes.Select(c => c.Value).OrderBy(s => s));
 
-        Assert.DoesNotContain(scopes, c => c.Value == "Delete");
-        Assert.DoesNotContain(scopes, c => c.Value == "InviteMember");
+    }
+
+    [Theory]
+    [InlineData(false, false, false, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(true, false, false, true)]
+    public async Task MissingExpiredCrossUserOrPrivilegedGrant_Fails(bool exists, bool expired, bool crossUser, bool privileged)
+    {
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var ctx = MakeHttpContext($"Bearer {token}", TestUserRepositoryStub.TestOboUserId.ToString());
+        var handler = BuildHandler(token, ctx, exists,
+            expired ? DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O") : null,
+            crossUser ? Guid.NewGuid().ToString("D") : null, privileged ? "DeleteWorkspace" : null);
+        var result = await handler.AuthenticateAsync();
+        Assert.False(result.Succeeded);
+        Assert.NotNull(result.Failure);
+    }
+
+    [Fact]
+    public async Task BlankConfiguredToken_UsesEnvironmentFallback()
+    {
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var ctx = MakeHttpContext($"Bearer {token}", TestUserRepositoryStub.TestOboUserId.ToString());
+        var result = await BuildHandler(token, ctx, environmentFallback: true).AuthenticateAsync();
+        Assert.True(result.Succeeded);
     }
 
     [Fact]
@@ -260,6 +296,7 @@ public class WebhookHmacTests
 {
     private const string WebhookRoute = "/api/webhooks/trigger";
     private const string ValidSecret  = "griot-dev-webhook-secret";
+    private const int MaxWebhookBodyBytes = 64 * 1024;
 
     private static string ComputeSignature(string secret, string body)
         => "sha256=" + Convert.ToHexString(
@@ -367,6 +404,58 @@ public class WebhookHmacTests
 
         Assert.True(called[0], "GET on webhook route should bypass middleware (only POST is intercepted).");
     }
+
+    [Theory]
+    [InlineData(65536, true)]
+    [InlineData(65537, false)]
+    public async Task ChunkedBody_EnforcesByteLimitWithoutContentLength(int bytes, bool accepted)
+    {
+        var body = new string('a', bytes);
+        var (ctx, called, mw) = BuildMiddleware("POST", WebhookRoute, ComputeSignature(ValidSecret, body), body, ValidSecret);
+        ctx.Request.ContentLength = null;
+        await mw.InvokeAsync(ctx);
+        Assert.Equal(accepted, called[0]);
+        Assert.Equal(accepted ? 200 : 413, ctx.Response.StatusCode);
+        Assert.Equal(0, ctx.Request.Body.Position);
+    }
+
+    [Fact]
+    public async Task ServerLimit_IsSetBeforeReading()
+    {
+        var (ctx, called, mw) = BuildMiddleware("POST", WebhookRoute, ComputeSignature(ValidSecret, "{}"), "{}", ValidSecret);
+        var feature = new Moq.Mock<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();
+        feature.SetupProperty(f => f.MaxRequestBodySize, null);
+        ctx.Features.Set(feature.Object);
+        await mw.InvokeAsync(ctx);
+        Assert.Equal(MaxWebhookBodyBytes, feature.Object.MaxRequestBodySize);
+        Assert.True(called[0]);
+    }
+
+    [Fact]
+    public async Task BlankWebhookSecret_UsesEnvironmentFallback()
+    {
+        var (ctx, called, _) = BuildMiddleware("POST", WebhookRoute, ComputeSignature(ValidSecret, "{}"), "{}", ValidSecret);
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        { ["Webhook:Secret"] = " ", ["WEBHOOK_SECRET"] = ValidSecret }).Build();
+        var mw = new WebhookHmacMiddleware(_ => { called[0] = true; return Task.CompletedTask; }, config,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<WebhookHmacMiddleware>.Instance);
+        await mw.InvokeAsync(ctx);
+        Assert.True(called[0]);
+    }
+
+    [Fact]
+    public async Task OversizedContentLength_Returns413_BeforeHmac()
+    {
+        // Review fix (CWE-400): a Content-Length above the documented webhook maximum is
+        // rejected BEFORE the HMAC comparison and BEFORE the downstream handler runs.
+        var (ctx, called, mw) = BuildMiddleware("POST", WebhookRoute, null, "{}", ValidSecret);
+        ctx.Request.ContentLength = MaxWebhookBodyBytes + 1;
+
+        await mw.InvokeAsync(ctx);
+
+        Assert.False(called[0], "Oversized webhook requests must never reach the handler.");
+        Assert.Equal(413, ctx.Response.StatusCode);
+    }
 }
 
 // ─── MultiAuth policy-scheme forward selector tests ───────────────────────────
@@ -376,12 +465,34 @@ public class MultiAuthForwardSelectorTests
     private const string JwtScheme = "Bearer"; // JwtBearerDefaults.AuthenticationScheme
     private const string ServiceScheme = ServiceTokenHandler.SchemeName;
 
-    [Theory]
-    [InlineData("Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl")]
-    [InlineData("bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl")] // case-insensitive scheme
-    public void JwtShapedBearer_ForwardsToJwtBearer(string header)
+    // JWT-shaped token built at runtime — never a hardcoded literal (review: GitGuardian
+    // flagged the old fixed "eyJ...c2lnbmF0dXJl" fixtures as a hardcoded JWT secret).
+    // The selector only cares about the two-dot shape, so hex segments are sufficient.
+    private static string JwtShapedToken()
     {
-        Assert.Equal(JwtScheme, ServiceTokenHandler.SelectScheme(header));
+        var segment = () => Convert.ToHexString(RandomNumberGenerator.GetBytes(12)).ToLowerInvariant();
+        return $"{segment()}.{segment()}.{segment()}";
+    }
+
+    [Fact]
+    public void JwtShapedBearer_ForwardsToJwtBearer()
+    {
+        Assert.Equal(JwtScheme, ServiceTokenHandler.SelectScheme(null, $"Bearer {JwtShapedToken()}"));
+    }
+
+    [Fact]
+    public void JwtShapedBearer_CaseInsensitiveScheme_ForwardsToJwtBearer()
+    {
+        Assert.Equal(JwtScheme, ServiceTokenHandler.SelectScheme(null, $"bearer {JwtShapedToken()}"));
+    }
+
+    [Fact]
+    public void ConfiguredServiceToken_ThatIsJwtShaped_ForwardsToServiceToken()
+    {
+        // Review fix: a configured service token containing dots (e.g. "segment.segment.segment")
+        // must NEVER be routed to JwtBearer — compare against the configured token first.
+        const string configured = "segment.segment.segment";
+        Assert.Equal(ServiceScheme, ServiceTokenHandler.SelectScheme(configured, $"Bearer {configured}"));
     }
 
     [Theory]
@@ -390,7 +501,7 @@ public class MultiAuthForwardSelectorTests
     [InlineData("Bearer a.b.c.d")] // three dots — not a JWT
     public void NonJwtBearer_ForwardsToServiceToken(string header)
     {
-        Assert.Equal(ServiceScheme, ServiceTokenHandler.SelectScheme(header));
+        Assert.Equal(ServiceScheme, ServiceTokenHandler.SelectScheme(null, header));
     }
 
     [Theory]
@@ -399,13 +510,13 @@ public class MultiAuthForwardSelectorTests
     [InlineData("   ")]
     public void MissingOrEmptyHeader_FallsBackToJwtBearer(string? header)
     {
-        Assert.Equal(JwtScheme, ServiceTokenHandler.SelectScheme(header!));
+        Assert.Equal(JwtScheme, ServiceTokenHandler.SelectScheme(null, header!));
     }
 
     [Fact]
     public void NonBearerHeader_FallsBackToJwtBearer()
     {
-        Assert.Equal(JwtScheme, ServiceTokenHandler.SelectScheme("Basic dXNlcjpwYXNz"));
+        Assert.Equal(JwtScheme, ServiceTokenHandler.SelectScheme(null, "Basic dXNlcjpwYXNz"));
     }
 }
 

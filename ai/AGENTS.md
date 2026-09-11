@@ -19,7 +19,7 @@ Root shared skills + `ai/.agents/skills/` (`trigger-dev-tasks`, `ai-agent-securi
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P2 — AI hop.** Backend **09** prerequisite is met (`GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` and HMAC webhook — the only legal data path). Starts after P1 (web 01–09); AI implementation remains planned. Own order: **01 → 02 → [web 10] → 03 → 04 → 05 → 06 → 07 → [web 11] → 08**: the superpowers wave — 06 knowledge agent + system auditor, 07 report generation (PDF + CSV), 08 advanced Level-4 executor; web 11 (Reports & Audit Center) sits between ai 07 and 08 (needs backend 24). web 10 sits inside this phase because it consumes ai 02's realtime stream, while ai 04's propose-before-write wraps web 10's approval cards. ai 02's "web 10" dependency is contract-design, not build-order. NEVER: OTP/auth/delete/invite/member tools for AI (spec 23 human-only). Entry branch: `feature/ai/01-trigger-setup`. Track state in `ai/project-kit/context/progress-tracker.md`.
+**Phase P2 — AI hop.** Backend **09** prerequisite is met (`GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of` and HMAC webhook — the only legal data path). Starts after P1 (web 01–09); AI implementation remains planned. Own order: **01 → 02 → [web 10] → 03 → 04 → 05 → 06 → 07 → [web 11] → 08 → 09 → [web 12] → 10 → 11 → 12**: the superpowers wave — 06 knowledge agent + system auditor, 07 report generation (PDF + CSV), 08 advanced Level-4 executor, 09 agentic BI copilot + capabilities manifest + memory (needs backend 25/26), 10 SuperAdmin ops agent (needs backend 27); web 11 (Reports & Audit Center) sits between ai 07 and 08; web 12 (dedicated AI Workspace sidebar) after ai 09. web 10 sits inside this phase because it consumes ai 02's realtime stream, while ai 04's propose-before-write wraps web 10's approval cards. ai 02's "web 10" dependency is contract-design, not build-order. NEVER: OTP/auth/delete/invite/member tools for AI (spec 23 human-only). Entry branch: `feature/ai/01-trigger-setup`. Track state in `ai/project-kit/context/progress-tracker.md`.
 
 ## Verification Gates
 
@@ -52,6 +52,11 @@ the repository root. Synchronize the owning spec, dependent specs, planning,
 research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
+
+## Audit synchronization — 2026-09-11
+
+Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+AI kit now has 12 planned specs. Institutional memory is ai 11; assignment suggestions ai 12. No direct SQL, auto-commit, silent assignment or borrowed mutation scopes.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

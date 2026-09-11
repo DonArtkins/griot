@@ -20,7 +20,7 @@ public class WorkspaceController : DomainControllerBase
     [HttpGet]
     public async Task<IActionResult> GetWorkspaces()
     {
-        try { return Ok(await _domain.GetWorkspacesAsync(CurrentUserId())); }
+        try { return Ok((await _domain.GetWorkspacesAsync(CurrentUserId())).Where(w => Griot.Api.Auth.AiAccess.AllowsWorkspace(User, w.Id))); }
         catch (DomainError e) { return Handle(e); }
     }
 

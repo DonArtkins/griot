@@ -59,7 +59,7 @@ public abstract class DomainControllerBase : ControllerBase
     {
         if (!IsAiCall)
             return null;
-        if (!User.HasClaim("scope", scope))
+        if (!AiAccess.AllowsScope(User, scope))
             return Forbid();
         return null;
     }

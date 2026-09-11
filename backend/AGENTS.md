@@ -36,7 +36,7 @@ Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, thrott
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P0 — current.** Backend specs 01–09, 12 (Email-only), 13–17 are ✅ — 09 (AI service token + webhooks) is delivered OBO. Remaining order: **20** (observability pipeline — fills ApiLogs/ErrorLogs/AuditLogs/ActivityLogs; audit found zero writers) → **18** (search/filter/pagination/sorting) → **19** (caching + rate-limit partitions) → **22** (notification fan-out in-app + email) → **21** (DB audit triggers + backup chain + restore drill) → **23** (critical-action OTP & step-up: login 2FA, forgot/reset password, delete account, guarded-op step-up) → **11** (blob storage) → **24** (AI reports & export surface: Report rows, PDF/CSV artifacts, `audit-summary`, 5th OBO scope `CreateReport`) → **10** (API docs — freezes the hardened surface before Web consumes it). Brevo: verified senders need a domain YOU own (`griot.vercel.app` is Vercel-owned and cannot be authenticated — COMMUNICATION-GUIDE §7b). Logging runtime explained in `docs/observability/HOW-LOGGING-WORKS.md`. Rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004. When 10 lands, P0 closes and the **Web system (P1)** becomes the active layer. Track state in `backend/project-kit/context/progress-tracker.md`; never reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
+**Phase P0 — current.** Backend specs 01–09, 12 (Email-only), 13–17 are ✅ — 09 (AI service token + webhooks) is delivered OBO. Remaining order: **20** (observability pipeline — fills ApiLogs/ErrorLogs/AuditLogs/ActivityLogs; audit found zero writers) → **18** (search/filter/pagination/sorting) → **19** (caching + rate-limit partitions) → **22** (notification fan-out in-app + email) → **21** (DB audit triggers + backup chain + restore drill) → **23** (critical-action OTP & step-up: login 2FA, forgot/reset password, delete account, guarded-op step-up) → **11** (blob storage) → **24** (AI reports & export surface: Report rows, PDF/CSV artifacts, `audit-summary`, 5th OBO scope `CreateReport`) → **25** (role-tiered log access + AI capability gateway) → **26** (AI memory & conversations) → **27** (incident alerting + confirmed SuperAdmin broadcasts) → **10** (API docs — freezes the hardened surface before Web consumes it). Brevo: verified senders need a domain YOU own (`griot.vercel.app` is Vercel-owned and cannot be authenticated — COMMUNICATION-GUIDE §7b). Logging runtime explained in `docs/observability/HOW-LOGGING-WORKS.md`. Rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004. When 10 lands, P0 closes and the **Web system (P1)** becomes the active layer. Track state in `backend/project-kit/context/progress-tracker.md`; never reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
 
 ## Verification Gates
 
@@ -78,25 +78,31 @@ Full contract: `docs/communication/COMMUNICATION-GUIDE.md`; owner spec:
 
 ## Implemented AI boundary contract (Feature 09 — own-stack)
 
-AI callers authenticate with `Authorization: Bearer {GRIOT_SERVICE_TOKEN}` **plus**
-`X-On-Behalf-Of: {real User.Id}` — the `ServiceToken` auth scheme (routed via the `MultiAuth`
-policy forward-selector on `ServiceTokenHandler.SelectScheme`: JWT-shaped bearer → JwtBearer,
-anything else → ServiceToken) issues a real-user **On-Behalf-Of (OBO)** principal (role
-`ai-on-behalf-of`, scope claims ReadWorkspace/CreateTask/AddComment/CreateNotification). No
-virtual `ai-agent` member exists. Every destructive endpoint guards with
-`DomainControllerBase.ForbidIfAiCall()` → **403** (deletes, invites, member management,
-`PATCH /api/tasks/bulk-status`; GraphQL `deleteWorkspace`/`deleteProject`/`deleteTask` +
-admin/owner-only mutations). `WebhookHmacMiddleware` (before `UseAuthentication`) verifies
-`X-Trigger-Signature: sha256=<hex>` on `POST /api/webhooks/trigger` — 401 mismatch/absent,
-503 unconfigured, downstream sees 202. `TriggerDevClient` enqueues by task ID
-(`POST {Trigger:ApiUrl}/api/v1/tasks/{taskId}/trigger`), enqueue-after-persist, failure never
-rolls back. Full contract: `docs/api/ai-service-token-contract.md`.
+AI authenticates with Bearer GRIOT_SERVICE_TOKEN, trusted X-On-Behalf-Of and an
+unexpired backend-configured delegation under ServiceToken:Delegations:{userId}
+(WorkspaceIds, Scopes, ExpiresAtUtc). Grants use only ReadWorkspace/CreateTask/
+AddComment/CreateNotification and may narrow that set; membership is checked again.
+MVC AiAccessFilter and GraphQL AiFieldMiddleware default-deny unmapped operations.
+Auth/OTP, updates, deletes, invites, member management and raw-log reads are closed
+to AI. CreateNotification has no generic public creation route yet. GraphQL denials
+are errors with HTTP 200 for application/json; REST denials are 403.
+
+MultiAuth compares the configured token first, then selects the appropriate validator;
+blank primary secrets allow environment fallback. HMAC callbacks have a fixed 64 KiB
+byte cap and return 503 until durable job-bound replay-safe dispatch ships in backend 20
+(401 bad HMAC, 413 oversized). TriggerDevClient validates HTTPS and disables redirects;
+it sends the Trigger payload envelope but has no production callers or durable recovery.
+Do not wire it before spec 20's outbox. Contract: docs/api/ai-service-token-contract.md.
 
 Before committing or pushing implementation, run `python3 scripts/check-contract-sync.py` from
 the repository root. Synchronize the owning spec, dependent specs, planning,
 research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
+
+## Audit synchronization — 2026-09-11
+
+Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

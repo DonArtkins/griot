@@ -28,7 +28,7 @@ Auth [own-stack]: JWT + Argon2 + Redis. AI writes never touch SQL Server directl
 2. **Edge** — Vercel (static CDN only — assets + env; **not** an API proxy; browser/mobile call the API directly).
 3. **API** — ASP.NET Core 8, one process: REST `/api/*` + GraphQL `/graphql` (HotChocolate) + `/health` (port 8080); `Griot.Application` shared service layer; `Griot.Domain`; infrastructure (EF Core 8 repos + Dapper 2 procs `usp_BulkUpdateTaskStatus` / `usp_GetDashboardSummary`); DataLoader (N+1 prevention); Auth middleware (JWT → principal `sub`/`email`/`jti`; `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ai-on-behalf-of`); WebhookRelayService (`POST /api/webhooks/trigger`, HMAC `X-Trigger-Signature`).
 4. **Data** — SQL Server 2022 (primary, source of truth, host port 14333); PostgreSQL 16 (secondary/test, 5433); Redis 7 (rate limit + refresh metadata + token budgets, 6380). Compose service keys: `sababisha-sqlserver`, `sababisha-postgres`, `sababisha-redis`.
-5. **Intelligence** — `ai/` Trigger.dev v3 agents (`griotCopilot` + `dueReminders`/`sprintDigest`/`staleBoard`/`standupBuilder`); `mcp/` server (9 tools; stdio local + Streamable HTTP 3001; Bearer `GRIOT_MCP_TOKEN`).
+5. **Intelligence** — `ai/` Trigger.dev v3 agents (`griotCopilot` + `dueReminders`/`sprintDigest`/`staleBoard`/`standupBuilder`); `mcp/` server (8 tools; stdio local + Streamable HTTP 3001; Bearer `GRIOT_MCP_TOKEN`).
 6. **External AI clients** — Claude Desktop / Cursor / Cline (MCP).
 7. **Platform** — Railway (api + mcp + DBs, private network), Vercel (web), Trigger.dev cloud (ai).
 8. **Cross-cutting rails** — `infra/` (Docker + Compose v2, CI/CD); `qa/` (test harnesses + gates); observability (ApiLogs/ErrorLogs/AuditLogs, 90-day hot retention).
@@ -39,12 +39,15 @@ Auth [own-stack]: JWT + Argon2 + Redis. AI writes never touch SQL Server directl
 |---|---|---|---|
 | web | backend | REST `/api/*` + GraphQL `/graphql` | JWT access token (Bearer) |
 | mobile | backend | REST + GraphQL (same endpoints) | JWT access token |
-| ai | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` (ai-on-behalf-of) |
-| mcp | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` |
-| backend | ai | `POST /api/webhooks/trigger` (HMAC) | `X-Trigger-Signature` |
+| ai | backend | REST + GraphQL | `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {real User.Id}` from stored backend job/schedule; backend delegation required |
+| mcp | backend | REST + GraphQL | `GRIOT_SERVICE_TOKEN` + transport-bound `X-On-Behalf-Of: {real User.Id}`; backend delegation required |
+| backend | ai | Trigger cloud `POST /api/v1/tasks/{taskId}/trigger` | server-side `TRIGGER_SECRET_KEY` |
+| ai | backend | callback `POST /api/webhooks/trigger` | HMAC `X-Trigger-Signature`; 503 until durable dispatch (20) |
 | web | ai | Trigger realtime (WS) | Trigger access token |
 | external AI clients | mcp | MCP (stdio / Streamable HTTP) | `GRIOT_MCP_TOKEN` (HTTP) / OS trust (stdio) |
 | infra | all | Docker images, env, CI/CD | infra secrets |
+| qa | all | HTTP + test harnesses | test credentials / CI tokens |
+
 ## 4. The prompt (single, extensive — no length limit)
 
 Paste the full prompt below into Figma Make (Plan mode first). It draws all 8 layers + every boundary arrow in one pass.
@@ -56,7 +59,7 @@ ZONE 1 — PRESENTATION (top): box "Web App — React 18 · Vite 5 · MUI v6 (Pu
 ZONE 2 — EDGE: box "Vercel — static CDN ONLY (assets + env; NOT an API proxy)". Annotation: "Browser/Mobile call the Railway API DIRECTLY — Vercel never proxies API calls."
 ZONE 3 — API: ONE wide box "backend/ — ASP.NET Core 8": REST /api/* + GraphQL /graphql (HotChocolate) + /health :8080; inside sub-blocks: "Griot.Application (shared service layer — Auth, Workspace, Project, Board, Task, Comment, Attachment, Notification, Dashboard, WebhookRelay)"; "Griot.Domain"; "Infrastructure — EF Core 8 repos + Dapper 2 (usp_BulkUpdateTaskStatus, usp_GetDashboardSummary)"; "DataLoader (N+1 prevention)"; "Auth middleware (JWT → sub/email/jti; GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → ai-on-behalf-of)"; "WebhookRelayService (HMAC X-Trigger-Signature)".
 ZONE 4 — DATA: three boxes with compose service-key badges: "sababisha-sqlserver — SQL Server 2022 (primary, source of truth, host 14333)"; "sababisha-postgres — PostgreSQL 16 (secondary/test, 5433)"; "sababisha-redis — Redis 7 (rate limit + refresh metadata + token budgets, 6380)".
-ZONE 5 — INTELLIGENCE: box "ai/ — Trigger.dev v3: griotCopilot + scheduled dueReminders, sprintDigest, staleBoard, standupBuilder"; box "mcp/ — Griot MCP server (Node 20): 9 tools (list_projects … summarize_project); stdio + Streamable HTTP :3001".
+ZONE 5 — INTELLIGENCE: box "ai/ — Trigger.dev v3: griotCopilot + scheduled dueReminders, sprintDigest, staleBoard, standupBuilder"; box "mcp/ — Griot MCP server (Node 20): 8 tools (list_projects … summarize_project); stdio + Streamable HTTP :3001".
 ZONE 6 — EXTERNAL AI CLIENTS: box "Claude Desktop / Cursor / Cline (MCP clients)".
 ZONE 7 — PLATFORM: Railway (private network: api + mcp + the 3 DBs; TLS terminates at proxy), Vercel (web), Trigger.dev cloud (ai).
 ZONE 8 — CROSS-CUTTING RAILS (bottom strip): "infra/ — Docker + Compose v2, GitHub Actions CI/CD (jobs: test-dotnet, test-web, test-mobile, test-ai, test-mcp, newman, cypress, deploy)"; "qa/ — xUnit · Jest+RTL · Flutter · Cypress · Newman · k6"; "Observability — ApiLogs / ErrorLogs / AuditLogs (90-day hot retention)".
@@ -65,14 +68,15 @@ ARROWS (label every one — protocol + auth):
 - web → API: HTTPS REST + GraphQL, JWT Bearer
 - mobile → API: HTTPS REST + GraphQL, JWT Bearer
 - web → ai/: Trigger realtime WebSocket (Trigger access token)
-- ai/ → API: GraphQL, GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → ai-on-behalf-of principal
-- mcp/ → API: GraphQL, GRIOT_SERVICE_TOKEN
-- backend → ai/: POST /api/webhooks/trigger, HMAC X-Trigger-Signature (dashed)
+- ai/ → API: REST + GraphQL, GRIOT_SERVICE_TOKEN + X-On-Behalf-Of from stored backend job/schedule; active user/workspace/scope delegation
+- mcp/ → API: REST + GraphQL, GRIOT_SERVICE_TOKEN + transport-bound X-On-Behalf-Of; active backend delegation
+- backend → ai/: POST Trigger cloud /api/v1/tasks/{taskId}/trigger, TRIGGER_SECRET_KEY (dashed)
+- ai/ → backend: POST /api/webhooks/trigger, HMAC X-Trigger-Signature; dispatch planned (dashed)
 - External AI clients → mcp/: MCP stdio / Streamable HTTP (Bearer GRIOT_MCP_TOKEN)
 - API → sababisha-sqlserver: TCP 1433 TDS (EF Core 8 + Dapper 2)
 - API → sababisha-postgres: TCP 5432 (secondary/test only)
 - API → sababisha-redis: TCP 6379
-- API → Email provider: SMTP (invites/reminders/digests)
+- API → Brevo: HTTPS REST /v3/smtp/email (invites/reminders/digests)
 - GitHub Actions → Vercel / Railway / Trigger.dev: deploy (dashed)
 
 ANNOTATION 1 (red frame): "AI (ai/ + mcp/) NEVER connects to SQL Server or Redis directly and holds NO DB credentials. All data access is through the backend API with GRIOT_SERVICE_TOKEN."
@@ -99,4 +103,4 @@ STYLE: light canvas (#F7F8FA), white zone boxes with 1px hairlines (token colors
 - [ ] The non-negotiable boundary (AI → API only) drawn as a red annotation
 - [ ] Matches `docs/ARCHITECTURE.md` + `system-map.md` 1:1
 - [ ] Approved → PNG → `diagrams/architecture/architecture-full-system.png`
-| qa | all | HTTP + test harnesses | test credentials / CI tokens |
+

@@ -8,9 +8,9 @@ Stack: `@modelcontextprotocol/sdk` + zod, Node 20 (own lockfile). Transports: st
 
 ## Tool roster (v1) - ids are contracts
 
-`list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`.
+`list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `add_comment`, `get_activity_feed`, `summarize_project`.
 
-**v2 (PLANNED, mcp 06):** `list_reports`, `get_report`, `generate_report`, `download_report`, `system_audit`, `get_audit_log`, `get_metrics` — need backend 20/24 + `CreateReport` scope + ai 06/07. V1 ids are unchanged until mcp 02 ships.
+**v2 (PLANNED, mcp 06):** `list_reports`, `get_report`, `generate_report`, `download_report`, `system_audit`, `get_audit_log`, `get_metrics` — need backend 20/24/25 (role-aware capability filtering per OBO user) + `CreateReport` scope + ai 06/07. V1 ids are unchanged until mcp 02 ships.
 
 ## Reading Order
 
@@ -53,6 +53,16 @@ the repository root. Synchronize the owning spec, dependent specs, planning,
 research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
+
+## Trusted MCP identity and writes
+
+**PLANNED transport binding:** stdio is bound to one operator-configured real user and workspace in the local MCP profile; an unbound profile fails closed. Streamable HTTP public endpoints require HTTPS/TLS and a per-user authenticated session mapped server-side to that user/workspace; a shared transport bearer alone is not a user identity. No client header/tool argument/model output may replace that identity. The backend independently requires its unexpired `ServiceToken:Delegations:{userId}` grant (workspace IDs + scopes + UTC expiry) and live membership. Internal `http://mcp:3001` is only the private container hop.
+
+Each transport must test session A attempting to supply B's user/workspace identity, including report IDs and tool arguments: reject before dispatch; no cross-user result or count leakage. MCP writes require recorded user confirmation bound to tool, exact arguments/hash and identity; a client claim that an action is confirmed is insufficient. Until verified approval provenance exists, write tools remain unregistered. Never expose auth/OTP/delete/invite/member/status-update tools. `update_task_status` has no issued scope and is removed from the planned roster; do not map it to CreateTask.
+
+## Audit synchronization — 2026-09-11
+
+Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

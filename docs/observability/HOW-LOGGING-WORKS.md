@@ -25,7 +25,7 @@ Client ─ X-Request-Id: abc123 ─▶ RequestIdMiddleware (assigns/normalizes)
    Response carries X-Request-Id: abc123  ◀── the same id every table stored
 ```
 
-All four writes are **fire-and-forget background writes** (an async queue + worker inside the .NET process): a slow or dead database can never slow down or fail the user's request. When a log write itself fails, the failure is logged and, when possible, surfaced as its own `ErrorLogs` row (failure isolation — hard rule).
+**Delivery classes (PLANNED):** AuditLogs and ActivityLogs persist in the same SQL transaction as the domain mutation. A mandatory audit failure prevents success and rolls the mutation back. External jobs use a transactional outbox; post-commit delivery failures retry without undoing domain state. ApiLogs/ErrorLogs are best-effort bounded telemetry; overflow warns and coverage gaps remain visible. Telemetry isolation does not mean that lossless audit is possible while all durable storage is unavailable.
 
 ## The four tables (what each one is for)
 
@@ -42,7 +42,7 @@ One user click can produce **all four rows** — see the worked example below.
 
 - `RequestIdMiddleware` guarantees every response carries `X-Request-Id`; ApiLogs/ErrorLogs/AuditLogs store the same value.
 - Auth events (login, refresh rotation, replay-revoke, OTP verify, step-up issue/use — specs 20/23) write AuditLogs with that same request id.
-- AI calls arrive with `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ApiLogs.UserId` records the **real user id**, so every Trigger.dev run / MCP tool call is attributable (spec 09); the ai layer's `runId` is carried as a structured field so Trigger run ↔ API request ↔ DB rows link up.
+- AI calls arrive with `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ApiLogs.UserId` records the **real user id**, so persisted request attribution becomes available when spec 20 ships; the ai layer's `runId` is carried as a structured field so Trigger run ↔ API request ↔ DB rows link up.
 
 ## Retention (bounded, compliance-aware)
 
@@ -52,17 +52,23 @@ One user click can produce **all four rows** — see the worked example below.
 
 Alice drags a task to Done. One request produces, in order:
 
-1. `ApiLogs` row — `PATCH /api/tasks/{id}/move`, 200, durationMs 42, userId=Alice, requestId=abc123.
+1. On completion, best-effort `ApiLogs` row — `PATCH /api/tasks/{id}/move`, 200, durationMs 42, userId=Alice, requestId=abc123.
 2. `AuditLogs` row — action `Task.Move`, entityType TaskItem, entityId, Before `{status: InReview}`, After `{status: Done}`, actorId=Alice, requestId=abc123.
 3. `ActivityLogs` row — "Alice moved task to Done" (feeds `GET /api/workspaces/{id}/activity`).
-4. If the save fails → `ErrorLogs` row (exceptionType, stack) + `application/problem+json` response; the response still carries `X-Request-Id`.
+4. If the transaction fails, neither the domain change nor success audit/activity commits; best-effort `ErrorLogs` row (exceptionType, stack) + `application/problem+json` response; the response still carries `X-Request-Id`.
 
 Later, support searches ErrorLogs by requestId, finds the AuditLogs Before/After diff, and sees the ApiLogs durationMs spike — one incident fully reconstructable.
 
 ## How the AI superpowers consume it
 
-- The ai 06 system auditor reads `GET /api/logs/*` (Owner only) + the new `GET /api/workspaces/{id}/audit-summary` (spec 24) to answer "is my system healthy / what happened / who changed what", then persists findings as a Report row (spec 24).
-- Every AI tool call already lands in `ApiLogs` with the real OBO `userId` (spec 09) — the "audit rows per tool call" gate becomes testable the day spec 20 ships.
+- The ai 06 system auditor reads backend 25 sanitized workspace audit/health; raw `/api/logs/*` only for SuperAdmin/Dev within an explicit delegation + the new `GET /api/workspaces/{id}/audit-summary` (spec 24) to answer "is my system healthy / what happened / who changed what", then persists findings as a Report row (spec 24).
+- AI requests have a real OBO identity after spec 09, but the ApiLogs writer is still PLANNED in spec 20 — the "audit rows per tool call" gate becomes testable the day spec 20 ships.
+
+## Middleware and recovery status
+
+Current Program.cs keeps UseExceptionHandler first, then request ID, HTTPS/CORS, rate limiter, HMAC, authentication, authorization and endpoints. ApiLoggingMiddleware is not implemented. Spec 20 captures before early exits and finalizes after response status/auth are known; this is how 401/404/429 and handled 500s are included. Current 500 is text/plain; ProblemDetails is planned. Raw query secrets are redacted before truncation.
+
+Spec 20 also owns durable enqueue recovery, the signed timestamp/event-ID/job-bound callback inbox and the 24-hour request-hash/response idempotency store. Until then verified callbacks return 503 and no production caller should rely on enqueue recovery. See its concrete acceptance tests.
 
 ## Reading the logs
 

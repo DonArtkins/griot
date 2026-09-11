@@ -147,3 +147,7 @@ Use the [auth contract](api/auth-contract.md) for current routes, status codes, 
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+## Scheduled AI identity (planned consumers)
+
+Scheduled jobs read via GraphQL and write via supported REST using Bearer GRIOT_SERVICE_TOKEN plus X-On-Behalf-Of from the backend-stored authorized schedule. A live backend user/workspace/scope/expiry delegation and current membership are required; a cron task cannot pick an arbitrary user. Current scope vocabulary is ReadWorkspace/CreateTask/AddComment/CreateNotification; no synthetic system user, status-update or notification-create GraphQL mutation exists. Durable job recovery/callback processing is a backend 20 prerequisite.

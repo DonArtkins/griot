@@ -2,6 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -27,9 +28,14 @@ namespace Griot.Api.Middleware;
 public sealed class WebhookHmacMiddleware
 {
     private const string WebhookRoute = "/api/webhooks/trigger";
+    private const int MaxWebhookBodyBytes = 64 * 1024; // documented webhook payload maximum (64 KiB)
+
     private readonly RequestDelegate _next;
     private readonly IConfiguration  _config;
     private readonly ILogger<WebhookHmacMiddleware> _logger;
+
+    private static string? NonBlank(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value;
 
     public WebhookHmacMiddleware(
         RequestDelegate next,
@@ -51,7 +57,7 @@ public sealed class WebhookHmacMiddleware
             return;
         }
 
-        var secret = _config["Webhook:Secret"] ?? _config["WEBHOOK_SECRET"];
+        var secret = NonBlank(_config["Webhook:Secret"]) ?? NonBlank(_config["WEBHOOK_SECRET"]);
         if (string.IsNullOrWhiteSpace(secret))
         {
             _logger.LogError("Webhook secret not configured; rejecting request.");
@@ -60,11 +66,18 @@ public sealed class WebhookHmacMiddleware
             return;
         }
 
-        // Enable body buffering so the handler can re-read the body.
-        context.Request.EnableBuffering();
-        var body = await new StreamReader(context.Request.Body, Encoding.UTF8, leaveOpen: true)
-            .ReadToEndAsync();
-        context.Request.Body.Position = 0; // reset for the downstream handler
+        var sizeFeature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        var bodyLimit = MaxWebhookBodyBytes;
+        if (sizeFeature is { IsReadOnly: false })
+        {
+            bodyLimit = (int)Math.Min(bodyLimit, sizeFeature.MaxRequestBodySize ?? bodyLimit);
+            sizeFeature.MaxRequestBodySize = bodyLimit;
+        }
+        if (context.Request.ContentLength > bodyLimit)
+        {
+            context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+            return;
+        }
 
         if (!context.Request.Headers.TryGetValue("X-Trigger-Signature", out var sigHeader))
         {
@@ -74,11 +87,40 @@ public sealed class WebhookHmacMiddleware
             return;
         }
 
+        // Count bytes as well as applying the server limit: chunked bodies and test/proxy
+        // streams may have no Content-Length or request-size feature. Never read past cap + 1.
+        context.Request.EnableBuffering(bufferThreshold: bodyLimit, bufferLimit: bodyLimit + 1L);
+        var body = new byte[bodyLimit + 1];
+        var length = 0;
+        try
+        {
+            while (length < body.Length)
+            {
+                var count = await context.Request.Body.ReadAsync(body.AsMemory(length), context.RequestAborted);
+                if (count == 0) break;
+                length += count;
+            }
+        }
+        catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+            return;
+        }
+        finally
+        {
+            context.Request.Body.Position = 0;
+        }
+        if (length > bodyLimit)
+        {
+            context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+            return;
+        }
+
         var provided = sigHeader.ToString().Trim();
         var expected = "sha256=" + Convert.ToHexString(
             HMACSHA256.HashData(
                 Encoding.UTF8.GetBytes(secret),
-                Encoding.UTF8.GetBytes(body)
+                body.AsSpan(0, length)
             )
         ).ToLowerInvariant();
 
