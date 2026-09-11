@@ -16,7 +16,7 @@ Ai 02/04/05/06/07, backend 09/20/24/25, web 10/11. Build after web 11. Backend 2
 
 ## Context To Read First
 
-`research/ai-integration.md`, backend 09/20/24, ai security skill, Context7 and contract-sync.
+`research/ai-integration.md`, backend 09/20/24/25, ai security skill, Context7 and contract-sync.
 
 ## Files Owned
 

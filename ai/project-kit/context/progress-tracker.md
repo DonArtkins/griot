@@ -24,7 +24,7 @@
 
 `ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12`
 
-**Why web 10 sits inside this phase (circular-dependency resolution):** web 10 (Copilot panel) needs ai 02's realtime stream, while ai 02's spec lists "web feature 10" — that reference is a *contract-design* dependency (the panel is the stream's consumer), not a build-order one. ai 04 genuinely needs the panel's approval cards, so web 10 must land before ai 04. Build ai 01–02 first, then web 10, then finish ai 03–05.
+**Why web 10 sits inside this phase (circular-dependency resolution):** web 10 (Copilot panel) needs ai 02's realtime stream, while ai 02's spec lists "web feature 10" — that reference is a *contract-design* dependency (the panel is the stream's consumer), not a build-order one. ai 04 genuinely needs the panel's approval cards, so web 10 must land before ai 04. Build ai 01–02 first, then web 10, then continue ai 03 → 04 → 05 → 06 → 07 → web 11 → ai 08 → 09 → web 12 → ai 10 → 11 → 12 (canonical P2 in `docs/planning/IMPLEMENTATION-ROADMAP.md`).
 
 ## Next Steps
 

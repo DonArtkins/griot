@@ -25,7 +25,7 @@ Root shared skills + `mcp/.agents/skills/` (`mcp-sdk-tools`, `mcp-contract-testi
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P5 —** after infra (P4), because spec 04 deploys to Railway/Docker (needs infra 02–04/06) and spec 03 needs backend 09's service token. Nothing downstream waits on MCP, so the late slot costs nothing. Own order: **01 → 02 → 03 → 04 → 05 → 06** (01–02 technically unblocked anytime — Node 20 only; 06 = report/audit v2 tools after backend 20/24 + ai 06/07). Entry branch: `feature/mcp/01-mcp-server-setup`. Track state in `mcp/project-kit/context/progress-tracker.md`.
+**Phase P5 —** after infra (P4), because spec 04 deploys to Railway/Docker (needs infra 02–04/06) and spec 03 needs backend 09's service token. Nothing downstream waits on MCP, so the late slot costs nothing. Own order: **01 → 02 → 03 → 04 → 05 → 06** (01–02 technically unblocked anytime — Node 20 only; 06 = report/audit v2 tools after backend 20/24/25 + ai 06/07). Entry branch: `feature/mcp/01-mcp-server-setup`. Track state in `mcp/project-kit/context/progress-tracker.md`.
 
 ## Verification Gates
 

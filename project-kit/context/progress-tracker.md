@@ -11,7 +11,7 @@ Bootcamp **implementation phase** — Week 2 backend nearly closed; canonical cr
 | ai | ai/project-kit | 10 specs pending (01–05 + 06–10 superpowers: knowledge/auditor · reports PDF+CSV · Level-4 executor · BI copilot+memory · ops agent); backend 09 ✅; starts after P1 | P2 |
 | mobile | mobile/project-kit | 7 specs pending; deps = backend ✅ only | P3 |
 | infra | infra/project-kit | 7 specs pending; 07-Netdata is a Phase-1 launch gate | P4 |
-| mcp | mcp/project-kit | 6 specs pending (06 = v2 report/audit tools, needs backend 20/24); 04 needs infra; 03 needs backend 09 | P5 |
+| mcp | mcp/project-kit | 6 specs pending (06 = v2 report/audit tools, needs backend 20/24/25); 04 needs infra; 03 needs backend 09 | P5 |
 | qa | qa/project-kit | 13 specs pending; 01–03 have no code deps (gap filler) | P6 |
 
 Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/planning/*` (NFR, capacity, risk, runbook, change-management, **IMPLEMENTATION-ROADMAP.md**), `docs/seo/`, `docs/deployment/`, `docs/observability/`, `docs/api/` + ADRs + LICENSE/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG + `inspo/`. 12 diagram specs written in `PROMPTS/week-02/`.
@@ -19,7 +19,7 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 ## Next Steps
 
 1. **P0 (now):** backend **09** is delivered on `feature/backend/09-ai-service-token-and-webhooks`; await user review before starting **20**. Remaining order is the **2026-09-10 hardening wave 20 → 18 → 19 → 22 → 21** (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **23** (critical-action OTP/step-up — login 2FA, forgot/reset, delete account, guarded ops), then **11** (blob storage — unblocks attachment UI), then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary), then **25** (role-tiered log access + AI capability gateway), **26** (AI memory & conversations), **27** (incident alerting + confirmed broadcasts), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
-2. **P1–P6:** follow `docs/planning/IMPLEMENTATION-ROADMAP.md` — Web 01–09 → ai 01–02 → web 10 → ai 03–10 (web 11/12 at their dependency points) → mobile 01–07 → infra 01–07 → mcp 01–06 → qa 01–13. Each phase's entry condition and rationale are in the roadmap; do not reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
+2. **P1–P6:** follow `docs/planning/IMPLEMENTATION-ROADMAP.md` — Web 01–09 → ai 01–02 → web 10 → ai 03–12 (web 11/12 at their dependency points) → mobile 01–07 → infra 01–07 → mcp 01–06 → qa 01–13. Each phase's entry condition and rationale are in the roadmap; do not reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
 
 ## Session Notes
 

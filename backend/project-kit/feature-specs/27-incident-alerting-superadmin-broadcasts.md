@@ -1,6 +1,6 @@
 # Backend Feature 27 — Incident Alerts and Confirmed Notices [own-stack]
 
-**Status:** PLANNED. Automatic incident alerts and human-directed outbound notices have separate authorization rules.
+**Status:** PLANNED. Automatic incident alerts and human-directed outbound notices have separate authorization rules. One feature branch: `feature/backend/27-incident-alerting-superadmin-broadcasts`. (Backend spec 12 is already implemented; the DKIM/DMARC doc correction shipping in this planning wave is not a spec-12 implementation and does not re-open that feature.)
 
 ## Type
 

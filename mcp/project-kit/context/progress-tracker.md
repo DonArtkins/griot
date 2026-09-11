@@ -7,11 +7,11 @@
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|
 | 01 | MCP server setup (stdio + Streamable HTTP) | Pending (P5 entry point) | Node 20 only — technically free |
-| 02 | Tool roster implementation (9 tools, ids are contracts) | Pending | mcp 01 |
+| 02 | Tool roster implementation (8 tools, ids are contracts) | Pending | mcp 01 |
 | 03 | Service-token GraphQL client (real-user OBO principal) | Pending | mcp 02, backend 05 ✅ + **09 ✅** |
 | 04 | Container + Railway deploy | Pending | mcp 03, **infra 02–04, 06** |
 | 05 | Contract testing + MCP Inspector smoke | Pending | mcp 01–03 |
-| 06 | Report & audit tools (v2 roster) | Pending (**P5 wave**) | mcp 02, backend 20/24, ai 06/07 |
+| 06 | Report & audit tools (v2 roster) | Pending (**P5 wave**) | mcp 02, backend 20/24/25, ai 06/07 |
 
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P5)
 
@@ -27,11 +27,11 @@
 
 ## Session Notes
 
-- **2026-09-11 (superpowers wave sync)** — Added PLANNED mcp spec 06 (v2 report/audit tools: list_reports, get_report, generate_report, download_report, system_audit, get_audit_log, get_metrics). V1 9-tool roster untouched until mcp 02 ships; v2 needs backend 20/24 + CreateReport scope + ai 06/07. Never OTP/auth/delete/invite/member tools. No production code; contract-sync run.
+- **2026-09-11 (superpowers wave sync)** — Added PLANNED mcp spec 06 (v2 report/audit tools: list_reports, get_report, generate_report, download_report, system_audit, get_audit_log, get_metrics). V1 8-tool roster untouched until mcp 02 ships; v2 needs backend 20/24/25 + CreateReport scope + ai 06/07. Never OTP/auth/delete/invite/member tools. No production code; contract-sync run.
 
 - **2026-09-10 (backend 09 sync)** — Backend service authentication is delivered as real-user OBO (`ai-on-behalf-of`, four scopes). Planned MCP clients must send `X-On-Behalf-Of` from trusted caller context with Bearer `GRIOT_SERVICE_TOKEN`; no synthetic member is created. Spec 03, architecture and agent instructions are synchronized. No MCP production code was implemented; P5 still follows infra. Backend verification passed all 71 SQL-enabled tests after the approved fixture repair.
 
-- **2026-09-03** — MCP kit created (AGENTS, skills, contexts, 5 specs; 9-tool roster fixed as a contract).
+- **2026-09-03** — MCP kit created (AGENTS, skills, contexts, 5 specs; the v1 roster was then documented as 9 tools including `update_task_status`, which backend 09's scope review later removed — the fixed v1 roster is now **8 tools**).
 - **2026-09-10** — Orchestration boundary ratified: MCP is a data/tool surface, never an orchestration trigger — external MCP clients reach data through backend GraphQL only and never receive Trigger.dev credentials (`research/ai-integration.md` §2a).
 - **2026-09-10 (2)** — Tracker created during the cross-system audit (this system previously had none). Phase P5 position + rationale recorded above.
 

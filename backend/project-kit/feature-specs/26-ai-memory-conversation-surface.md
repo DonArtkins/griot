@@ -1,6 +1,6 @@
 # Backend Feature 26 — Conversation, Preferences and Curated Memory [own-stack]
 
-**Status:** PLANNED. All schema names below are proposals pending ERD approval. Conversation history, semantic memory and explicit preferences remain separate data types.
+**Status:** PLANNED. All schema names below are proposals pending ERD approval. Conversation history, semantic memory and explicit preferences remain separate data types. One feature branch: `feature/backend/26-ai-memory-conversation-surface`.
 
 ## Type
 

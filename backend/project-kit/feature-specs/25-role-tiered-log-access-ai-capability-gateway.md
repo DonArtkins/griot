@@ -1,6 +1,6 @@
 # Backend Feature 25 — Role-Tiered Logs and AI Capability Gateway [own-stack]
 
-**Status:** PLANNED. Backend 09 already rejects raw-log reads for AI; this spec adds explicit platform tiers before any such tool is exposed.
+**Status:** PLANNED. Backend 09 already rejects raw-log reads for AI; this spec adds explicit platform tiers before any such tool is exposed. One feature branch: `feature/backend/25-role-tiered-log-access-ai-capability-gateway`.
 
 ## Type
 

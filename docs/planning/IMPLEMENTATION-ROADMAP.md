@@ -38,7 +38,7 @@ P6  Quality Engineering qa 01 → 02 → … → 13                     [Weeks 6
 | **25 Role-tiered logs/capability gateway** | Backend resolves role/scope tools; raw logs privileged, Admin summaries redacted. |
 | **26 Conversations and curated memory** | Private threads, explicit preferences and permission-filtered lessons; callbacks bound to durable jobs. |
 | **27 Incident alerts and confirmed notices** | Fixed SuperAdmin alerts plus human-confirmed broadcasts/workspace role-check reminders. |
-| **10 API documentation** | Needs 04–08 + the hardened surface (18–24) documented. Last backend spec; freezes the API surface into reference docs right before Web consumes it — and is the contract artifact QA 04/05 polish against. |
+| **10 API documentation** | Needs 04–08 + the hardened surface (18–28) documented, including the 25–28 routes/capability contracts and spec-10 as the last backend spec; freezes the API surface into reference docs right before Web consumes it — and is the contract artifact QA 04/05 polish against. Any surface excluded is documented explicitly with rationale in the spec. |
 
 ### P1 — Web 01–09 (Week 3 system, no AI needed)
 

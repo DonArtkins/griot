@@ -9,7 +9,7 @@ metadata:
 
 ## Boundary
 
-- AI never writes to SQL Server directly. Every read/write goes through the backend GraphQL with `GRIOT_SERVICE_TOKEN` plus trusted `X-On-Behalf-Of` and an unexpired backend-configured user/workspace/scope delegation (resolved to the restricted `ai-on-behalf-of` principal).
+- AI never writes to SQL Server directly. Every read/write goes through the backend **REST or GraphQL** with `GRIOT_SERVICE_TOKEN` plus trusted `X-On-Behalf-Of` and an unexpired backend-configured user/workspace/scope delegation (resolved to the restricted `ai-on-behalf-of` principal).
 - Tool call authorization is re-checked per workspace in the backend.
 
 ## Prompt injection

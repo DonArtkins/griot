@@ -29,7 +29,7 @@
 | P1 | Web App | Public shell, App shell, Copilot panel, client cache (Apollo/TanStack) | React 18 · Vite 5 · MUI v6 |
 | P2 | Mobile App | Android companion — same endpoints as web | Flutter 3.19 / Dart 3 |
 | P3 | API (one process) | REST `/api/*` + GraphQL `/graphql` + `/health`; Auth, Workspace, Project, Board, Task, Comment, Attachment, Notification, Dashboard, Webhook | ASP.NET Core 8 · Griot.Application · EF Core 8 + Dapper 2 |
-| P4 | MCP Server | 9 tools (list_projects … summarize_project); stdio + Streamable HTTP | Node 20 + @modelcontextprotocol/sdk |
+| P4 | MCP Server | 8 tools (list_projects … summarize_project); stdio + Streamable HTTP | Node 20 + @modelcontextprotocol/sdk |
 | P5 | AI Agents | `griotCopilot` + scheduled (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`); streams to web via Trigger realtime | Trigger.dev v3 |
 | P6 | Email dispatch | Invites (user-triggered), reminders + digests (AI-triggered) | SMTP provider |
 
@@ -53,7 +53,7 @@
 | F6 | P1 → P5 | Trigger realtime WebSocket (Copilot stream + notification fan-out) |
 | F7 | P5 / P4 → P3 | REST + GraphQL, `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ai-on-behalf-of` principal (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites) |
 | F8 | P4 → External AI clients | MCP tool results (stdio local / Streamable HTTP with `Authorization: Bearer GRIOT_MCP_TOKEN`) |
-| F9 | External AI clients → P4 | MCP tool calls (get_board, create_task, update_task_status, add_comment, summarize_project, …) |
+| F9 | External AI clients → P4 | MCP tool calls (get_board, create_task, add_comment, summarize_project, …) |
 | F10 | P3 → Email provider | SMTP invites/reminders/digests (digest payload authored by P5 scheduled jobs) |
 | F11 | GitHub Actions → Vercel / Railway / Trigger.dev | deploy triggers (dashed — indirect) |
 | F12 | P3 → P5 | HMAC webhook return (`POST /api/webhooks/trigger`, `X-Trigger-Signature`) — dashed |
@@ -71,7 +71,7 @@ PROCESSES (center, left→right):
 - P1 Web App — React 18 · Vite 5 · MUI v6 (Public shell, App shell, Copilot panel)
 - P2 Mobile App — Flutter 3.19 (Android companion, same endpoints)
 - P3 API — ASP.NET Core 8: REST /api/* + GraphQL /graphql + /health; Griot.Application services; EF Core 8 + Dapper 2
-- P4 MCP Server — Node 20, 9 tools, stdio + Streamable HTTP
+- P4 MCP Server — Node 20, 8 tools, stdio + Streamable HTTP
 - P5 AI Agents — Trigger.dev v3: griotCopilot + dueReminders, sprintDigest, staleBoard, standupBuilder
 - P6 Email dispatch — SMTP provider integration
 
@@ -94,7 +94,7 @@ F14 P3 → D1 (ActivityLogs + AuditLogs writes, payloadHash + runId)
 ANNOTATION 1 (red callout attached to D1): "AI (P4 + P5) NEVER writes to SQL Server directly — every read/write goes through P3 (API) with GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → ai-on-behalf-of principal. No deletes, no invites, workspace-scoped."
 ANNOTATION 2 (green callout attached to P1 + P5): "Propose-before-write: AI proposes → human approves in the web UI → the WEB APP performs the write via REST (never the agent)."
 ANNOTATION 3 (blue callout near F6): "Notification fan-out: web = Trigger realtime; mobile = poll on focus + pull-to-refresh; NO email in v1 (AI digest owns email)."
-ANNOTATION 4 (small note bottom): "Compose service keys: api, mcp, sababisha-sqlserver, sababisha-postgres, sababisha-redis (integration-contracts.md). Denied = 404 not 403 on ownership scopes."
+ANNOTATION 4 (small note bottom): "Compose service keys: api, mcp, sababisha-sqlserver, sababisha-postgres, sababisha-redis (integration-contracts.md). AI OBO scope denials return 403 before domain lookup; 404 is reserved for ownership/existence misses so they never disclose existence."
 
 STYLE: light canvas (#F7F8FA), white process boxes with 1px hairlines, token-named fills only (per ui-tokens.md — no raw ad-hoc colors), mono labels for flow IDs, readable at 100% zoom, one page.
 ```

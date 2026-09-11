@@ -70,7 +70,8 @@ notice with `admin`). Fallbacks: `Brevo:FromEmail/Brevo:FromName`, then "Griot".
 
 1. **API key** -- Settings -> SMTP & API -> API Keys -> `xkeysib-...` -> `Brevo:ApiKey`.
 2. **Verify a domain** -- Settings -> Senders -> Add domain -> add the DNS records Brevo
-   gives you (domain verification TXT + SPF + DKIM; DMARC recommended) -> wait for
+   gives you (domain verification TXT + DKIM + DMARC; add SPF only when Brevo requires
+   it for this specific account setup) -> wait for
    verification -> this is what kills the `@12095245.brevosend.com` rewrite.
 3. **Senders** -- create `noreply@`, `support@`, `info@`, `team@` on your verified domain
    (or add the domain and use any mailbox -- Brevo sends from the verified domain).

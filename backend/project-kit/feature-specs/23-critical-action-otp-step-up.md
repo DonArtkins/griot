@@ -1,6 +1,6 @@
 # Backend Feature Spec 23 — Critical-Action OTP & Step-Up Verification [own-stack]
 
-**Status:** PLANNED — user-approved scope extension of spec 07's email-OTP (research: `research/ai-features-research.md` §1, §3.6; ADR-003 constraint 6 already reserves the `TwoFactorMethod` switch and the step-up session design). No production code exists yet; this branch creates the spec and contract-syncs every dependent doc.
+**Status:** PLANNED — user-approved scope extension of spec 07's email-OTP (research: `research/ai-features-research.md` §1, §3.6; ADR-003 constraint 6 already reserves the `TwoFactorMethod` switch and the step-up session design). No production code exists yet; this branch creates the spec and contract-syncs every dependent doc. One feature branch: `feature/backend/23-critical-action-otp-step-up`.
 
 ## Goal
 

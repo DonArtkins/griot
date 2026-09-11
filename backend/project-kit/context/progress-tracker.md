@@ -29,12 +29,14 @@ Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propaga
 | 21 | Database resilience: triggers, backups & restore | 📋 Spec written (PLANNED) — after 22 |
 | 22 | Notification fan-out (in-app + Brevo email) | 📋 Spec written (PLANNED) — after 19 |
 | 23 | Critical-action OTP & step-up [own-stack] | 📋 Spec written (PLANNED) — after 21 |
-| 24 | AI reports & export surface [own-stack] | 📋 Spec written (PLANNED) — after 11 (blob) + 20 (audit) |
+| 24 | AI reports & export surface [own-stack] | 📋 Spec written (PLANNED) — after 11 (blob) + 20 (audit) + 28 (lifecycle evidence) |
 
 | 25 | Role-tiered logs and capability gateway | PLANNED |
 | 26 | Conversations, preferences and curated memory | PLANNED |
 | 27 | Incident alerts and confirmed notices | PLANNED |
 | 28 | Project lifecycle report evidence | PLANNED (before 24) |
+
+> **One-spec-per-branch:** specs 23, 24, 25, 26, 27 and 28 are six separate PLANNED features — this tracker row-group records planning only. Each implementation ships on its own feature branch and its own PR (`feature/backend/23-…`, `feature/backend/24-…`, …, `feature/backend/28-…`), never batched. Spec 12 is already implemented; its DKIM/DMARC doc correction in this planning wave does not re-open that feature.
 
 ## Next Steps
 
@@ -42,9 +44,10 @@ Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propaga
 2. Then the **hardening wave**: **20** → **18** (search/filter/pagination/sorting) → **19** (Redis cache-aside + per-route rate-limit partitions + GraphQL cost caps) → **22** (notification fan-out in-app + Brevo email) → **21** (DB audit triggers + FULL/DIFF/LOG backup chain + restore drill).
 3. Then **23** (Critical-action OTP & step-up — login 2FA enforcement, forgot/reset password, delete account, guarded-op step-up; human-only surface — AI OBO callers 403; Brevo `security` sender; spec 23).
 4. Then **11** (Blob storage — Cloudinary via `CloudinaryDotNet`; unblocks web 07 + mobile attachment upload UI so the Web phase never stalls on a backend detour; also backs spec-24 report artifacts). Spec 11 decision matrix + R2 path: `backend/project-kit/feature-specs/11-blob-storage-cloudinary.md`.
-5. Then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary, FIFTH OBO scope `CreateReport`; spec 24).
+5. Then **28** (Project lifecycle report evidence — readiness/deployment/test-run records; the smallest evidence store the CAB/post-deployment/regression templates need; spec 28).
+6. Then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary, FIFTH OBO scope `CreateReport`; **requires 28 lifecycle evidence before it begins**; spec 24).
 6. Then **10** (API documentation — freezes the hardened 18–22 surface into reference docs right before Web consumes it; contract artifact QA 04/05 polishes against).
-5. After 10, **P0 closes and the next layer is Web (P1)** — follow `docs/planning/IMPLEMENTATION-ROADMAP.md` (Web 01–09 → ai 01–02 → web 10 → ai 03–05 → mobile → infra → mcp → qa). Canonical backend order: `docs/DEPENDENCY-AUDIT.md`.
+5. After 10, **P0 closes and the next layer is Web (P1)** — follow `docs/planning/IMPLEMENTATION-ROADMAP.md` (Web 01–09 → ai 01–02 → web 10 → ai 03–12 → mobile → infra → mcp → qa). Canonical backend order: `docs/DEPENDENCY-AUDIT.md`.
 
 ## Session Notes
 
