@@ -6,10 +6,10 @@
 **2026-09-11 checkpoint (updated):** backend 29 is IMPLEMENTED on
 `feature/backend/29-multi-tenant-foundation-organizations` (commit `9447e15`, pushed
 after explicit user approval). Its §P0.5 order governs: 29 → 30 → 31 → 32 → 33 → 34 →
-35, then hardening — never older shorthand that goes directly from 20 to 18. Backend 30
-starts only after 29's remaining gate closes (tenancy ERD approval; the migration-apply
-gate is CLOSED as of 2026-09-11 — database rebuilt from all migrations and verified up
-to date).
+35, then hardening — never older shorthand that goes directly from 20 to 18. **Spec 29
+is ✅ COMPLETE (all gates closed 2026-09-11: tenancy ERD approved + v2 PNGs exported;
+migration apply verified up to date). Backend 30 (Auth & JWT v2) is next on its own
+feature branch.**
 See the [preflight report](BACKEND-29-PREFLIGHT-2026-09-11.md) for the pre-implementation
 snapshot.
 

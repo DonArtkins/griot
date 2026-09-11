@@ -8,10 +8,12 @@ Spec 29 (multi-tenant foundation) is IMPLEMENTED on its own feature branch — c
 observability stamps, migration `20260911190926` (all Organization FKs ON DELETE
 NO ACTION — the cascade variant failed with SQL error 1785), ERD Amendment v2.
 Build 0W/0E; 152 tests passed with 8 SQL tests skipped. The database was rebuilt from
-all migrations and is verified up to date on the user's machine (2026-09-11). Do NOT
-switch to spec 30 until the remaining gate closes: tenancy ERD approval
-(`diagrams/erd/multi-tenant-amendment.md`). Roadmap §P0.5
-(29 → 30 → 31 → 32 → 33 → 34 → 35 before hardening)
+all migrations and is verified up to date on the user's machine (2026-09-11). **All
+gates closed 2026-09-11 — spec 29 is ✅ COMPLETE** (tenancy ERD approved by the
+operator, exported as `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png` + `griot-erd3-v2.0.0.png`).
+Next: spec 30 (Auth & JWT v2) on its own feature branch
+(`feature/backend/30-auth-jwt-v2`). Roadmap §P0.5
+(29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 before hardening)
 supersedes older next-feature statements below. Read the
 [preflight findings and plan](../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md) and tracker.
 
@@ -121,7 +123,7 @@ Backend owns the tenant foundation: specs **29–35** (29 Organizations schema +
 
 ## Audit synchronization — 2026-09-11
 
-Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 (29 ✅ complete, all gates closed 2026-09-11). Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

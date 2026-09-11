@@ -20,6 +20,11 @@ Everything generated in Figma Make / FigJam that governs or documents Griot's im
 | File | Source spec (PROMPTS/) | Status | Notes |
 |---|---|---|---|
 | `erd/griot-erd-v1.0.0.png` | `week-02/01-…` + `02-…-sequence` | ✅ Approved | **16 tables / 5 enums**; contract for backend spec 02 |
+| `erd/griot-erd-v2.0.0.png` | spec 29 multi-tenant amendment | ✅ Approved (operator, 2026-09-11) | **v2.0.0 — multi-tenant wave**: org tables + `OrganizationId` stamps; org FKs NO ACTION; contract for backend spec 29 |
+| `erd/griot-erd2-v2.0.0.png` | spec 29 multi-tenant amendment | ✅ Approved (operator, 2026-09-11) | **v2.0.0 continuation sheet** — org tables + tenant columns detail |
+| `erd/griot-erd3-v2.0.0.png` | spec 29 multi-tenant amendment | ✅ Approved (operator, 2026-09-11) | **v2.0.0 continuation sheet** — third sheet of the spec-29 multi-tenant amendment export set |
+| `architecture/c4-system-context-v2.0.0.png` | spec 29 wave v2 refresh | ✅ Approved (operator, 2026-09-11) | multi-tenant system context (SuperAdmin / Company / Client actors) |
+| `architecture/griot-api-v2.0.0.png` | spec 29 wave v2 refresh | ✅ Approved (operator, 2026-09-11) | API internals v2 with tenancy |
 | `architecture/c4-system-context.png` | `week-02/04-…c4-system-context` | ✅ Approved | Level 1 |
 | `architecture/c4-container.png` | `week-02/05-…c4-container` | ✅ Approved | Level 2 — maps to compose/Railway |
 | `architecture/api-component.png` | `week-02/06-…api-component` | ✅ Approved | L3 API internals |

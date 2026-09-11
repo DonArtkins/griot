@@ -2,7 +2,7 @@
 
 ## Type
 
-NEW FEATURE · MULTI-TENANT MIGRATION WAVE (2026-09-11) · **IMPLEMENTED — 2026-09-11**
+NEW FEATURE · MULTI-TENANT MIGRATION WAVE (2026-09-11) · **✅ COMPLETE — 2026-09-11**
 
 **Implementation record:** commit `9447e15` on this feature's branch (pushed after
 explicit user approval): fail-closed `ITenantContext`/`TenantGuard` scoping (403 without
@@ -13,12 +13,15 @@ contexts, `DevObservabilitySeeder` migration-race resilience, migration
 `20260911190926`
 (17 tenant-filtered entities, 30 org indexes, idempotent ownership-chain backfill +
 quarantine org) and ERD Amendment v2. Verified: `dotnet build` 0W/0E; `dotnet test` 152
-passed / 8 SQL-skipped / 0 failed. **Outstanding before COMPLETE:** tenancy ERD approval
-(`diagrams/erd/multi-tenant-amendment.md`) only — the migration-apply gate is CLOSED
-(2026-09-11: the cascade variant failed with SQL 1785, was regenerated as
-`20260911190926` with org FKs ON DELETE NO ACTION, the database was rebuilt from all
-migrations, and the user's `dotnet ef database update` now reports the database is
-already up to date).
+passed / 8 SQL-skipped / 0 failed. **All gates CLOSED 2026-09-11:** the tenancy ERD was approved by the operator and
+exported as `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png` + `griot-erd3-v2.0.0.png` (amendment
+`diagrams/erd/multi-tenant-amendment.md`: APPROVED + EXPORTED; org-FK lines corrected to
+the shipped NO ACTION behavior). The migration-apply gate had already closed (2026-09-11:
+the cascade variant failed with SQL 1785, was regenerated as `20260911190926` with org
+FKs ON DELETE NO ACTION, the database was rebuilt from all migrations, and the user's
+`dotnet ef database update` reports the database is already up to date). Branch
+follow-ups: `9225967` (status sweep), `26d8316` (migration-apply gate closure), `6621c28`
+(multi-tenant dev seed script). **Next spec: 30 (Auth & JWT v2) on its own feature branch.**
 See the [preflight findings and completion plan](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
 for the pre-implementation snapshot.
 
@@ -28,13 +31,13 @@ The tenant root of the platform: `Organizations` (Companies) become the unit of 
 
 ## Dependencies
 
-- Approved ERD amendment (Figma Make, rule 4). Spec 20 ✅ (audit writers stamp `OrganizationId` from day one).
+- ERD amendment approved + exported 2026-09-11 ✅ (rule 4 satisfied). Spec 20 ✅ (audit writers stamp `OrganizationId` from day one).
 - Spec 02 (EF Core), 04 (REST), 05 (GraphQL) — all extended, not replaced.
 
 ## Context To Read First
 
 - `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` (canonical contract)
-- `diagrams/erd/multi-tenant-amendment.md` (planned ERD amendment)
+- `diagrams/erd/multi-tenant-amendment.md` (approved ERD amendment; v2 PNGs exported)
 - `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md` §1–2 (Pool discipline)
 
 ## Agent Skills To Use
@@ -75,7 +78,7 @@ Organization lifecycle endpoints (32/33), JWT claims (30), client portal (34).
 
 ## Acceptance Criteria
 
-- [ ] ERD amendment approved in Figma Make and exported before the migration merges — amendment source `diagrams/erd/multi-tenant-amendment.md` (v2) committed; **Figma approval still outstanding**
+- [x] ERD amendment approved in Figma Make and exported before the migration merges — amendment source `diagrams/erd/multi-tenant-amendment.md` (v2) committed; **approved by the operator 2026-09-11** and exported as `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png` (+ v2 continuation/architecture exports — full set in the `diagrams/README.md` ledger)
 - [x] Every tenant table carries `OrganizationId` + index; backfill migration is idempotent — migration `20260911190926` (30 org indexes; ownership-chain backfill, unmatched rows → quarantine org, re-runnable SQL). Org FKs are **ON DELETE NO ACTION** (Restrict): cascading from `Organizations` to both `Workspaces` and `Projects` = multiple cascade paths (SQL error 1785), so org removal is app-managed via the spec-33 offboarding purge; the failed cascade variant `20260911151030` was regenerated and the database reset.
 - [x] Cross-tenant read returns empty and cross-tenant write throws (integration test, SQL-gated) — `TenantIsolationTests` (fail-closed 403 without org scope; org-mismatched chains resolve as not-found); SQL-gated cases among the 8 skipped without a server
 - [x] `POST /api/workspaces` returns member user data (`displayName`/`email`) identical to `GET /api/workspaces` (fixes the reported Postman defect) — `CreateWorkspaceAsync` hydrates the owner `WorkspaceMember.User`
