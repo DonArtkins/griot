@@ -1221,7 +1221,7 @@ namespace Griot.Infrastructure.Migrations
                     b.HasOne("Griot.Domain.Entities.Organization", "Organization")
                         .WithMany("Invites")
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CustomRole");
@@ -1236,7 +1236,7 @@ namespace Griot.Infrastructure.Migrations
                     b.HasOne("Griot.Domain.Entities.Organization", "Organization")
                         .WithMany("LifecycleEvents")
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Organization");
@@ -1252,7 +1252,7 @@ namespace Griot.Infrastructure.Migrations
                     b.HasOne("Griot.Domain.Entities.Organization", "Organization")
                         .WithMany("Members")
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Griot.Domain.Entities.User", "User")
@@ -1284,7 +1284,7 @@ namespace Griot.Infrastructure.Migrations
                     b.HasOne("Griot.Domain.Entities.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Griot.Domain.Entities.Workspace", "Workspace")
@@ -1325,7 +1325,7 @@ namespace Griot.Infrastructure.Migrations
                     b.HasOne("Griot.Domain.Entities.Organization", "Organization")
                         .WithMany("Roles")
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Organization");
@@ -1362,7 +1362,7 @@ namespace Griot.Infrastructure.Migrations
                     b.HasOne("Griot.Domain.Entities.Organization", "Organization")
                         .WithMany("Workspaces")
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Griot.Domain.Entities.User", "Owner")

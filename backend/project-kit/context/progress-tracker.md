@@ -1,3 +1,21 @@
+**2026-09-11 evening correction (SQL error 1785):** the first migration apply on the
+user's machine failed — `FK_Workspaces_Organizations_OrganizationsId… ON DELETE CASCADE`
+collided with the `Users → Organizations` owner edge (multiple cascade paths). All six
+Organization FKs are now **ON DELETE NO ACTION (Restrict)** (including an explicit
+`Project.Organization` config — EF would otherwise convention-cascade it); org removal
+is app-managed (spec-33 offboarding purge). Migration regenerated as
+`20260911190926_AddMultiTenantColumns` (same idempotent backfill SQL). The corrupt
+half-applied Griot database (empty `Plans`, zero FKs on `Projects` despite migration
+history) was dropped and rebuilt from all migrations. Dev reset command:
+
+```bash
+docker exec infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P 'SababishaDev2026!' -C -Q \
+  "IF DB_ID('Griot') IS NOT NULL BEGIN ALTER DATABASE Griot SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE Griot; END"
+cd backend && dotnet ef database update --project src/Griot.Infrastructure --startup-project src/Griot.Api
+```
+
+
 # Progress Tracker — Backend / API
 
 ## Current State
