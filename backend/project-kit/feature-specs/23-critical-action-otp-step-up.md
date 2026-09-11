@@ -22,7 +22,7 @@ Turn the existing email-OTP (`email_verify` / `login_2fa` / `password_reset`) in
 ## Dependencies
 
 - Spec 07 (OTP endpoints, pepper, Redis gates, `TwoFactorMethod` enum) — implemented.
-- Spec 12 (Brevo sender identities — `security` sender carries every OTP template).
+- Spec 12 (Brevo Email — the single verified sender `Brevo:FromEmail` carries every OTP template; 2026-09-11: `Brevo:Senders:<Key>` profile map removed).
 - Spec 20 (audit rows for every auth/step-up event; this spec's tests are part of 20's trail).
 - Spec 04/05 (guarded REST/GraphQL routes).
 
@@ -48,7 +48,7 @@ Each maps to its existing handler plus a `RequireStepUp(action)` guard that vali
 - `AuthService` gains: `LoginAsync` challenge branch, `ForgotPasswordAsync`, `ResetPasswordAsync`, `RequestStepUpAsync(action)`, `VerifyStepUpAsync`, `DeleteAccountAsync`.
 - `IAuthRepository` gains: `FindUserByEmailAsync`, `RevokeAllFamiliesAsync(userId)`, `SoftDeleteAccountAsync(userId)` — single-transaction, SQL-parameterized.
 - `AuthController`: new handlers; `RequireStepUp` reads the short-lived step-up JWT (`Security:StepUpTtlSeconds`, default 300) and checks `action` against the allow-list.
-- Branded email: one template per purpose in `BrandedEmailTemplate` (`delete_account` and `step_up` explain the action and the 10-minute window; `security` sender).
+- Branded email: one template per purpose in `BrandedEmailTemplate` (`delete_account` and `step_up` explain the action and the 10-minute window; single verified sender per spec 12).
 - Postman folder 01 (Auth) gains: login-challenge, forgot/reset, delete-account, step-up cases; folder 14 asserts `Auth.*` AuditLogs rows (post-20).
 
 ## Separation of Concerns

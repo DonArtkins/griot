@@ -22,8 +22,7 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | backend | `GRIOT_SERVICE_TOKEN` | AI/MCP service calls (Bearer `Authorization: Bearer {token}` + `X-On-Behalf-Of: {real User.Id}` header — OBO) |
 | backend | `Cors__AllowedOrigins` | Vercel origin prod; localhost dev |
 | backend | `BREVO_API_KEY` | Brevo SMTP/API key (`xkeysib-…`); also `Brevo__ApiKey` |
-| backend | `BREVO_FROM_EMAIL` `BREVO_FROM_NAME` | Fallback sender when no profile set |
-| backend | `BREVO_SENDER_<KEY>_EMAIL` `_NAME` `_REPLYTO` | Sender identities: SECURITY, ADMIN, NOREPLY, SUPPORT, INFO, TEAM |
+| backend | `BREVO_FROM_EMAIL` `BREVO_FROM_NAME` | THE single Brevo-verified sender + display name (2026-09-11: `Brevo:Senders:<Key>` profile map removed — one sender for every email purpose) |
 | backend | `CLOUDINARY_URL` (or `CLOUDINARY_CLOUD_NAME` `_API_KEY` `_API_SECRET`) | Attachment blob storage via `CloudinaryDotNet` (server-to-server; secret never exposed to web/mobile) |
 | backend | `Web__BaseUrl` | Web origin used in notification email deep links (spec 22, planned) |
 | backend | `RateLimit__Auth__PermitLimit` etc. | Per-route limiter partitions (spec 19, planned; defaults documented in spec 19) |

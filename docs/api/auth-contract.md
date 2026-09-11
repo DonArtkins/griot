@@ -55,9 +55,11 @@ scaffold response and must fail acceptance checks.
   limit: 3 / 900 s per email via Redis (`ratelimit:otp:request:{email}`; returns 429 + `Retry-After`).
   `email_verify` sets `Users.EmailVerified = true`. OTP codes are never logged or returned in responses;
   the brand token + exact code only travel via Brevo (customized template per purpose).
-- Brevo email: API key `Brevo:ApiKey` (fallbacks `BREVO_API_KEY`, `Brevo__ApiKey`); sender
-  address `Brevo:FromEmail` (fallback `BREVO_FROM_EMAIL`); sender name `Brevo:FromName` (fallback
-  `BREVO_FROM_NAME`; default `Griot`); admin inbox `Brevo:ContactToEmail` (fallback `CONTACT_TO_EMAIL`;
+- Brevo email: API key `Brevo:ApiKey` (fallbacks `BREVO_API_KEY`, `Brevo__ApiKey`); THE single sender
+  address `Brevo:FromEmail` (fallback `BREVO_FROM_EMAIL`; 2026-09-11: the `Brevo:Senders:<Key>`
+  profile map was removed — every email sends from this one dashboard-verified sender); sender
+  name `Brevo:FromName` (fallback `BREVO_FROM_NAME`; default `Griot`); admin inbox
+  `Brevo:ContactToEmail` (fallback `CONTACT_TO_EMAIL`;
   canonical fallback `info.donartkins.ke@gmail.com`
   used when both configuration keys are unset — notice is always delivered, never skipped). Register
   also sends a branded admin "new user" notice to the ops inbox.
@@ -72,7 +74,7 @@ scaffold response and must fail acceptance checks.
 | `Redis__Connection` | StackExchange.Redis endpoint; default `localhost:6380`, compose `sababisha-redis:6379` |
 | `Otp__Pepper` | HMAC-SHA256 pepper for OTP code hashes; dev default only in ignored `appsettings.Local.json` |
 | `Brevo__ApiKey` (`BREVO_API_KEY`) | Brevo SMTP/API key; when unset OTP/email delivery returns 502 (otp/request) bzw. register continues (201) with the code persisted for later manual resend |
-| `Brevo__FromEmail` (`BREVO_FROM_EMAIL`) | Verified Brevo sender email (REQUIRED — Brevo only delivers from a sender you verified in the dashboard) |
+| `Brevo__FromEmail` (`BREVO_FROM_EMAIL`) | THE single Brevo-verified sender email (REQUIRED — Brevo only delivers from a sender you verified in the dashboard; 2026-09-11: the `Brevo:Senders:<Key>` profile map was removed, so this one sender carries every purpose; local config uses the dashboard-verified `info.donartkins.ke@gmail.com`) |
 | `Brevo__FromName` (`BREVO_FROM_NAME`) | Sender display name; default `Griot` |
 | `Brevo__ContactToEmail` (`CONTACT_TO_EMAIL`) | Admin inbox for new-user registration notices; canonical fallback `info.donartkins.ke@gmail.com` used when both keys are unset — notice is always delivered, never skipped |
 
@@ -102,7 +104,7 @@ The following is the PLANNED extension of the email-OTP contract (owner: `backen
 - Guarded routes (spec 23 action allow-list) require the step-up claim via `RequireStepUp(action)` — 403 without it, 409 on mismatch.
 - **AI OBO callers (spec 09) are 403 on the entire surface** — auth/OTP is human-only, permanently.
 
-Brevo senders for all OTP purposes come from the verified `security` sender identity (see `docs/communication/COMMUNICATION-GUIDE.md` §2/§7b).
+Brevo sends for all OTP purposes come from the single verified sender `Brevo:FromEmail` (2026-09-11: the `Brevo:Senders:<Key>` profile map was removed; see `docs/communication/COMMUNICATION-GUIDE.md` §2/§7b).
 
 ## Verification
 

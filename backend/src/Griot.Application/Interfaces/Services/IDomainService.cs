@@ -77,5 +77,12 @@ public interface IDomainService
     Task<DashboardSummaryDto> GetDashboardSummaryAsync(Guid workspaceId, Guid userId);
     Task<List<ActivityLogDto>> GetActivityAsync(Guid workspaceId, Guid userId, int page, int pageSize);
     Task<List<ErrorLogDto>> GetErrorLogsAsync(Guid workspaceId, Guid userId, int limit);
+
+    /// <summary>
+    /// Spec 20: FixStatus lifecycle for one ErrorLog (Owner/Admin of the workspace).
+    /// Setting Fixed/Verified/WontFix stamps FixedAt + SolvedByUserId (the retention
+    /// procedure only prunes resolved errors); Open/Investigating clears them.
+    /// </summary>
+    Task<ErrorLogDto> UpdateErrorLogStatusAsync(Guid workspaceId, Guid errorId, Guid userId, Domain.Enums.ErrorFixStatus fixStatus);
     Task<List<AuditLogDto>> GetAuditLogsAsync(Guid workspaceId, Guid userId, string? entityType, Guid? entityId, int limit);
 }

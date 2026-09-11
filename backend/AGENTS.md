@@ -4,7 +4,7 @@
 
 You are the agent for the **Backend / API system** of Griot. This system is the sole owner of data and business logic. Everything else (web, mobile, AI, MCP) talks to this system and nothing else touches SQL Server.
 
-Stack (exact per `project-kit/context/stack-contract.md`): .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate GraphQL 14+, SQL Server 2022 (primary), PostgreSQL 16 (secondary), Redis 7. Auth is `[own-stack]`: custom JWT + Argon2 + rotated refresh tokens + Brevo Email OTP 2FA. Communication is `[own-stack]`: Brevo transactional Email only (multi-sender identities) — see `docs/communication/COMMUNICATION-GUIDE.md` + spec 12. Reports [own-stack]: RBAC-scoped scheduled & ad-hoc.
+Stack (exact per `project-kit/context/stack-contract.md`): .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate GraphQL 14+, SQL Server 2022 (primary), PostgreSQL 16 (secondary), Redis 7. Auth is `[own-stack]`: custom JWT + Argon2 + rotated refresh tokens + Brevo Email OTP 2FA. Communication is `[own-stack]`: Brevo transactional Email only (single verified sender — 2026-09-11: `Brevo:Senders:*` profile map removed) — see `docs/communication/COMMUNICATION-GUIDE.md` + spec 12. Reports [own-stack]: RBAC-scoped scheduled & ad-hoc.
 
 ## Solution Layout (Separation of Concerns)
 

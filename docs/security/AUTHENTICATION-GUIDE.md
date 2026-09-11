@@ -405,7 +405,7 @@ All auth uses `Authorization: Bearer <token>` header. No HTTP-only cookies, no a
 
 - **Register** sends `email_verify` best-effort: Brevo 429/5xx → log + return 201 anyway. User can re-request verification OTP later.
 - **`POST /api/auth/otp/request` (explicit):** Brevo failure → **502 Bad Gateway** (fail-closed — explicit request MUST deliver or inform).
-- From address: REQUIRED verified Brevo sender `Brevo:FromEmail` (`BREVO_FROM_EMAIL`); display name `Brevo:FromName` (default `Griot`). No default `*@resend.dev` fallback — Brevo only sends from a sender verified in the dashboard.
+- From address: REQUIRED verified Brevo sender `Brevo:FromEmail` (`BREVO_FROM_EMAIL`); display name `Brevo:FromName` (default `Griot`). No default `*@resend.dev` fallback — Brevo only sends from a sender verified in the dashboard. **Single sender identity (2026-09-11):** the former `Brevo:Senders:<Key>` profile map (`noreply@griot.app` etc.) was removed — every email (OTP, admin notice, future notification email) sends from the one dashboard-verified sender (local config: `info.donartkins.ke@gmail.com`).
 - Admin notice: "New user registered" → `Brevo:ContactToEmail` (canonical fallback: `info.donartkins.ke@gmail.com` when configuration keys are unset — notice is always delivered, never skipped).
 - Never throws: `HttpRequestException` / generic `Exception` → `_logger.LogWarning` + return `false`. No 500 crash on email network blip.
 
@@ -475,11 +475,8 @@ Set these in `backend/appsettings.Local.json` (git-ignored) OR as env vars (Dock
 | `Redis:Connection` | `Redis__Connection` | `localhost:6380` | no | `host:port` format. Compose: `sababisha-redis:6379`. |
 | `Otp:Pepper` | `Otp__Pepper` | `griot-dev-otp-pepper-change-me` | ⚠️ dev-only | HMAC pepper. **CHANGE IN PROD.** |
 | `Brevo:ApiKey` | `BREVO_API_KEY` | none | ✅ (to send) | Unset → OTP request returns 502; register still works. |
-| `Brevo:FromEmail` | `BREVO_FROM_EMAIL` | none | ✅ (to send) | Verified Brevo sender. REQUIRED — Brevo only delivers from a verified sender. |
+| `Brevo:FromEmail` | `BREVO_FROM_EMAIL` | none | ✅ (to send) | THE single verified sender. REQUIRED — Brevo only delivers from a dashboard-verified sender (local: `info.donartkins.ke@gmail.com`). |
 | `Brevo:FromName` | `BREVO_FROM_NAME` | `Griot` | no | Sender display name. |
-| `Brevo:Senders:<Key>:Email` | `BREVO_SENDER_<KEY>_EMAIL` | per-profile | ⚠️ for brand From | Sender identities: Key ∈ Security, Admin, NoReply, Support, Info, Team (OTP = `Security`; admin notice = `Admin`). Requires verified custom domain — else Brevo rewrites From to `<account-id>.brevosend.com`. |
-| `Brevo:Senders:<Key>:Name` | `BREVO_SENDER_<KEY>_NAME` | `Griot` | no | Per-profile display name. |
-| `Brevo:Senders:<Key>:ReplyTo` | `BREVO_SENDER_<KEY>_REPLYTO` | *(none)* | no | Per-profile reply-to (empty = no reply expected). |
 | `Brevo:ContactToEmail` | `CONTACT_TO_EMAIL` | `info.donartkins.ke@gmail.com` (canonical fallback used when unset) | no | Admin inbox for new-user notices — canonical address `info.donartkins.ke@gmail.com`. |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins` | localhosts only | ⚠️ prod required | Comma-separated origins (Vercel prod domains). |
 | `SITE_URL` | `SITE_URL` | `https://griot.app` | no | Used in branded email template footer links. |

@@ -32,6 +32,7 @@ public class DomainService : IDomainService
     private readonly IGenericRepository<ActivityLog> _activity;
     private readonly IGenericRepository<ErrorLog> _errors;
     private readonly IGenericRepository<AuditLog> _audit;
+    private readonly IAuditService _auditService;
 
     public DomainService(
         IGenericRepository<User> users,
@@ -47,12 +48,38 @@ public class DomainService : IDomainService
         IGenericRepository<Notification> notifications,
         IGenericRepository<ActivityLog> activity,
         IGenericRepository<ErrorLog> errors,
-        IGenericRepository<AuditLog> audit)
+        IGenericRepository<AuditLog> audit,
+        IAuditService auditService)
     {
         _users = users; _workspaces = workspaces; _members = members; _invites = invites;
         _projects = projects; _boards = boards; _columns = columns; _tasks = tasks;
         _comments = comments; _attachments = attachments; _notifications = notifications;
         _activity = activity; _errors = errors; _audit = audit;
+        _auditService = auditService;
+    }
+
+    // Spec 20 (pipeline §3–4): one AuditLogs row per state-changing write, queued into the
+    // SAME scoped change tracker as the mutation so the caller's SaveChanges commits
+    // domain state + audit atomically (mandatory-persistence hard rule). Workspace-scoped
+    // user-facing changes additionally queue an ActivityLogs row, linked via ActivityId.
+    private void QueueAudit(Guid actorId, string action, string entityType, Guid entityId, object? before, object? after, Guid? workspaceId = null)
+    {
+        Guid? activityId = null;
+        if (workspaceId is not null)
+            activityId = _auditService.QueueActivity(new ActivityEntry(
+                workspaceId.Value, actorId, entityType, entityId, action.Split('.').Last(), null));
+        _auditService.QueueAudit(new AuditEntry(actorId, action, entityType, entityId,
+            before is null ? null : AuditService.Snapshot(before),
+            after is null ? null : AuditService.Snapshot(after), activityId));
+    }
+
+    // Resolve the owning workspace of a task (task → column → board → project) for activity rows.
+    private async Task<Guid?> TaskWorkspaceIdAsync(TaskItem task)
+    {
+        var column = await _columns.GetByIdAsync(task.ColumnId);
+        var board = column is null ? null : await _boards.GetByIdAsync(column.BoardId);
+        var project = board is null ? null : await _projects.GetByIdAsync(board.ProjectId);
+        return project?.WorkspaceId;
     }
 
     // Attachment limits (spec 11 / api-surface "Attachment limits"): enforced in the
@@ -95,6 +122,7 @@ public class DomainService : IDomainService
         {
             WorkspaceId = ws.Id, UserId = ownerId, Role = WorkspaceRole.Owner, JoinedAt = now
         });
+        QueueAudit(ownerId, "Workspace.Created", "Workspace", ws.Id, null, ws);
         await _workspaces.SaveChangesAsync();
         return ToWorkspaceDto(ws);
     }
@@ -109,6 +137,8 @@ public class DomainService : IDomainService
     {
         var ws = await ScopedWorkspaceAsync(id, userId);
         if (ws is null) throw new DomainError(DomainErrorKind.NotFound, "Workspace not found.");
+        var oldName = ws.Name;
+        var oldSlug = ws.Slug;
         if (!string.IsNullOrWhiteSpace(request.Name)) ws.Name = request.Name.Trim();
         if (!string.IsNullOrWhiteSpace(request.Slug))
         {
@@ -118,6 +148,7 @@ public class DomainService : IDomainService
         }
         ws.UpdatedAt = DateTime.UtcNow;
         _workspaces.Update(ws);
+        QueueAudit(userId, "Workspace.Updated", "Workspace", ws.Id, new { Name = oldName, Slug = oldSlug }, ws);
         await _workspaces.SaveChangesAsync();
         return ToWorkspaceDto(ws);
     }
@@ -129,6 +160,7 @@ public class DomainService : IDomainService
         if (ws.OwnerId != userId)
             throw new DomainError(DomainErrorKind.Forbidden, "Only the workspace owner can delete it.");
         _workspaces.Remove(ws);
+        QueueAudit(userId, "Workspace.Deleted", "Workspace", ws.Id, ws, null);
         await _workspaces.SaveChangesAsync();
         return true;
     }
@@ -156,6 +188,7 @@ public class DomainService : IDomainService
             WorkspaceId = workspaceId, UserId = request.UserId, Role = request.Role, JoinedAt = DateTime.UtcNow
         };
         await _members.AddAsync(member);
+        QueueAudit(userId, "Member.Added", "WorkspaceMember", request.UserId, null, new { member.WorkspaceId, member.UserId, Role = member.Role.ToString() });
         await _members.SaveChangesAsync();
         return ToMemberDto(member);
     }
@@ -168,8 +201,10 @@ public class DomainService : IDomainService
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to update member roles.");
         var member = (await _members.GetAllAsync()).FirstOrDefault(m => m.WorkspaceId == workspaceId && m.UserId == memberUserId);
         if (member is null) return null;
+        var oldRole = member.Role;
         member.Role = request.Role;
         _members.Update(member);
+        QueueAudit(userId, "Member.RoleChanged", "WorkspaceMember", memberUserId, new { Role = oldRole.ToString() }, new { Role = member.Role.ToString() });
         await _members.SaveChangesAsync();
         return ToMemberDto(member);
     }
@@ -183,6 +218,7 @@ public class DomainService : IDomainService
         var member = (await _members.GetAllAsync()).FirstOrDefault(m => m.WorkspaceId == workspaceId && m.UserId == memberUserId);
         if (member is null) return false;
         _members.Remove(member);
+        QueueAudit(userId, "Member.Removed", "WorkspaceMember", memberUserId, new { member.WorkspaceId, member.UserId, Role = member.Role.ToString() }, null);
         await _members.SaveChangesAsync();
         return true;
     }
@@ -203,6 +239,7 @@ public class DomainService : IDomainService
             ExpiresAt = DateTime.UtcNow.AddDays(7), CreatedAt = DateTime.UtcNow
         };
         await _invites.AddAsync(invite);
+        QueueAudit(userId, "Invite.Created", "Invite", invite.Id, null, new { invite.WorkspaceId, invite.Email, Role = invite.Role.ToString() });
         await _invites.SaveChangesAsync();
         return ToInviteDto(invite);
     }
@@ -223,6 +260,7 @@ public class DomainService : IDomainService
         });
         invite.Status = InviteStatus.Accepted;
         _invites.Update(invite);
+        QueueAudit(userId, "Invite.Accepted", "Invite", invite.Id, null, new { invite.WorkspaceId, invite.Email, Role = invite.Role.ToString() }, invite.WorkspaceId);
         await _invites.SaveChangesAsync();
         return true;
     }
@@ -255,6 +293,7 @@ public class DomainService : IDomainService
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         await _projects.AddAsync(project);
+        QueueAudit(userId, "Project.Created", "Project", project.Id, null, project, workspaceId);
         await _projects.SaveChangesAsync();
         return ToProjectDto(project);
     }
@@ -272,12 +311,16 @@ public class DomainService : IDomainService
         var project = await _projects.GetByIdAsync(id);
         if (project is null) throw new DomainError(DomainErrorKind.NotFound, "Project not found.");
         await ScopedWorkspaceAsync(project.WorkspaceId, userId);
+        var oldName = project.Name;
+        var oldKey = project.Key;
+        var oldStatus = project.Status;
         if (!string.IsNullOrWhiteSpace(request.Name)) project.Name = request.Name.Trim();
         if (!string.IsNullOrWhiteSpace(request.Key)) project.Key = request.Key.Trim();
         if (request.Description is not null) project.Description = request.Description;
         if (request.Status is not null) { var v = request.Status; project.Status = v ?? ProjectStatus.Active; };
         project.UpdatedAt = DateTime.UtcNow;
         _projects.Update(project);
+        QueueAudit(userId, "Project.Updated", "Project", project.Id, new { Name = oldName, Key = oldKey, Status = oldStatus.ToString() }, project, project.WorkspaceId);
         await _projects.SaveChangesAsync();
         return ToProjectDto(project);
     }
@@ -291,6 +334,7 @@ public class DomainService : IDomainService
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to delete projects.");
         _projects.Remove(project);
+        QueueAudit(userId, "Project.Deleted", "Project", project.Id, project, null, project.WorkspaceId);
         await _projects.SaveChangesAsync();
         return true;
     }
@@ -321,6 +365,7 @@ public class DomainService : IDomainService
             Order = request.Order > 0 ? request.Order : maxOrder + 1, CreatedAt = DateTime.UtcNow
         };
         await _boards.AddAsync(board);
+        QueueAudit(userId, "Board.Created", "Board", board.Id, null, board, project.WorkspaceId);
         await _boards.SaveChangesAsync();
         return ToBoardDto(board);
     }
@@ -354,6 +399,7 @@ public class DomainService : IDomainService
             WipLimit = request.WipLimit, CreatedAt = DateTime.UtcNow
         };
         await _columns.AddAsync(column);
+        QueueAudit(userId, "Column.Created", "Column", column.Id, null, column, ws.Id);
         await _columns.SaveChangesAsync();
         return ToColumnDto(column);
     }
@@ -368,10 +414,14 @@ public class DomainService : IDomainService
         if (ws is null) throw new DomainError(DomainErrorKind.Forbidden, "Not a member.");
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to update columns.");
+        var oldName = column.Name;
+        var oldOrder = column.Order;
+        var oldWip = column.WipLimit;
         if (!string.IsNullOrWhiteSpace(request.Name)) column.Name = request.Name.Trim();
         if (request.Order is not null) { var v = request.Order; column.Order = v ?? 0; }
         if (request.WipLimit is not null) column.WipLimit = request.WipLimit;
         _columns.Update(column);
+        QueueAudit(userId, "Column.Updated", "Column", column.Id, new { Name = oldName, Order = oldOrder, WipLimit = oldWip }, column, ws.Id);
         await _columns.SaveChangesAsync();
         return ToColumnDto(column);
     }
@@ -387,6 +437,7 @@ public class DomainService : IDomainService
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to delete columns.");
         _columns.Remove(column);
+        QueueAudit(userId, "Column.Deleted", "Column", column.Id, column, null, ws.Id);
         await _columns.SaveChangesAsync();
         return true;
     }
@@ -431,6 +482,7 @@ public class DomainService : IDomainService
             Position = request.Position, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         await _tasks.AddAsync(task);
+        QueueAudit(userId, "Task.Created", "Task", task.Id, null, task, project.WorkspaceId);
         await _tasks.SaveChangesAsync();
         return ToTaskDto(task);
     }
@@ -448,6 +500,10 @@ public class DomainService : IDomainService
         var task = await _tasks.GetByIdAsync(id);
         if (task is null) throw new DomainError(DomainErrorKind.NotFound, "Task not found.");
         if (!await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of the containing workspace.");
+        var oldTitle = task.Title;
+        var oldStatus = task.Status;
+        var oldPriority = task.Priority;
+        var oldAssignee = task.AssigneeId;
         if (!string.IsNullOrWhiteSpace(request.Title)) task.Title = request.Title.Trim();
         if (request.Description is not null) task.Description = request.Description;
         if (request.Status is not null) { var v = request.Status; task.Status = v ?? Griot.Domain.Enums.TaskStatus.Backlog; };
@@ -457,6 +513,9 @@ public class DomainService : IDomainService
         if (request.Position is not null) { var v = request.Position; task.Position = v ?? 0; };
         task.UpdatedAt = DateTime.UtcNow;
         _tasks.Update(task);
+        QueueAudit(userId, "Task.Updated", "Task", task.Id,
+            new { Title = oldTitle, Status = oldStatus.ToString(), Priority = oldPriority.ToString(), AssigneeId = oldAssignee },
+            task, await TaskWorkspaceIdAsync(task));
         await _tasks.SaveChangesAsync();
         return ToTaskDto(task);
     }
@@ -466,7 +525,9 @@ public class DomainService : IDomainService
         var task = await _tasks.GetByIdAsync(id);
         if (task is null) throw new DomainError(DomainErrorKind.NotFound, "Task not found.");
         if (!await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of the containing workspace.");
+        var workspaceId = await TaskWorkspaceIdAsync(task);
         _tasks.Remove(task);
+        QueueAudit(userId, "Task.Deleted", "Task", task.Id, task, null, workspaceId);
         await _tasks.SaveChangesAsync();
         return true;
     }
@@ -483,11 +544,16 @@ public class DomainService : IDomainService
         var targetColumn = await _columns.GetByIdAsync(request.ColumnId);
         if (targetColumn!.BoardId != board!.Id)
             throw new DomainError(DomainErrorKind.Validation, "Target column must belong to the same board.");
+        var oldColumnId = task.ColumnId;
+        var oldPosition = task.Position;
         task.ColumnId = request.ColumnId;
         task.BoardId = targetColumn!.BoardId;
         task.Position = (decimal)request.NewPosition;
         task.UpdatedAt = DateTime.UtcNow;
         _tasks.Update(task);
+        QueueAudit(userId, "Task.Moved", "Task", task.Id,
+            new { ColumnId = oldColumnId, Position = oldPosition },
+            new { task.ColumnId, task.Position }, await TaskWorkspaceIdAsync(task));
         await _tasks.SaveChangesAsync();
         return ToTaskDto(task);
     }
@@ -516,9 +582,13 @@ public class DomainService : IDomainService
             var task = await _tasks.GetByIdAsync(tid);
             if (task is null || !wsColumnIds.Contains(task.ColumnId))
                 throw new DomainError(DomainErrorKind.Conflict, $"Task {tid} does not belong to this workspace.");
+            var oldStatus = task.Status;
             task.Status = newStatus;
             task.UpdatedAt = DateTime.UtcNow;
             _tasks.Update(task);
+            // Spec 20: one audit row AND one activity row per task changed (bulk status).
+            QueueAudit(userId, "Task.StatusChanged", "Task", task.Id,
+                new { Status = oldStatus.ToString() }, task, request.WorkspaceId);
             updated++;
         }
         await _tasks.SaveChangesAsync();
@@ -533,9 +603,12 @@ public class DomainService : IDomainService
         if (board is null) throw new DomainError(DomainErrorKind.NotFound, "Board not found.");
         var project = await _projects.GetByIdAsync(board.ProjectId);
         await ScopedWorkspaceAsync(project!.WorkspaceId, userId);
+        var oldName = board.Name;
+        var oldOrder = board.Order;
         if (!string.IsNullOrWhiteSpace(request.Name)) board.Name = request.Name.Trim();
         if (request.Order is not null) board.Order = request.Order.Value;
         _boards.Update(board);
+        QueueAudit(userId, "Board.Updated", "Board", board.Id, new { Name = oldName, Order = oldOrder }, board, project.WorkspaceId);
         await _boards.SaveChangesAsync();
         return ToBoardDto(board);
     }
@@ -549,6 +622,7 @@ public class DomainService : IDomainService
         if (!CanManageMembers(ws!, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to delete boards.");
         _boards.Remove(board);
+        QueueAudit(userId, "Board.Deleted", "Board", board.Id, board, null, project.WorkspaceId);
         await _boards.SaveChangesAsync();
         return true;
     }
@@ -575,6 +649,7 @@ public class DomainService : IDomainService
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         await _comments.AddAsync(comment);
+        QueueAudit(userId, "Comment.Created", "Comment", comment.Id, null, new { comment.TaskId, comment.Body }, await TaskWorkspaceIdAsync(task));
         await _comments.SaveChangesAsync();
         return ToCommentDto(comment);
     }
@@ -587,9 +662,11 @@ public class DomainService : IDomainService
         if (comment is null) throw new DomainError(DomainErrorKind.NotFound, "Comment not found.");
         if (comment.AuthorId != userId) throw new DomainError(DomainErrorKind.Forbidden, "Only the author can edit this comment.");
         RequireText(request.Body, "Body is required.");
+        var oldBody = comment.Body;
         comment.Body = request.Body.Trim();
         comment.UpdatedAt = DateTime.UtcNow;
         _comments.Update(comment);
+        QueueAudit(userId, "Comment.Updated", "Comment", comment.Id, new { Body = oldBody }, new { comment.Body }, await TaskWorkspaceIdAsync(task));
         await _comments.SaveChangesAsync();
         return ToCommentDto(comment);
     }
@@ -602,6 +679,7 @@ public class DomainService : IDomainService
         if (comment is null) return false;
         if (comment.AuthorId != userId) throw new DomainError(DomainErrorKind.Forbidden, "Only the author can delete this comment.");
         _comments.Remove(comment);
+        QueueAudit(userId, "Comment.Deleted", "Comment", comment.Id, new { comment.TaskId, comment.Body }, null, await TaskWorkspaceIdAsync(task));
         await _comments.SaveChangesAsync();
         return true;
     }
@@ -636,6 +714,7 @@ public class DomainService : IDomainService
             CreatedAt = DateTime.UtcNow
         };
         await _attachments.AddAsync(attachment);
+        QueueAudit(userId, "Attachment.Created", "Attachment", attachment.Id, null, new { attachment.TaskId, attachment.FileName, attachment.MimeType, attachment.SizeBytes });
         await _attachments.SaveChangesAsync();
         return ToAttachmentDto(attachment);
     }
@@ -647,6 +726,7 @@ public class DomainService : IDomainService
         var attachment = (await _attachments.GetAllAsync()).FirstOrDefault(a => a.Id == attachmentId && a.TaskId == taskId);
         if (attachment is null) return false;
         _attachments.Remove(attachment);
+        QueueAudit(userId, "Attachment.Deleted", "Attachment", attachment.Id, new { attachment.TaskId, attachment.FileName, attachment.MimeType, attachment.SizeBytes }, null);
         await _attachments.SaveChangesAsync();
         return true;
     }
@@ -745,6 +825,41 @@ public class DomainService : IDomainService
             .OrderByDescending(e => e.CreatedAt)
             .Take(Math.Clamp(limit, 1, 200))
             .Select(ToErrorLogDto).ToList();
+    }
+
+    // Spec 20: FixStatus lifecycle (Owner/Admin). Fixed/Verified/WontFix stamp
+    // FixedAt + SolvedByUserId so the mitigation path ("how to mitigate" in the
+    // incident-answer matrix) is on the row itself and retention only prunes
+    // RESOLVED errors; Open/Investigating clears them again.
+    public async Task<ErrorLogDto> UpdateErrorLogStatusAsync(Guid workspaceId, Guid errorId, Guid userId, Griot.Domain.Enums.ErrorFixStatus fixStatus)
+    {
+        await ScopedWorkspaceAsync(workspaceId, userId);
+        var ws = await _workspaces.GetByIdAsync(workspaceId);
+        if (ws is null || (ws.OwnerId != userId && !(await _members.GetAllAsync()).Any(m => m.WorkspaceId == workspaceId && m.UserId == userId && m.Role == WorkspaceRole.Admin)))
+            throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to update error logs.");
+
+        var log = (await _errors.GetAllAsync()).FirstOrDefault(e => e.Id == errorId)
+            ?? throw new DomainError(DomainErrorKind.NotFound, "Error log not found.");
+
+        var resolved = fixStatus is Griot.Domain.Enums.ErrorFixStatus.Fixed
+            or Griot.Domain.Enums.ErrorFixStatus.Verified
+            or Griot.Domain.Enums.ErrorFixStatus.WontFix;
+
+        // Spec 20 incident matrix ("how to mitigate" = FixStatus lifecycle): the triage
+        // decision itself is a state-changing write, so it lands on the audit trail too.
+        var oldStatus = log.FixStatus.ToString();
+        var oldFixedAt = log.FixedAt;
+        var oldSolvedBy = log.SolvedByUserId;
+
+        log.FixStatus = fixStatus;
+        log.FixedAt = resolved ? DateTime.UtcNow : null;
+        log.SolvedByUserId = resolved ? userId : null;
+        QueueAudit(userId, "ErrorLog.FixStatusChanged", "ErrorLog", log.Id,
+            new { FixStatus = oldStatus, FixedAt = oldFixedAt, SolvedByUserId = oldSolvedBy },
+            new { FixStatus = log.FixStatus.ToString(), log.FixedAt, log.SolvedByUserId },
+            workspaceId);
+        await _errors.SaveChangesAsync();
+        return ToErrorLogDto(log);
     }
 
     public async Task<List<AuditLogDto>> GetAuditLogsAsync(Guid workspaceId, Guid userId, string? entityType, Guid? entityId, int limit)

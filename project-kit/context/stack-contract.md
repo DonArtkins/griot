@@ -49,7 +49,7 @@ Status codes: **exact** = bootcamp-mandated, use as-is. **[own-stack]** = the gu
 
 | Area | Choice | Owner kit |
 |---|---|---|
-| Communication | Brevo transactional Email only (multi-sender identities `Brevo:Senders:*` + reply-to) | backend |
+| Communication | Brevo transactional Email only (single verified sender `Brevo:FromEmail` + per-call reply-to; 2026-09-11: `Brevo:Senders:*` profile map removed) | backend |
 | Auth | Custom JWT (15-min access, rotated opaque refresh, Argon2, Redis sliding-window rate limit, Brevo Email OTP 2FA — critical-action OTP/step-up on login/forgot/reset/delete/guarded ops spec 23 PLANNED) | backend |
 | Perf/load testing | k6 | qa |
 | AI layer | Trigger.dev v3 Level-4 Autonomous Agents (reasoning loops, human-in-loop) + Griot MCP server + in-app Copilot — orchestrated by the .NET backend only; Trigger.dev = compute adapter, never a data owner (`research/ai-integration.md` §2a). Superpowers wave (PLANNED): knowledge agent + system auditor (ai 06), report generation PDF/CSV (ai 07), advanced executor (ai 08) — all behind `CreateReport` scope (backend 24), never loosening the OBO grant, never touching auth/OTP | ai, mcp, web |

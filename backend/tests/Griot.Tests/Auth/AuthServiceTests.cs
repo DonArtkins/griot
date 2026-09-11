@@ -41,11 +41,21 @@ public class AuthServiceTests
 
     }
 
+    private static IAuditService BuildAuditService(out Mock<IAuditService> auditMock)
+    {
+        auditMock = new Mock<IAuditService>();
+        auditMock.Setup(a => a.RecordAsync(It.IsAny<AuditEntry>())).Returns(Task.CompletedTask);
+        return auditMock.Object;
+    }
+
     private static AuthService BuildService(Mock<IAuthRepository> repoMock) =>
-        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService());
+        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildAuditService(out _));
 
     private static AuthService BuildService(Mock<IAuthRepository> repoMock, IEmailService emailService) =>
-        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), emailService);
+        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), emailService, BuildAuditService(out _));
+
+    private static AuthService BuildService(Mock<IAuthRepository> repoMock, out Mock<IAuditService> auditMock) =>
+        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildAuditService(out auditMock));
 
     /// <summary>Builds a raw opaque token (64-char hex of 32 random bytes) the same way AuthService does.</summary>
     private static string MakeRawToken() =>

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Griot.Application.DTOs;
 using Griot.Application.Interfaces.Repositories;
+using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
 using Griot.Domain.Entities;
 using Moq;
@@ -55,7 +56,8 @@ public class AttachmentValidationTests
             users.Object, workspaces.Object, members.Object, invites.Object,
             projects.Object, boards.Object, columns.Object, tasks.Object,
             comments.Object, attachments.Object, notifications.Object,
-            activity.Object, errors.Object, audit.Object);
+            activity.Object, errors.Object, audit.Object,
+            Mock.Of<IAuditService>());
 
         return (service, attachments);
     }

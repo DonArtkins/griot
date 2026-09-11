@@ -14,5 +14,8 @@ public class AuditLog
     public Guid EntityId { get; set; }
     public string? Before { get; set; }
     public string? After { get; set; }
+    // ERD amendment (2026-09-11, spec 20): normalized request id of the producing
+    // request/auth event; null only for durable writes with no HTTP context.
+    public Guid? RequestId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
