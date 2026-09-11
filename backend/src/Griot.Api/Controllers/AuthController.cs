@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Griot.Application.Authorization;
 using Griot.Application.DTOs.Auth;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
@@ -111,7 +113,9 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var response = await _authService.RefreshAsync(request.RefreshToken).ConfigureAwait(false);
+        var response = await _authService
+            .RefreshAsync(request.RefreshToken, request.OrganizationId)
+            .ConfigureAwait(false);
         if (response == null)
             return Unauthorized(new { message = "Invalid, expired, or already-used refresh token." });
 
@@ -214,5 +218,81 @@ public class AuthController : ControllerBase
 
 
         return Ok(new { verified = true, message = result.Message, emailVerified = result.EmailVerified });
+    }
+
+    // ── Spec 30 (Auth & JWT v2): organization session ───────────────────────────
+
+    /// <summary>Authenticated caller id from the JWT `sub` claim (Guid.Empty when absent).</summary>
+    private Guid CallerId =>
+        Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : Guid.Empty;
+
+    /// <summary>True when the JWT `role` claim is the platform SuperAdmin marker.
+    /// Reads the literal v2 claim and the mapped `ClaimTypes.Role` form (JwtBearer
+    /// inbound mapping) so the platform session never silently drops.</summary>
+    private bool IsSuperAdminCaller =>
+        string.Equals(User.FindFirst("role")?.Value, RoleSelection.RoleSuperAdmin, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value, RoleSelection.RoleSuperAdmin, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Active organization from the JWT `org` claim, or null (platform-only session).</summary>
+    private Guid? ActiveOrganizationId =>
+        Guid.TryParse(User.FindFirst("org")?.Value, out var org) ? org : null;
+
+    /// <summary>
+    /// The caller's organization memberships (spec 30). Only Active memberships of
+    /// Active organizations are listed; `isActive` flags the session's active org.
+    /// </summary>
+    [Authorize]
+    [HttpGet("organizations")]
+    [ProducesResponseType(typeof(IReadOnlyList<OrganizationMembershipDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ListOrganizations()
+    {
+        var callerId = CallerId;
+        if (callerId == Guid.Empty)
+            return Unauthorized(new { message = "Caller identity could not be resolved." });
+
+        var memberships = await _authService
+            .ListOrganizationsAsync(callerId, IsSuperAdminCaller, ActiveOrganizationId)
+            .ConfigureAwait(false);
+        return Ok(memberships);
+    }
+
+    /// <summary>
+    /// Switch the active organization (spec 30). Re-issues a fresh token pair carrying
+    /// the new `org`/`role`/`perms` claims. 404 unknown org; 403 not an Active member
+    /// (SuperAdmin callers may select any Active company — platform authority).
+    /// When `refreshToken` is presented, its rotation family is revoked after the new
+    /// pair is minted (single active session per family).
+    /// </summary>
+    [Authorize]
+    [HttpPost("select-organization")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SelectOrganization([FromBody] SelectOrganizationRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var response = await _authService
+                .SelectOrganizationAsync(CallerId, request, request.RefreshToken)
+                .ConfigureAwait(false);
+            if (response is null)
+                return Unauthorized(new { message = "Caller identity could not be resolved." });
+
+            return Ok(response);
+        }
+        catch (DomainError e) when (e.IsNotFound)
+        {
+            return NotFound(new { message = e.Message });
+        }
+        catch (DomainError e) when (e.IsForbidden)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = e.Message });
+        }
     }
 }

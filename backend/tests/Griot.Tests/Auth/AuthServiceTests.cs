@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Griot.Application.Authorization;
 using Griot.Application.DTOs.Auth;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Interfaces.Repositories;
@@ -48,14 +49,75 @@ public class AuthServiceTests
         return auditMock.Object;
     }
 
-    private static AuthService BuildService(Mock<IAuthRepository> repoMock) =>
-        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildAuditService(out _));
+    private static ITokenService BuildTokenService() =>
+        new TokenService(BuildConfig());
 
-    private static AuthService BuildService(Mock<IAuthRepository> repoMock, IEmailService emailService) =>
-        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), emailService, BuildAuditService(out _));
+    /// <summary>
+    /// Spec 30: loose default stubs for the organization-session lookups so existing
+    /// fixtures keep their legacy behavior (no memberships, no active member).
+    /// Test-specific setups override these — last Moq setup wins.
+    /// </summary>
+    private static void ApplySpec30Defaults(Mock<IAuthRepository> repo)
+    {
+        repo.Setup(r => r.GetActiveOrganizationMembershipsAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((System.Collections.Generic.IReadOnlyList<OrganizationMember>)new System.Collections.Generic.List<OrganizationMember>());
+        repo.Setup(r => r.FindActiveOrganizationMemberAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync((OrganizationMember?)null);
+    }
 
-    private static AuthService BuildService(Mock<IAuthRepository> repoMock, out Mock<IAuditService> auditMock) =>
-        new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildAuditService(out auditMock));
+    private static AuthService BuildService(Mock<IAuthRepository> repoMock, bool applySpec30Defaults = true)
+    {
+        if (applySpec30Defaults) ApplySpec30Defaults(repoMock);
+        return new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildAuditService(out _), BuildTokenService());
+    }
+
+    private static AuthService BuildService(Mock<IAuthRepository> repoMock, IEmailService emailService, bool applySpec30Defaults = true)
+    {
+        if (applySpec30Defaults) ApplySpec30Defaults(repoMock);
+        return new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), emailService, BuildAuditService(out _), BuildTokenService());
+    }
+
+    private static AuthService BuildService(Mock<IAuthRepository> repoMock, out Mock<IAuditService> auditMock, bool applySpec30Defaults = true)
+    {
+        if (applySpec30Defaults) ApplySpec30Defaults(repoMock);
+        return new(repoMock.Object, BuildConfig(), Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildAuditService(out auditMock), BuildTokenService());
+    }
+
+    /// <summary>Spec 30: sha-256 → 64-hex → UTF-8 bytes ≥ 32; decodes verbatim with the configured key.</summary>
+    private static TokenService MakeTokenService(IConfiguration config) => new(config);
+
+    [Fact]
+    public void BuildSuperAdminAccessToken_NoOrgClaim_RoundTripsWithConfiguredKey()
+    {
+        var config = BuildConfig();
+        var (token, expiresAt) = MakeTokenService(config).IssueAccessToken(
+            Guid.NewGuid(), "sa@example.com", "Platform Operator",
+            new ActiveOrganization(null, "super_admin", "org.members.manage"));
+
+        Assert.True(expiresAt > DateTime.UtcNow);
+
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        // Spec 30: assert the literal v2 claim names — the live JwtBearer pipeline
+        // maps name/role/sub/email to ClaimTypes.* (the spec-29 middleware reads
+        // both forms), so the test turns mapping off for exact-name lookups.
+        handler.MapInboundClaims = false;
+        var principal = handler.ValidateToken(token, new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = config["JWT:Issuer"],
+            ValidAudience = config["JWT:Audience"],
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                System.Text.Encoding.UTF8.GetBytes(config["JWT:Key"]!))
+        }, out _);
+
+        Assert.Null(principal.FindFirst("org"));           // platform-only: claim omitted
+        Assert.Equal("super_admin", principal.FindFirst("role")!.Value);
+        Assert.Equal("Platform Operator", principal.FindFirst("name")!.Value);
+        Assert.True(principal.FindFirst("perms")!.Value.Split(' ').Length >= 1);
+    }
 
     /// <summary>Builds a raw opaque token (64-char hex of 32 random bytes) the same way AuthService does.</summary>
     private static string MakeRawToken() =>
@@ -112,7 +174,7 @@ public class AuthServiceTests
         var sut = BuildService(repoMock);
 
         // Act
-        var result = await sut.RefreshAsync(rawToken);
+        var result = await sut.RefreshAsync(rawToken, requestedOrganizationId: null);
 
         // Assert
         Assert.Null(result);
@@ -151,7 +213,7 @@ public class AuthServiceTests
         var sut = BuildService(repoMock);
 
         // Act
-        var result = await sut.RefreshAsync(rawToken);
+        var result = await sut.RefreshAsync(rawToken, requestedOrganizationId: null);
 
         // Assert — new pair returned, rotation called once
         Assert.NotNull(result);
@@ -192,7 +254,7 @@ public class AuthServiceTests
         var sut = BuildService(repoMock);
 
         // Act
-        var result = await sut.RefreshAsync(rawToken);
+        var result = await sut.RefreshAsync(rawToken, requestedOrganizationId: null);
 
         // Assert
         Assert.Null(result);
@@ -216,7 +278,7 @@ public class AuthServiceTests
         var sut = BuildService(repoMock);
 
         // Act
-        var result = await sut.RefreshAsync(rawToken);
+        var result = await sut.RefreshAsync(rawToken, requestedOrganizationId: null);
 
         // Assert
         Assert.Null(result);
@@ -352,7 +414,7 @@ public class AuthServiceTests
     {
         var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
         var service = BuildService(repo);
-        Assert.Null(await service.RefreshAsync(token!));
+        Assert.Null(await service.RefreshAsync(token!, requestedOrganizationId: null));
         await service.LogoutAsync(token!);
         repo.VerifyNoOtherCalls();
     }
@@ -366,7 +428,7 @@ public class AuthServiceTests
         repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(raw))).ReturnsAsync(token);
         repo.Setup(r => r.RotateRefreshTokenAsync(token, It.IsAny<RefreshToken>())).ReturnsAsync((RefreshToken?)null);
         repo.Setup(r => r.RevokeFamilyAsync(token.UserId, token.FamilyId, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
-        Assert.Null(await BuildService(repo).RefreshAsync(raw));
+        Assert.Null(await BuildService(repo).RefreshAsync(raw, requestedOrganizationId: null));
         repo.Verify(r => r.RevokeFamilyAsync(token.UserId, token.FamilyId, It.IsAny<DateTime>()), Times.Once);
     }
 
@@ -383,4 +445,151 @@ public class AuthServiceTests
         }));
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Spec 30 – organization session (list + select) + SuperAdmin bootstrap + key policy
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private static OrganizationMember MakeMember(Guid orgId, Guid userId, Griot.Domain.Enums.OrganizationRole role, string orgName = "Acme")
+    {
+        return new OrganizationMember
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            Organization = new Organization { Id = orgId, Name = orgName, Slug = "acme", OwnerId = userId },
+            UserId = userId,
+            User = MakeUser(),
+            Role = role,
+            Status = Griot.Domain.Enums.OrganizationMemberStatus.Active,
+            JoinedAt = DateTime.UtcNow.AddDays(-10)
+        };
+    }
+
+    [Fact]
+    public async Task ListOrganizations_ReturnsOnlyActiveMemberships_WithActiveFlag()
+    {
+        var caller = Guid.NewGuid();
+        var activeOrg = Guid.NewGuid();
+        var otherOrg = Guid.NewGuid();
+        var member = MakeMember(activeOrg, caller, Griot.Domain.Enums.OrganizationRole.Admin);
+        var other = MakeMember(otherOrg, caller, Griot.Domain.Enums.OrganizationRole.Member, "Other");
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        // Loose default returns empty; test-specific setup wins (last setup).
+        repo.Setup(r => r.GetActiveOrganizationMembershipsAsync(caller))
+            .ReturnsAsync(new System.Collections.Generic.List<OrganizationMember> { member, other });
+        var result = await BuildService(repo, applySpec30Defaults: false).ListOrganizationsAsync(caller, isSuperAdmin: false, activeOrganizationId: activeOrg);
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, m => m.OrganizationId == activeOrg && m.IsActive && m.Role == "admin");
+        Assert.Contains(result, m => m.OrganizationId == otherOrg && !m.IsActive);
+    }
+
+    [Fact]
+    public async Task SelectOrganization_NonMember_ThrowsForbidden()
+    {
+        var caller = MakeUser();
+        var orgId = Guid.NewGuid();
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindOrganizationByIdAsync(orgId))
+            .ReturnsAsync(new Organization { Id = orgId, Name = "Acme", Slug = "acme", OwnerId = Guid.NewGuid() });
+        repo.Setup(r => r.FindUserByIdAsync(caller.Id)).ReturnsAsync(caller);
+        repo.Setup(r => r.FindActiveOrganizationMemberAsync(orgId, caller.Id)).ReturnsAsync((OrganizationMember?)null);
+        await Assert.ThrowsAsync<DomainError>(() =>
+            BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(caller.Id, new SelectOrganizationRequest { OrganizationId = orgId }, refreshToken: null));
+    }
+
+    [Fact]
+    public async Task SelectOrganization_UnknownOrg_ThrowsNotFound()
+    {
+        var caller = MakeUser();
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindOrganizationByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Organization?)null);
+        await Assert.ThrowsAsync<DomainError>(() =>
+            BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(caller.Id, new SelectOrganizationRequest { OrganizationId = Guid.NewGuid() }, refreshToken: null));
+    }
+
+    [Fact]
+    public async Task SelectOrganization_Member_ReissuesPairAndRevokesPresentedFamily()
+    {
+        var caller = MakeUser();
+        var orgId = Guid.NewGuid();
+        var member = MakeMember(orgId, caller.Id, Griot.Domain.Enums.OrganizationRole.Owner);
+        var presentedRaw = MakeRawToken();
+        var presented = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = caller.Id,
+            FamilyId = Guid.NewGuid(),
+            TokenHash = HashToken(presentedRaw),
+            ExpiresAt = DateTime.UtcNow.AddDays(29),
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            User = caller
+        };
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindOrganizationByIdAsync(orgId)).ReturnsAsync(member.Organization);
+        repo.Setup(r => r.FindUserByIdAsync(caller.Id)).ReturnsAsync(caller);
+        repo.Setup(r => r.FindActiveOrganizationMemberAsync(orgId, caller.Id)).ReturnsAsync(member);
+        repo.Setup(r => r.InsertRefreshTokenAsync(It.IsAny<RefreshToken>())).ReturnsAsync((RefreshToken t) => t);
+        repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(presentedRaw))).ReturnsAsync(presented);
+        repo.Setup(r => r.RevokeFamilyAsync(caller.Id, presented.FamilyId, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        var response = await BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(
+            caller.Id, new SelectOrganizationRequest { OrganizationId = orgId, RefreshToken = presentedRaw }, presentedRaw);
+        Assert.NotNull(response);
+        repo.Verify(r => r.RevokeFamilyAsync(caller.Id, presented.FamilyId, It.IsAny<DateTime>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnsureSuperAdmin_NoConfig_NoOps()
+    {
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var sut = new AuthService(repo.Object, config, Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildAuditService(out _), new TokenService(config));
+        var result = await sut.EnsureSuperAdminAsync();
+        Assert.False(result.Created || result.Upgraded);
+        repo.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task EnsureSuperAdmin_ExistingUser_UpgradesIdempotently()
+    {
+        var user = MakeUser();
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindUserByEmailAsync("boss@griot.test")).ReturnsAsync(user);
+        repo.Setup(r => r.SetPlatformRoleAsync(user.Id, Griot.Domain.Enums.PlatformRole.SuperAdmin)).Returns(Task.CompletedTask);
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["SUPERADMIN:Email"] = "boss@griot.test"
+        }).Build();
+        var sut = new AuthService(repo.Object, config, Mock.Of<ILogger<AuthService>>(), BuildEmailService(), BuildAuditService(out _), new TokenService(config));
+        var result = await sut.EnsureSuperAdminAsync();
+        Assert.True(result.Upgraded && !result.Created);
+    }
+
+    [Theory]
+    [InlineData(false, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", true)]   // 32-byte dev floor passes
+    [InlineData(false, "short", false)]                            // below HS256 floor
+    [InlineData(true, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", true)] // 64-byte prod floor passes
+    [InlineData(true, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", false)]  // 32 bytes < prod floor
+    public void ValidateKeyPolicy_EnforcesDevAndProductionFloors(bool production, string key, bool valid)
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["JWT:Key"] = key
+        }).Build();
+        var svc = new TokenService(config);
+        if (valid) svc.ValidateKeyPolicy(production);
+        else Assert.Throws<InvalidOperationException>(() => svc.ValidateKeyPolicy(production));
+    }
+
+    [Fact]
+    public void RoleSelection_SuperAdminWins_AndCustomRoleFormats()
+    {
+        var customId = Guid.NewGuid();
+        var custom = MakeMember(Guid.NewGuid(), Guid.NewGuid(), Griot.Domain.Enums.OrganizationRole.Custom);
+        custom.CustomRoleId = customId;
+        custom.CustomRole = new Role { Id = customId, Name = "Auditor", Permissions = "org.read, report.generate" };
+        Assert.Equal("super_admin", RoleSelection.EffectiveRole(true, custom));
+        Assert.Equal($"custom:{customId}", RoleSelection.EffectiveRole(false, custom));
+        Assert.Equal("org.read report.generate", RoleSelection.EffectivePerms(custom));
+        Assert.Equal(string.Empty, RoleSelection.EffectivePerms(null));
+        Assert.DoesNotContain(PermissionCatalogue.LogReadTier, PermissionCatalogue.PermsForSystemRole(Griot.Domain.Enums.OrganizationRole.Owner));
+    }
 }

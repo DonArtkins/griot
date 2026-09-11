@@ -6,7 +6,9 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 
 | Method | Route | Purpose | Role gate |
 |---|---|---|---|
-| POST | `/api/auth/register` · `/login` · `/refresh` · `/logout` · `/otp/request` · `/otp/verify` | auth lifecycle + email-OTP 2FA | public / authenticated |
+| POST | `/api/auth/register` · `/login` · `/refresh` (optional `organizationId` pins the active org — spec 30) · `/logout` · `/otp/request` · `/otp/verify` | auth lifecycle + email-OTP 2FA | public / authenticated |
+| GET | `/api/auth/organizations` | caller's Active memberships of Active orgs (`isActive` = session org) — spec 30 ✅ | authenticated |
+| POST | `/api/auth/select-organization` (`organizationId`, optional `refreshToken`) | switch active org, re-issue pair with new `org`/`role`/`perms` (404 unknown / 403 non-member; SuperAdmin may select any Active org) — spec 30 ✅ | authenticated |
 | POST | `/api/auth/forgot-password` · `/reset-password`; DELETE `/api/auth/account`; `otp/request` purposes `delete_account` / `step_up` — **spec 23 PLANNED** | critical-action OTP & step-up (login 2FA challenge, forgot/reset, delete account, guarded ops) | public / bearer + step-up |
 | GET/POST | `/api/workspaces` | list/create | authenticated |
 | GET/PUT/DELETE | `/api/workspaces/{id}` | read/update/delete | DELETE = Owner only |

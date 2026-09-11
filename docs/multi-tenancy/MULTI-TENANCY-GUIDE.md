@@ -68,7 +68,7 @@ Three layers, resolved in precedence order (highest wins):
   - `perms` — space-separated permission keys for the active role (empty for pure `Member`)
 - **Refresh token stays opaque — deliberately.** 64-hex random bytes, SHA-256 at rest, rotation + family revoke (unchanged). It is *not* a JWT and must never become one: putting user data into a long-lived token violates the research volume §5 (opaque rotating refresh tokens) and OWASP guidance; jwt.io showing it blank is **correct behavior**, not a defect. Verification: the access token decodes **and verifies** at jwt.io when the real `Jwt:Key` is pasted — `a-string-secret-at-least-256-bits-long` is jwt.io's *placeholder*, which is why pasting it fails verification.
 - **Signing key policy:** `JWT__Key` must be ≥ 64 chars (512 bits) in production, generated via a CSPRNG, stored in the platform secret store (Railway env), never committed (`appsettings.Local.json` is git-ignored); rotation runbook documented in spec 30. Dev keys already exceed 256 bits.
-- SuperAdmin bootstrap, org-switch endpoint and the full route table live in `docs/api/auth-contract.md` (PLANNED section added in this wave).
+- SuperAdmin bootstrap, org-switch endpoint and the full route table live in `docs/api/auth-contract.md` (✅ IMPLEMENTED 2026-09-12 on `feature/backend/30-auth-jwt-v2`; refresh re-resolves the session from the client-pinned `organizationId`, single-membership auto-pick, or platform view — family id is replay-chain only).
 
 ## 5. Company lifecycle — onboarding → manage → offboard (owners: backend 32/33)
 

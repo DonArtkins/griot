@@ -19,6 +19,7 @@ using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
 using Griot.Domain.Entities;
+using Griot.Domain.Enums;
 using Konscious.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -101,6 +102,12 @@ public class ObservabilityAuthAuditTests
         repo.Setup(r => r.InsertRefreshTokenAsync(It.IsAny<RefreshToken>()))
             .ReturnsAsync((RefreshToken t) => t);
         repo.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+        // Spec 30: no seeded organization memberships in the observability fixtures —
+        // sessions resolve to platform-only (no `org` claim), exactly like pre-spec-30.
+        repo.Setup(r => r.GetActiveOrganizationMembershipsAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((System.Collections.Generic.IReadOnlyList<OrganizationMember>)new System.Collections.Generic.List<OrganizationMember>());
+        repo.Setup(r => r.FindActiveOrganizationMemberAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync((OrganizationMember?)null);
         return repo;
     }
 
@@ -138,7 +145,8 @@ public class ObservabilityAuthAuditTests
             BuildConfig(),
             Mock.Of<ILogger<AuthService>>(),
             Mock.Of<IEmailService>(),
-            audit.Mock.Object);
+            audit.Mock.Object,
+            new TokenService(BuildConfig()));
     }
 
     // ────────────────────────── login ──────────────────────────
@@ -223,7 +231,7 @@ public class ObservabilityAuthAuditTests
 
         var sut = BuildService(repo, out var audit);
 
-        var response = await sut.RefreshAsync(rawToken);
+        var response = await sut.RefreshAsync(rawToken, requestedOrganizationId: null);
 
         Assert.Null(response);
         repo.Verify(r => r.RevokeFamilyAsync(user.Id, revokedToken.FamilyId, It.IsAny<DateTime>()), Times.Once);
@@ -256,7 +264,7 @@ public class ObservabilityAuthAuditTests
 
         var sut = BuildService(repo, out var audit);
 
-        var response = await sut.RefreshAsync(rawToken);
+        var response = await sut.RefreshAsync(rawToken, requestedOrganizationId: null);
 
         Assert.NotNull(response);
         Assert.Contains(audit.Rows, e => e.Action == "Auth.Refresh" && e.ActorId == user.Id);
@@ -321,7 +329,8 @@ public class ObservabilityAuthAuditTests
             BuildConfig(),
             Mock.Of<ILogger<AuthService>>(),
             Mock.Of<IEmailService>(),
-            throwing.Mock.Object);
+            throwing.Mock.Object,
+            new TokenService(BuildConfig()));
 
         var response = await sut.LoginAsync(new LoginRequest { Email = user.Email, Password = "whatever-password" });
 

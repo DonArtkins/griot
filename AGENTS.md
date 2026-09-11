@@ -3,7 +3,7 @@
 ## Current working-tree checkpoint — 2026-09-11
 
 Backend 29 (multi-tenant foundation) is IMPLEMENTED on
-`feature/backend/29-multi-tenant-foundation-organizations` — commits `9447e15`, `9f7400e`
+`feature/backend/29-multi-tenant-foundation-organizations` — commits `9447e15`, `9f7400e` (+ CodeRabbit review-fix follow-up `52cb862`, pushed 2026-09-12)
 (fail-closed `ITenantContext` scoping, `OrganizationId` on tenant tables + observability
 stamps, migration `20260911190926` with all Organization FKs ON DELETE NO ACTION, ERD
 Amendment v2; build 0W/0E, 152 tests passed / 8 SQL-skipped; the database was rebuilt
@@ -12,9 +12,12 @@ Pushed after explicit user approval (2026-09-11). **All gates are CLOSED (2026-0
 the tenancy ERD was approved by the operator and exported as
 `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png` + `griot-erd3-v2.0.0.png` (amendment: APPROVED +
 EXPORTED), the migration-apply gate closed earlier, and spec 29 is ✅ COMPLETE.**
-Next: backend 30 (Auth & JWT v2) on its own feature branch
-(`feature/backend/30-auth-jwt-v2`). Roadmap §P0.5 governs: 29 ✅ → 30 → 31 → 32 →
-33 → 34 → 35, then the hardening sequence. This checkpoint supersedes older
+Backend 30 (Auth & JWT v2) is IMPLEMENTED 2026-09-12 on `feature/backend/30-auth-jwt-v2`
+(TokenService v2 claims `name`/`org`/`role`/`perms` + org session routes + stateless refresh
+pin + key policy/rotation + SuperAdmin bootstrap; build 0W/0E; full suite 164 passed /
+8 skipped / 0 failed). Next: backend 31 (RBAC roles & custom permissions) on its own
+feature branch. Roadmap §P0.5 governs: 29 ✅ → 30 ✅ → 31 → 32 → 33 → 34 → 35,
+then the hardening sequence. This checkpoint supersedes older
 next-feature statements below. Read the [preflight and completion plan](docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
 and the backend tracker before proceeding.
 

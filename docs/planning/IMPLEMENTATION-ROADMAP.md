@@ -3,12 +3,14 @@
 **Created:** 2026-09-10 · **Status:** Authoritative
 **Companion docs:** `docs/DEPENDENCY-AUDIT.md` (within-system spec ordering) · `project-kit/context/integration-contracts.md` (wire contracts) · `scripts/check-contract-sync.py` (sync gate)
 
-**2026-09-11 checkpoint (updated):** backend 29 is IMPLEMENTED on
+**2026-09-12 checkpoint (updated):** backend 29 is IMPLEMENTED on
 `feature/backend/29-multi-tenant-foundation-organizations` (commit `9447e15`, pushed
-after explicit user approval). Its §P0.5 order governs: 29 → 30 → 31 → 32 → 33 → 34 →
-35, then hardening — never older shorthand that goes directly from 20 to 18. **Spec 29
-is ✅ COMPLETE (all gates closed 2026-09-11: tenancy ERD approved + v2 PNGs exported;
-migration apply verified up to date). Backend 30 (Auth & JWT v2) is next on its own
+after explicit user approval; review-fix follow-up `52cb862` pushed 2026-09-12) and backend 30
+is IMPLEMENTED on `feature/backend/30-auth-jwt-v2`. Its §P0.5 order governs: 29 ✅ → 30 ✅ → 31 →
+32 → 33 → 34 → 35, then hardening — never older shorthand that goes directly from 20 to 18.
+**Spec 29 is ✅ COMPLETE (all gates closed 2026-09-11) and spec 30 is ✅ IMPLEMENTED
+(2026-09-12: JWT v2 claims + org session + SuperAdmin bootstrap; build 0W/0E;
+164 passed / 8 skipped). Backend 31 (RBAC roles & custom permissions) is next on its own
 feature branch.**
 See the [preflight report](BACKEND-29-PREFLIGHT-2026-09-11.md) for the pre-implementation
 snapshot.
