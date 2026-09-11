@@ -49,7 +49,7 @@ Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, thrott
 
 1. Schema changes go through the ERD first (figma-make-erd skill), then a migration.
 2. Both REST and GraphQL share `Griot.Application` services — zero drift allowed.
-3. `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {Guid}` resolves to the restricted **real-user OBO** principal (role `ai-on-behalf-of`, scopes ReadWorkspace/CreateTask/AddComment/CreateNotification); `POST /api/webhooks/trigger` HMAC is verified by middleware (`Webhook:Secret` ?? `WEBHOOK_SECRET`) before auth; `TriggerDevClient` enqueues after persist (`Trigger:SecretKey` ?? `TRIGGER_SECRET_KEY`, never throws/rolls back).
+3. `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {Guid}` resolves to the restricted **real-user OBO** principal ONLY when an **unexpired `ServiceToken:Delegations:{userId}` grant** (UTC `ExpiresAtUtc`, `WorkspaceIds`, `Scopes`) binds the service identity to that user — allowed workspaces and narrowed scopes are derived from that grant, never from client headers alone. Role is `ai-on-behalf-of`, scope vocabulary ReadWorkspace/CreateTask/AddComment/CreateNotification (+ `CreateReport` PLANNED spec 24); `POST /api/webhooks/trigger` HMAC is verified by middleware (`Webhook:Secret` ?? `WEBHOOK_SECRET`) before auth; `TriggerDevClient` enqueues after persist (`Trigger:SecretKey` ?? `TRIGGER_SECRET_KEY`, never throws/rolls back).
 4. Every raw SQL / Dapper call is parameterized; stored procs are `usp_` prefixed and idempotent.
 5. Auth details (Argon2, 15-min JWT, refresh rotation with revocation-on-reuse) match spec 07 exactly.
 

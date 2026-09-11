@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 10). Kit written (12 specs). **Not started.** 9 of 12 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Specs 10–12 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
+**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10). Kit written (12 specs). **Not started.** 9 of 12 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Specs 10–12 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|

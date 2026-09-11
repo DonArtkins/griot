@@ -32,7 +32,7 @@ replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
 
-**v2 roster (spec 06, PLANNED):** `list_reports`, `get_report`, `generate_report`, `download_report`, `system_audit`, `get_audit_log`, `get_metrics` — same implementations as ai 06/07 via backend 20/24; v1 8-tool roster unchanged until mcp 02 ships; never OTP/auth/delete/invite/member tools.
+**v2 roster (spec 06, PLANNED):** `list_reports`, `get_report`, `generate_report`, `download_report`, `system_audit`, `get_audit_log`, `get_metrics` — same implementations as ai 06/07 via backend 20/24/25; v1 8-tool roster unchanged until mcp 02 ships; never OTP/auth/delete/invite/member tools.
 
 ## Trusted MCP identity and writes
 

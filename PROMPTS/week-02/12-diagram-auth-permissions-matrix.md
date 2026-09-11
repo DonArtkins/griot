@@ -77,5 +77,5 @@ STYLE: light canvas (#F7F8FA), white boxes with 1px hairlines, token-named fills
 - [ ] ai-on-behalf-of column uses dashed border; propose-only cells are yellow (P), not green
 - [ ] MCP external tool access row: ai-on-behalf-of = ❌ (executor, not caller) — no conflict with other rows
 - [ ] Two-path annotation present: MCP-tool path (executor route + token) vs in-app Copilot path (propose-only, user executes)
-- [ ] 404-not-403 + propose-only + GRIOT_SERVICE_TOKEN scope notes in footer
+- [ ] AI-OBO-403 + 404-for-ownership/existence + propose-only + GRIOT_SERVICE_TOKEN scope notes in footer
 - [ ] Approved → PNG → `diagrams/architecture/auth-permissions-matrix.png`

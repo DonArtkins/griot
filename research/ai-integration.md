@@ -179,7 +179,7 @@ server.tool("create_task", { title: z.string(), columnId: z.string() }, async (i
 // stdio (local CLIs) OR Streamable HTTP (Docker/Railway + web apps)
 ```
 
-**Tool roster (v1):** `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `add_comment`, `get_activity_feed`, `summarize_project` (calls the LLM agent). **Clients:** Claude Desktop (`claude mcp add`), Cursor (`@Griot /mcp`), VS Code Copilot, Cline, plus Griot's own agents.
+**Tool roster (v1):** `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `add_comment`, `get_activity_feed`, `summarize_project` (deterministic backend-data aggregation over permitted reads — not a direct agent/LLM call). **Clients:** Claude Desktop (`claude mcp add`), Cursor (`@Griot /mcp`), VS Code Copilot, Cline, plus Griot's own agents.
 
 ## 7. Security & cost guardrails (also the Week-6 OWASP surface)
 

@@ -39,7 +39,7 @@ Root shared skills (`contract-sync`, `git-branch-flow`, `throttling-prevention`)
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P1 — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 10).** Own order: **01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09**, then the P2 AI hop (ai 01 → ai 02) unblocks **spec 10 (Copilot panel)**; **spec 11 (AI Reports & Audit Center — award-grade UX, `inspo/`) starts after ai 06/07 + backend 24; spec 12 (dedicated AI Workspace sidebar — charts, threads, report composition, SuperAdmin ops console) starts after ai 09 + backend 26**. Do not start 10 before ai 02 exists. Entry branch: `feature/web/01-react-setup-vite`. Track state in `web/project-kit/context/progress-tracker.md`.
+**Phase P1 — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10).** Own order: **01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09**, then the P2 AI hop (ai 01 → ai 02) unblocks **spec 10 (Copilot panel)**; **spec 11 (AI Reports & Audit Center — award-grade UX, `inspo/`) starts after ai 06/07 + backend 24; spec 12 (dedicated AI Workspace sidebar — charts, threads, report composition, SuperAdmin ops console) starts after ai 09 + backend 26**. Do not start 10 before ai 02 exists. Entry branch: `feature/web/01-react-setup-vite`. Track state in `web/project-kit/context/progress-tracker.md`.
 
 ## Verification Gates
 

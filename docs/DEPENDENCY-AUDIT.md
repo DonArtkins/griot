@@ -5,7 +5,7 @@
 
 > **2026-09-10:** This file audits *within-system* spec ordering. The **cross-system layer order** (which system's which spec comes next, and why) is now canonical in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — P0 backend 09→20→18→19→22→21→23→11→28→24→25→26→27→10 (2026-09-10 observability/hardening wave + 2026-09-11 AI-superpowers/OTP/BI wave inserted; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` §3 + ADR-004) → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–10 (web 11/12 inserted at their dependency points) → P3 mobile → P4 infra → P5 mcp (06) → P6 qa. It also resolves the web 10 ↔ ai 02 circular reference (see the roadmap P2 section and the build-order note added to `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`).
 
-> **2026-09-11:** New PLANNED specs — backend **23** (critical-action OTP/step-up), backend **24** (AI reports & export surface + FIFTH OBO scope `CreateReport`), ai **06–08** (knowledge+auditor · reports PDF/CSV · advanced executor), web **11** (Reports & Audit Center), mcp **06** (v2 report/audit tools). Roadmap P0: … → 21 → 23 → 11 → 28 → 24 → 10; P2 adds ai 06 → ai 07 → web 11 → ai 08; P5 adds mcp 06. No AI spec touches auth/OTP (backend 23).
+> **2026-09-11:** New PLANNED specs — backend **23** (critical-action OTP/step-up), backend **24** (AI reports & export surface + FIFTH OBO scope `CreateReport`), backend **25** (role-tiered log access + AI capability gateway), backend **26** (AI memory & conversations), backend **27** (incident alerting + confirmed broadcasts), backend **28** (project lifecycle report evidence), ai **06–12** (knowledge+auditor · reports PDF/CSV · advanced executor · agentic BI copilot · SuperAdmin ops agent · institutional memory · assignment suggestions), web **11–12** (Reports & Audit Center, AI Workspace sidebar), mcp **06** (v2 report/audit tools). Roadmap P0: … → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10; P2 adds ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10–12; P5 adds mcp 06. No AI spec touches auth/OTP (backend 23).
 
 ## Current audit — 2026-09-11
 
@@ -125,7 +125,7 @@ The AI 06/07 → web 11, AI 09 → web 12 and backend → AI/UI dependencies wer
 
 | 06 | Scoped knowledge/auditor | ai 05, backend 24/25/28 | Before web 11 |
 | 07 | Evidence template reports | ai 05, backend 24/25/28 | Before web 11 |
-| 08 | Approved executor | web 11, backend 20/24 | After web 11 |
+| 08 | Approved executor | web 11, backend 09/20/24/25 | After web 11 |
 | 09 | BI/threads/manifest | backend 25/26, ai 06/07 | Before web 12 |
 | 10 | Ops summaries/notices | backend 27, web 12 | After web 12 |
 | 11 | Institutional memory | backend 26/28, web 12 | After ai 10 |

@@ -1,6 +1,6 @@
 # Backend Feature 24 — Governed Reports, Generation Jobs and Exports [own-stack]
 
-**Status:** PLANNED. Existing `Report` rows do not imply that generation, download or approval workflows exist.
+**Status:** PLANNED. Existing `Report` rows do not imply that generation, download or approval workflows exist. One feature branch: `feature/backend/24-ai-reports-export-surface`.
 
 ## Type
 
@@ -24,7 +24,7 @@ Backend report/job DTOs/services/controllers, Report mapping/migration and Postm
 
 ## Setup / Initialization
 
-Existing entity: `Report(Id, WorkspaceId, Type, GeneratedBy, ContentJson, GeneratedAt, PromptContext?)`. Proposed additions after ERD approval: `Title`, `CreatorUserId`, `Status` (`queued/running/completed/failed`), `DeletedAt`. `ContentJson.schemaVersion = 1` holds project/evidence/source IDs and revisions, template version, UTC window, consistency/coverage metadata, typed aggregates, narrative and separate private blob references for PDF/CSV. GeneratedBy is display provenance; authorization uses backend-resolved CreatorUserId and workspace, never a client-supplied string. No arbitrary artifact URL is accepted or fetched. Migration `AddReportArtifacts` only after `diagrams/erd/ai-planning-amendments.md` approval.
+Existing entity: `Report(Id, WorkspaceId, Type, GeneratedBy, ContentJson, GeneratedAt, PromptContext?)`. Proposed additions after ERD approval: `Title`, `CreatorUserId`, `Status` (`queued/running/completed/failed`), `DeletedAt`, plus an **immutable `CreatedAt` (UTC, set once on row insert)** that anchors stable `(CreatedAt, Id)` cursors for list/aggregation pagination (GeneratedAt is the generation timestamp and is not the row-creation anchor). `ContentJson.schemaVersion = 1` holds project/evidence/source IDs and revisions, template version, UTC window, consistency/coverage metadata, typed aggregates, narrative and separate private blob references for PDF/CSV. GeneratedBy is display provenance; authorization uses backend-resolved CreatorUserId and workspace, never a client-supplied string. No arbitrary artifact URL is accepted or fetched. Migration `AddReportArtifacts` only after `diagrams/erd/ai-planning-amendments.md` approval.
 
 ## Template registry and eligibility
 

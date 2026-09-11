@@ -46,7 +46,7 @@ EXTERNAL SYSTEMS (plain boxes, right/bottom):
 ARROWS (label each):
 - Workspace Owner → Griot (HTTPS, via Web + Mobile)
 - Team Member → Griot (HTTPS, via Web + Mobile)
-- External AI clients → Griot (MCP: get_board, create_task, update_task_status, add_comment, summarize_project)
+- External AI clients → Griot (MCP: get_board, create_task, add_comment, summarize_project)
 - Postman/Newman → Griot (REST + GraphQL, contract tests)
 - Griot → Email provider (SMTP: invites, reminders, weekly digest)
 - Vercel → Griot (hosts web, serves Public + App shells)

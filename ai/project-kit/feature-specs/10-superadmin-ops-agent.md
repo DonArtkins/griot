@@ -1,25 +1,24 @@
 # AI Feature Spec 10 — SuperAdmin Ops Agent (Incident Summaries + Confirmed Broadcasts) [own-stack]
 
-**Status:** PLANNED — the two trust models from research: (A) autonomous monitoring → SuperAdmin alerting (read-only, informational, NO confirmation) and (B) broadcast composition (send/mutate: ALWAYS confirm). Backend: spec 27. UI: web 12.
+**Status:** PLANNED — the two trust models from research: (A) autonomous monitoring → SuperAdmin alerting (read-only, informational, NO confirmation) and (B) broadcast composition (send/mutate: ALWAYS confirm). Backend: spec 27. UI: web 12. One feature branch: `feature/ai/10-superadmin-ops-agent`.
 
 ## A. Incident summarizer (autonomous, no confirmation)
 
 - Triggered by backend 27's alert event (threshold breach).
-- Fetches the incident window via the READ surface only (raw `ErrorLogs` rows are SuperAdmin/Dev-only per backend 25 — the job runs as a SuperAdmin-OBO identity when SuperAdmin-only data is needed; otherwise it works on the redacted summary).
-- Drafts a plain-language incident summary: what broke, when, estimated affected users, likely cause (stack trace/AuditLogs diff) — reusing `LOGGING-AUDIT-REPORT.md` §5 query recipes.
-- Returns the draft to backend 27, which creates Brevo `admin` + in-app delivery intents in one transaction; actual channel delivery is independent. No confirmation needed (small trusted audience, informational, one-directional).
+- The agent receives ONLY the **permitted incident snapshot** that backend 27 builds from the operator-provisioned policy — never raw `ErrorLogs`, stack traces, or SuperAdmin-OBO reads. Backend 25 raw-log reads stay SuperAdmin/Dev-only and are never delegated to AI. Backend 27 records the outbox event + job identity for the summary run, and rejects any model-selected `X-On-Behalf-Of` value.
+- Before anything reaches the AI provider, backend 27 redacts the snapshot: sensitive content (secrets, tokens, PII, personal data, unrelated users) is removed from error/stack-trace/audit-diff material. A fixed output allowlist (what broke, when, estimated affected users, likely cause category, no raw snippets of secrets or other users' data) is applied to the generated draft before backend 27 creates Brevo `admin` + in-app delivery intents in one transaction; actual channel delivery is independent. No confirmation needed (small trusted audience, informational, one-directional), but the draft never contains data outside the allowlist.
 
 ## B. Broadcast composer (confirm gate, non-negotiable)
 
 - SuperAdmin intent ("tell all users the site is down … remind 1h before") → drafts email + in-app copy → resolves the recipient scope to an ACTUAL count and list preview.
 - **Nothing sends until the SuperAdmin confirms the preview in web 12** (one click; no retyping).
 - On confirm: backend 27 creates the immediate send job, the T-1 reminder Trigger.dev delayed task, the in-app notification, and the AuditLogs row. Every step cancellable before fire (backend 27 cancel endpoint; web 12 cancels from the same card).
-- Recipient resolution is a permission check at the tool layer (role-filter param validated against the caller's SuperAdmin authority — same RBAC principle as log access, applied to outbound actions).
+- Recipient resolution: the tool's role-filter check is an **optional early validation only** — backend 27 authoritatively resolves recipients and rechecks authorization during BOTH preview and confirmation, using the caller's backend-verified SuperAdmin authority (same RBAC principle as log access, applied to outbound actions). Confirmation is bound to the actor, the exact draft revision and an audience hash; direct, replayed or modified requests that bypass the tool layer are rejected.
 
 ## Boundaries
 
 - The ops agent itself never holds delivery secrets: it produces copy + intents; backend 27 owns Brevo/Trigger.dev sends. No LLM key or Brevo key in this agent's context beyond its own.
-- Idempotency: backend 27 keys bind actor, draft revision and audience hash. Re-click cannot double-send; a changed recipient list/time/copy requires a new preview and confirmation.
+- Delivery idempotency: backend 27 keys are scoped **per recipient, channel and event** (not just per batch) and provider delivery status is persisted for each key. Workers check per-delivery keys and persisted statuses before every send, so retries and partial provider responses can never repeat a successful delivery. Re-click cannot double-send; a changed recipient list/time/copy requires a new preview and confirmation.
 - After backend 20/27, everything lands in AuditLogs with the directing SuperAdmin's identity (backend 27) — no AI-initiated mass email without an audit trail.
 
 ## Dependencies

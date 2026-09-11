@@ -24,7 +24,7 @@ Backend task/member RBAC contract, ai 11, ai security skill, `research/ai-integr
 
 ## Setup / Initialization
 
-Resolve the caller and workspace from trusted execution context. Fetch all permitted candidate history using the shared exhaustive pagination helper. Reuse backend 26 lesson provenance; do not infer protected traits, health, personality, salary, private messages or hidden performance ratings. Task counts are workload indicators, not estimates of free hours.
+Resolve the caller and workspace from trusted execution context. **Bound the candidate-history query before invoking the AI provider**: use a bounded history window (e.g. last 12 months) or server-side aggregates, enforce a maximum row count and prompt-token cap, and apply a request timeout; exhaustive pagination is used only within that bounded query. Reuse backend 26 lesson provenance; do not infer protected traits, health, personality, salary, private messages or hidden performance ratings. Task counts are workload indicators, not estimates of free hours.
 
 ## Proposal and confirmation contract
 

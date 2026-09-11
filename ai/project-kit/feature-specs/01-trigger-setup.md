@@ -24,15 +24,18 @@ The `ai/` npm package initialized and connected to a Trigger.dev project: toolbo
 
 ## Setup / Initialization
 
+**Resolve the Trigger.dev version contract FIRST** — the current pre-scaffold `ai/package.json` pins `trigger.dev` **4.0.0** + `@trigger.dev/sdk` `^4.0.0` (and `ai/package.json`'s description says "v4"), while the architecture, examples and `stack-contract.md` describe **v3**. Resolve a supported compatible set, update `ai/package.json` **and** `ai/package-lock.json` (never the manifest alone), and update `stack-contract.md` + research if adopting v4. Only after the version is resolved do the login/init commands below use the pinned CLI. Do NOT run the bootstrap before this resolution.
+
 ```bash
 mkdir -p ai && cd ai
-npm ci
+npm ci   # installs the RESOLVED pinned CLI, not a drifted one
+npm exec -- trigger --version   # commit the result — must match the pinned version
 npm exec -- trigger login
 npm exec -- trigger init --project-ref <PROJECT_REF>
 # Resolve/review compatible exact SDK/react-hooks/zod versions before adding them.
 ```
 
-**Version pinning (mandatory):** Record the exact `trigger.dev` CLI version installed in `ai/package.json` under `devDependencies` (e.g. `"trigger.dev": "3.x.y"`). All subsequent `deploy` and `dev` commands (DEPLOYMENT.md, RUNBOOK-ROLLBACK.md) use the pinned version — never `@latest`. The current pre-scaffold manifest pins CLI 4.0.0 while the architecture says v3. Resolve this compatibility discrepancy explicitly before implementing ai 01: pin a supported compatible set and update stack-contract.md if adopting v4. No package upgrade is performed by this planning audit. Run `npm exec -- trigger --version` after init and commit the result.
+**Version pinning (mandatory):** Record the exact `trigger.dev` CLI version installed in `ai/package.json` under `devDependencies`. All subsequent `deploy` and `dev` commands (DEPLOYMENT.md, RUNBOOK-ROLLBACK.md) use the pinned version — never `@latest`. No package upgrade is performed by this planning audit; the version resolution above is the implementation entry gate per the review finding on the v3/v4 discrepancy.
 
 ## Files Owned
 

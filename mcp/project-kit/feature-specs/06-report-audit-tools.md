@@ -1,6 +1,6 @@
 # MCP Feature Spec 06 — Report & Audit Tools (v2 roster evolution) [own-stack]
 
-**Status:** PLANNED — lets external AI clients (Claude Desktop, Cursor, VS Code Copilot, Cline) use the same report/audit superpowers as the in-app Copilot (ai 06/07). The v1 8-tool roster (mcp 02) is a **fixed contract** and is NOT changed by this spec; v2 tools are new ids appended after mcp 02 ships and after backend 20/24 exist.
+**Status:** PLANNED — lets external AI clients (Claude Desktop, Cursor, VS Code Copilot, Cline) use the same report/audit superpowers as the in-app Copilot (ai 06/07). The v1 8-tool roster (mcp 02) is a **fixed contract** and is NOT changed by this spec; v2 tools are new ids appended after mcp 02 ships and after backend 20/24/25 exist (get_audit_log reads the backend-25 sanitized workspace audit surface).
 
 ## The v2 tool roster (ids are contracts)
 
