@@ -1,4 +1,4 @@
-# AI Integration — Griot Copilot, AI Agents & MCP (Trigger.dev v3)
+# AI Integration — Griot Copilot, AI Agents & MCP (Trigger.dev v4)
 
 > **Status: `[own-stack]` extension.** The bootcamp PDF defines no AI layer. This doc adds one that *wraps* the bootcamp stack and never replaces it (Now includes Level 4 Autonomous Reasoning, System Reports, and OTP 2FA per ai-features-research.md): .NET 8 + SQL Server stays the single source of truth; AI services read/write it **only through the API**. Everyone on the programme builds the mandated stack — this is the differentiator bolted on top.
 > **Why now:** 2025–26 is the era of AI agents, MCP (Model Context Protocol) and agent-powered UIs. Apps ship in-app copilots, chat-with-your-data, and connected "skills". Griot is a PM tool — a category where AI has *obvious* product value (sprint summaries, blocked-work detection, standups, task drafting). Adding it also makes the capstone portfolio-grade.
@@ -26,7 +26,7 @@
                         │  GraphQL/REST (Bearer)           │  Trigger realtime (WS)
                         ▼                                  ▼
         ┌─────────────────────────────┐        ┌──────────────────────────────┐
-        │  src/  ASP.NET Core 8 API   │        │  ai/  Trigger.dev v3 (Node 20)│
+        │  src/  ASP.NET Core 8 API   │        │  ai/  Trigger.dev v4 (Node 20)│
         │  REST + HotChocolate GraphQL│◄──────►│  agents.json · tasks · skills │
         │  SQL Server 2022 (source)   │  HTTP  │  MCP client connections       │
         │  /api/webhooks/trigger      │ -------│  LLM SDK (OpenAI/Anthropic)   │
@@ -88,7 +88,7 @@ griot/
 ├── src/            # .NET 8 API — UNCHANGED core (bootcamp)
 ├── web/            # Vite/React/MUI — UNCHANGED core (bootcamp) + features/copilot/
 ├── mobile/         # Flutter — UNCHANGED core (bootcamp)
-├── ai/             # NEW — Trigger.dev v3 project (Node 20, own .nvmrc, own lockfile)
+├── ai/             # NEW — Trigger.dev v4 project (Node 20, own .nvmrc, own lockfile)
 │   ├── trigger.config.ts
 │   └── src/
 │       ├── agents/      # griotCopilot.ts, standupWriter.ts, taskSplitter.ts
@@ -108,10 +108,11 @@ Both new dirs are **type-checked, linted, and tested inside the same GitHub Acti
 ```bash
 cd ~/sababisha/projects/gtp/griot/ai
 # Node 20 auto-switches via .nvmrc (no manual nvm use needed)
-npx trigger.dev@latest init --project-ref <PROJECT_REF> --api-url https://api.trigger.dev
+npm ci
+npm exec --no -- trigger init --project-ref <PROJECT_REF>
 # generates trigger.config.ts + .trigger/ registry + src/ sample task
 echo "ANTHROPIC_API_KEY=..." >> .env   # or OPENAI_API_KEY — both supported
-npm install @trigger.dev/sdk @trigger.dev/react-hooks
+npm ci # retain the reviewed 4.5.16 CLI/SDK/react-hooks set
 
 cd ~/sababisha/projects/gtp/griot/mcp
 npm init -y && npm i @modelcontextprotocol/sdk zod
@@ -122,41 +123,15 @@ npm init -y && npm i @modelcontextprotocol/sdk zod
 
 ## 5. Trigger.dev: scheduled workflows + on-demand agents
 
-```ts
-// ai/src/tasks/reminders.ts — a scheduled workflow (every day 08:00)
-import { task } from "@trigger.dev/sdk/v3";
+The runtime dependency contract is Trigger.dev v4 [own-stack], with CLI/SDK/react-hooks pinned to 4.5.16 (AI 01). This preserves commit `7e90c5b`; the [vendor migration notice](https://trigger.dev/docs/migrating-from-v3) rules out cloud v3 after July 1, 2026. Use `@trigger.dev/sdk` imports and the installed CLI after `npm ci`.
 
-export const dueReminders = task({
-  id: "due-reminders",
-  schedule: { cron: "0 8 * * *", timezone: "Africa/Nairobi" },
-  run: async ({ griotUrl, token }) => {
-    // 1. GraphQL: query tasks due within 48h per workspace
-    // 2. For each → create Notification via the API (same token)
-    // 3. Optional MCP skill call: post Slack digest
-  },
-});
-```
+Planned execution sequence (not a runnable SDK example):
 
-```ts
-// ai/src/agents/griotCopilot.ts — the in-app Copilot (conversational + tool-calling)
-import { agent, tool } from "@trigger.dev/sdk/v3";
-import { z } from "zod";
+1. The backend authorizes and stores schedules. Cron resolves that trusted schedule and a live delegation; it never accepts a model-selected user or service credential.
+2. A due-reminder task reads permitted backend data. Notification writes require backend 22; durable recovery requires backend 20. Neither exists merely because CreateNotification is a reserved scope.
+3. Copilot tasks call a separately verified LLM orchestration API and permission-scoped read tools. Mutations are proposals approved and executed by the app. No task-update, auth, delete or invite capability is granted to the model.
 
-export const griotCopilot = agent({
-  name: "griot-copilot",
-  model: { provider: "anthropic", model: "claude-sonnet-4-5", temperature: 0 },
-  system: "You are Griot's assistant. Answer ONLY from the tools. Never invent task statuses. Confirm before mutating.",
-  tools: [
-    tool({ name: "getBoard", description: "…", input: z.object({ boardId: z.string() }),
-           handler: async ({ boardId }) => boardApi.getBoard(boardId) }),
-    tool({ name: "createTask", description: "…", input: z.object({ title: z.string(), columnId: z.string() }),
-           handler: async (input) => taskApi.createTask(input) }),
-    // + updateTaskStatus, addComment
-  ],
-});
-```
-
-> Exact import names (e.g. `agent`, `tool`, MCP client helper) do move between Trigger.dev versions — the shape above is **illustrative**; pin to the SDK generated by `trigger.dev init`, which types against the CLI-generated registry. Concept stays: agents get typed tools; tools hit the .NET API; runs are replayable & observable.
+Verify scheduled-task and LLM-loop APIs against the pinned dependencies during AI 01/02; do not infer an `agent` or `tool` export from Trigger's task API.
 
 ## 6. Griot MCP server (the "Griot skills" external agents can use)
 
@@ -185,7 +160,7 @@ server.tool("create_task", { title: z.string(), columnId: z.string() }, async (i
 
 - **Service-to-service auth**: static long-lived `GRIOT_SERVICE_TOKEN` validated on the .NET side → with trusted `X-On-Behalf-Of: {real User.Id}` plus an unexpired server-side grant (ServiceToken:Delegations:{userId}, workspace IDs, scopes, UTC expiry) it resolves to a **real-user On-Behalf-Of (OBO) principal** (role `ai-on-behalf-of`; scope claims `ReadWorkspace`, `CreateTask`, `AddComment`, `CreateNotification` — no deletes, no invites, no member management), NOT a virtual `ai-agent` member. Contract: `docs/api/ai-service-token-contract.md`.
 - **Prompt-injection mitigation**: user text is treated as **data, not instructions**; tools apply their own project/workspace scoping; the agent system prompt bans tool-call modification of unrelated entities.
-- **Level 4 Reasoning & Mutation confirmation**: the agent operates a Level 4 reasoning loop, capable of planning multi-step actions. It returns a *proposed* action plan; the Copilot UI renders it ("Create task *…* in column *…*?") for the human to approve. Deterministic paths (digest/reminders) skip this.
+- **Level 4 Reasoning & Mutation confirmation**: the agent operates a Level 4 reasoning loop, capable of planning multi-step actions. It returns a *proposed* action plan; the Copilot UI renders it ("Create task *…* in column *…*?") for the human to approve. Deterministic digest/reminder deliveries skip per-run approval only for a backend-stored authorized schedule with idempotency; an OBO identity alone cannot create or authorize delivery. Incident alerts use backend 27's fixed operator-provisioned policy/audience; notice drafts still require human confirmation.
 - **Token/cost caps**: daily token budget per workspace recorded in Redis; alarms on over-budget runs.
 - **Audit**: every tool call logged with `workspaceId`, `tool`, `payloadHash`, `runId` — traceable across Trigger run ↔ MCP call ↔ .NET audit log.
 

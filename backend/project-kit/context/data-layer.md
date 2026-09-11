@@ -57,5 +57,9 @@ persistence; malformed refresh returns 401 and authenticated logout remains 204.
 linked chains by assigning their root IDs before requiring the column. See the
 linked auth contract for migration and real SQL Server regression tests.
 
+## Planned report and test-run schema corrections
+
+No migration is authorized here. Backend 24 proposes immutable Report.CreatedAt, backfilled once from GeneratedAt, for stable `(CreatedAt, Id)` report cursors. Backend 28 proposes typed nullable RunId/Page/TotalPages/TotalResults columns (required for test_run), unique `(WorkspaceId, ProjectId, RunId, Page)` and consistent run metadata. Report consumption requires every declared page, exact result count and globally unique case IDs within the run. Corrections append a new run; incomplete replacements invalidate eligibility. See the unapproved [schema review proposal](../../../docs/planning/AI-SCHEMA-PROPOSALS-2026-09-11.md).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

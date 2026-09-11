@@ -4,6 +4,13 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 
 ## [Unreleased] — 2026-09-11 (AI superpowers & critical-action OTP planning wave [own-stack])
 
+### Review corrections (2026-09-11)
+
+- Clarify planned notification availability, backend 10 dependencies, report creation cursors, test-run completeness and backend-owned incident authorization/delivery controls.
+- Synchronize the previously adopted Trigger.dev v4 contract and pin CLI/SDK/react-hooks to 4.5.16; v3 cloud is retired. Future AI/runtime features remain unimplemented.
+- Record review dispositions and the user-approved one-time planning PR grouping exception in `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+
+
 ### Added
 - **PLANNED specs (planning artifacts only — no production code yet):** backend **23** (critical-action OTP & step-up: login 2FA enforcement, forgot/reset password, delete account, guarded-op step-up via `RequireStepUp`, human-only surface — AI OBO 403), backend **24** (AI reports & export surface: `Report` rows, PDF/CSV artifacts via blob spec 11, `audit-summary`, planned FIFTH OBO scope `CreateReport`), ai **06** (Copilot knowledge agent + system auditor), ai **07** (report generation PDF + CSV), ai **08** (advanced Level-4 executor), web **11** (AI Reports & Audit Center — award-grade UX), mcp **06** (v2 report/audit tools).
 - **`docs/observability/HOW-LOGGING-WORKS.md`** — how logging works end-to-end: request lifecycle → four tables, correlation (`X-Request-Id` + ai runId), retention, worked example, AI attribution.

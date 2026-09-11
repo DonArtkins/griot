@@ -15,7 +15,7 @@ Griot is a project-management web app ("the accurate, shared record of what happ
 | 3 | Mobile | `mobile/` | Week 4 | Android companion (Flutter) |
 | 4 | DevOps / Infra | `infra/` | Week 5 | Docker/Compose, Vercel, Railway, CI/CD |
 | 5 | Quality Engineering | `qa/` | Weeks 6–7 | Test lifecycle, gates, reporting |
-| 6 | AI agents | `ai/` | [own-stack] | Trigger.dev v3 agents + Copilot |
+| 6 | AI agents | `ai/` | [own-stack] | Trigger.dev v4 agents + Copilot |
 | 7 | MCP server | `mcp/` | [own-stack] | External-AI access via MCP tools |
 
 Each system is self-contained: its own `AGENTS.md`, `.agents/skills/`, `project-kit/` (context + feature-specs + diagrams + examples). **The root `AGENTS.md` + this doc + root `project-kit/context/` link them into one system.**
@@ -31,7 +31,7 @@ Each system is self-contained: its own `AGENTS.md`, `.agents/skills/`, `project-
                         │         │                     │                  │
                         │         ▼                     ▼                  │
                         │   ┌──────────┐  realtime WS ┌─────────────────┐  │
-                        │   │  Vercel  │<────────────>│ Trigger.dev v3  │  │
+                        │   │  Vercel  │<────────────>│ Trigger.dev v4  │  │
                         │   │ web app  │   (Copilot)  │  ai/ (agents)   │  │
                         │   └────┬─────┘              └────────┬────────┘  │
                         │        │ HTTPS REST+GraphQL          │ GraphQL   │
@@ -75,7 +75,7 @@ _Rule that never changes: **AI (`ai/` + `mcp/`) only talks to the backend API** 
 5. Every tool call → `ActivityLogs`; state-changing writes also → `AuditLogs` (traceable runId ↔ payloadHash ↔ audit row).
 
 ### 3.3 Scheduled AI (digest/reminders)
-Trigger cron → agent → GraphQL (service token) → backend creates notifications. Durable + idempotent. Also triggers scheduled System Reports (digests) persisted to the database and accessible via the UI.
+PLANNED: Trigger cron → authorized backend-stored schedule → agent → permitted GraphQL reads. Scheduled notification writes are unavailable until backend 22 implements and authorizes its fan-out route; CreateNotification is currently reserved, with no creation route or mutation. Durable recovery requires backend 20. Scheduled reports additionally require backend 24. Current REST write operations are CreateTask and AddComment only, under the delegation described below.
 
 ### 3.4 Mobile
 Flutter app → same REST + GraphQL endpoints; refresh token in `flutter_secure_storage`; 401→refresh→retry-once.

@@ -24,7 +24,7 @@ The only intentional differences from the PDF are two kinds, both explicit and s
 
 > Net effect: **the research matches the bootcamp stack line-by-line** (so Weeks 2–6 deliverables quote the guide verbatim), the environment stays Parrot-friendly, and the places the guide is silent are filled with tools already in the toolbox — never with tools that must be learned from scratch.
 >
-> **2026 add-on:** an **AI agent + MCP layer** (Trigger.dev v3 agents/workflows, a Griot MCP server, an in-app Copilot) is folded in as an own-stack extension — see `ai-integration.md`. It *wraps* the bootcamp backend (AI reads/writes only via the .NET/GraphQL API with a scoped service token) and adds zero substitutions to the core stack.
+> **2026 add-on:** an **AI agent + MCP layer** (Trigger.dev v4 agents/workflows, a Griot MCP server, an in-app Copilot) is folded in as an own-stack extension — see `ai-integration.md`. It *wraps* the bootcamp backend (AI reads/writes only via the .NET/GraphQL API with a scoped service token) and adds zero substitutions to the core stack.
 
 ---
 
@@ -96,7 +96,7 @@ xUnit/NUnit → **xUnit** for .NET · Jest + RTL → exact · Flutter widget/int
 
 | Piece | Tool | Notes |
 |---|---|---|
-| Background workflows & agents | **Trigger.dev v3** (TypeScript, Node 20) | scheduled tasks (digests, reminders, stale-board) + on-demand agents (Griot Copilot). Lives in the GTP tree as `ai/` with its own lockfile. |
+| Background workflows & agents | **Trigger.dev v4** (TypeScript, Node 20) | scheduled tasks (digests, reminders, stale-board) + on-demand agents (Griot Copilot). Lives in the GTP tree as `ai/` with its own lockfile. |
 | Agent tool-calling | Trigger agent tools → .NET GraphQL/REST | AI never writes to SQL Server directly; only via the API with a scoped service token. |
 | Griot's MCP server (exposed) | `@modelcontextprotocol/sdk` (stdio + Streamable HTTP) | external AI clients (Claude Desktop, Cursor, VS Code Copilot, Cline) use Griot data as "Griot skills". |
 | MCP client (consumed) | Trigger.dev MCP connections | Griot's agents call external MCP servers (Slack, GitHub, Notion, Linear) as skills. |
@@ -144,7 +144,7 @@ Figma Make (the AI prototyping surface in the research screenshot) takes a struc
 | `week-05-deployment-devops.md` | Docker multi-stage, Compose (api + SQL Server), Vercel (Vite preset), Railway/ Render/Azure, GitHub Actions |
 | `week-06-quality-engineering-foundations.md` | **xUnit**/NUnit, Jest + RTL, Cypress, Newman, k6, OWASP on the owned auth, 80% gate |
 | `week-07-real-world-qe-practice.md` | Full QE cycle on the deployed system, Jira, UAT, exec summary, Awwwards readiness |
-| `ai-integration.md` | **Trigger.dev v3** agents/workflows, **Griot MCP server** + consumed MCP skills, Copilot UI, security & testing of the AI layer |
+| `ai-integration.md` | **Trigger.dev v4** agents/workflows, **Griot MCP server** + consumed MCP skills, Copilot UI, security & testing of the AI layer |
 
 ---
 
@@ -426,9 +426,10 @@ flutter                           # NOT YET INSTALLED on this machine — see go
 
 ```bash
 cd ~/sababisha/projects/gtp/griot/ai && nvm use     # .nvmrc → 20 (pinned)
-npx trigger.dev@latest login                 # connect to the Trigger.dev cloud project
-npx trigger.dev@latest init --project-ref <PROJECT_REF>
-npm install @trigger.dev/sdk @trigger.dev/react-hooks
+npm ci
+npm exec --no -- trigger login                 # connect to the Trigger.dev cloud project
+npm exec --no -- trigger init --project-ref <PROJECT_REF>
+npm ci # retain the reviewed 4.5.16 CLI/SDK/react-hooks set
 echo "ANTHROPIC_API_KEY=…" >> .env           # LLM keys live ONLY here, never in web/
 
 cd ~/sababisha/projects/gtp/griot/mcp && npm init -y
@@ -453,7 +454,7 @@ codium --version
 dbeaver --version 2>/dev/null || dpkg -l | grep dbeaver-ce   # confirm DBeaver is actually installed
 flutter doctor                                   # expect command-not-found until Flutter is installed — see §6.7
 nvm ls                                           # 20 present; personal default untouched
-npx trigger.dev@latest --version                # AI layer CLI (per-project)
+npm exec --no -- trigger --version                # AI layer CLI (per-project)
 npx @modelcontextprotocol/inspector --version   # MCP Inspector (per-project) — bare GUI form, not --env flags
 ```
 

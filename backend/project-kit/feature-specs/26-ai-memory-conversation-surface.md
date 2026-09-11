@@ -16,7 +16,7 @@ Backend 09 (restricted delegation), 18 (pagination), 20 (durable jobs/audit), 24
 
 ## Context To Read First
 
-Root integration contract, backend data-layer context, ai 09/11/12, `diagrams/erd/ai-planning-amendments.md`. Skills: dotnet-ef-core, contract-sync, Context7, documentation-standards.
+Root integration contract, backend data-layer context, ai 09/11/12, `docs/planning/AI-SCHEMA-PROPOSALS-2026-09-11.md`. Skills: dotnet-ef-core, contract-sync, Context7, documentation-standards.
 
 ## Files Owned
 

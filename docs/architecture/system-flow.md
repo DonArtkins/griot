@@ -49,7 +49,7 @@ AI NEVER writes to SQL Server directly; the human/app performs writes.
 ## 4. Scheduled AI digest
 
 ```
-Trigger cron (daily) → sprintDigest agent → GraphQL (service token) → ActivityLogs source → backend creates Notification rows → users see them next load.
+PLANNED: Trigger cron (daily) → backend-stored authorized schedule → sprintDigest → permitted GraphQL ActivityLogs reads. Notification creation remains unavailable until backend 22 ships its authorized fan-out route; CreateNotification is reserved today. Backend 20 must supply durable recovery and activity writers first.
 ```
 
 ## 5. External AI client (MCP)
