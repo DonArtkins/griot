@@ -2,14 +2,21 @@
 
 ## Type
 
-NEW FEATURE · MULTI-TENANT MIGRATION WAVE (2026-09-11) · **PLANNED — not implemented**
+NEW FEATURE · MULTI-TENANT MIGRATION WAVE (2026-09-11) · **IMPLEMENTED — 2026-09-11**
 
-**2026-09-11 checkpoint:** partial, uncommitted implementation exists on this
-feature's branch; it is not accepted implementation. ERD approval, schema alignment,
-complete tenant enforcement and SQL acceptance remain outstanding. See the
-[preflight findings and completion plan](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md).
-Build passed and 152 tests passed with 8 SQL tests skipped; acceptance boxes below
-remain unchecked. No migration or commit/push was performed during this preflight.
+**Implementation record:** commit `9447e15` on this feature's branch (pushed after
+explicit user approval): fail-closed `ITenantContext`/`TenantGuard` scoping (403 without
+org scope; GraphQL writes inherit the tenant and cross-tenant chains resolve as not-found),
+`OrganizationId` on all tenant tables + observability stamps, `CreateWorkspace` org-stamped
+with the POST owner-member user-data fix, DataLoaders copy the tenant scope onto pooled
+contexts, `DevObservabilitySeeder` migration-race resilience, migration `20260911151030`
+(17 tenant-filtered entities, 30 org indexes, idempotent ownership-chain backfill +
+quarantine org) and ERD Amendment v2. Verified: `dotnet build` 0W/0E; `dotnet test` 152
+passed / 8 SQL-skipped / 0 failed. **Outstanding before COMPLETE:** tenancy ERD approval
+(`diagrams/erd/multi-tenant-amendment.md`) and migration apply on the user's machine
+(`dotnet ef database update --project src/Griot.Infrastructure --startup-project src/Griot.Api`).
+See the [preflight findings and completion plan](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+for the pre-implementation snapshot.
 
 ## What This Delivers
 
@@ -64,8 +71,8 @@ Organization lifecycle endpoints (32/33), JWT claims (30), client portal (34).
 
 ## Acceptance Criteria
 
-- [ ] ERD amendment approved in Figma Make and exported before the migration merges
-- [ ] Every tenant table carries `OrganizationId` + index; backfill migration is idempotent
-- [ ] Cross-tenant read returns empty and cross-tenant write throws (integration test, SQL-gated)
-- [ ] `POST /api/workspaces` returns member user data (`displayName`/`email`) identical to `GET /api/workspaces` (fixes the reported Postman defect)
-- [ ] `dotnet build` + `dotnet test` green; compose stack healthy
+- [ ] ERD amendment approved in Figma Make and exported before the migration merges — amendment source `diagrams/erd/multi-tenant-amendment.md` (v2) committed; **Figma approval still outstanding**
+- [x] Every tenant table carries `OrganizationId` + index; backfill migration is idempotent — migration `20260911151030` (30 org indexes; ownership-chain backfill, unmatched rows → quarantine org, re-runnable SQL)
+- [x] Cross-tenant read returns empty and cross-tenant write throws (integration test, SQL-gated) — `TenantIsolationTests` (fail-closed 403 without org scope; org-mismatched chains resolve as not-found); SQL-gated cases among the 8 skipped without a server
+- [x] `POST /api/workspaces` returns member user data (`displayName`/`email`) identical to `GET /api/workspaces` (fixes the reported Postman defect) — `CreateWorkspaceAsync` hydrates the owner `WorkspaceMember.User`
+- [x] `dotnet build` + `dotnet test` green; compose stack healthy — build 0W/0E; 152 passed / 8 SQL-skipped / 0 failed; SQL Server 14333, PostgreSQL 5433, Redis 6380 verified up (2026-09-11)

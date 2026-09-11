@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10). Kit written (12 specs). **Not started.** 9 of 12 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Specs 10–12 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
+**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (roadmap §P0.5 first: backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35, then 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10). Kit written (12 specs). **Not started.** 9 of 12 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Specs 10–12 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|
@@ -43,7 +43,7 @@
 
 ## Audit synchronization — 2026-09-11
 
-Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ## CodeRabbit follow-up — 2026-09-11
 

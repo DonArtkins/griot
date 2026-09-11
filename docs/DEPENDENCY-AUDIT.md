@@ -3,10 +3,12 @@
 **Generated:** 2026-09-08 · **Updated:** 2026-09-11
 **Purpose:** System-wide audit of all feature spec dependencies to ensure correct implementation order and prevent dependency violations.
 
-**2026-09-11 working-tree checkpoint:** roadmap §P0.5 governs the next features:
-29 → 30 → 31 → 32 → 33 → 34 → 35 after 20, then hardening. Backend 29 already has
-incomplete uncommitted work; its ERD and acceptance gates are outstanding. Do not
-advance to 30. The [preflight report](planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+**2026-09-11 checkpoint (updated):** roadmap §P0.5 governs the next features:
+29 → 30 → 31 → 32 → 33 → 34 → 35, then hardening. Backend 29 is IMPLEMENTED (commit
+`9447e15` on `feature/backend/29-multi-tenant-foundation-organizations`, pushed after
+explicit user approval); its remaining gates are the tenancy ERD approval + migration
+apply — do not advance to 30 until they close. The
+[preflight report](planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
 supersedes older current/next-feature statements below without changing the
 approved sequence or treating planning as completed implementation.
 

@@ -13,9 +13,16 @@ namespace Griot.Infrastructure.Persistence;
 /// </summary>
 public static class TenantDbContextExtensions
 {
+    /// <summary>
+    /// Spec 29: copies the active scope (tenant + SuperAdmin flag) into a freshly
+    /// created context. The pooled-factory wrapper in Program.cs calls this for
+    /// every scoped context; DataLoader paths must resolve the ambient tenant the
+    /// same way (never a caller-supplied id).
+    /// </summary>
     public static GriotDbContext WithTenant(this GriotDbContext context, ITenantContext tenant)
     {
         context.TenantId = tenant.OrganizationId;
+        context.IsSuperAdmin = tenant.IsSuperAdmin;
         return context;
     }
 }

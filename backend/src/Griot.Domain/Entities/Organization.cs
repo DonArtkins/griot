@@ -20,8 +20,10 @@ public class Organization
 
     public Griot.Domain.Enums.OrganizationStatus Status { get; set; } = Griot.Domain.Enums.OrganizationStatus.Active;
     /// <summary>
-    /// Display/billing metadata (spec 29). Mapped to column <c>PlanName</c>
-    /// because <c>Plan</c> is a T-SQL reserved keyword.
+    /// Display/billing metadata (spec 29 — ERD amendment v2 `Plan`).
+    /// The CLR property is <c>PlanName</c> mapped to column <c>PlanName</c>
+    /// because <c>Plan</c> is a T-SQL reserved keyword; contract/spec docs
+    /// and the Figma amendment keep calling the field `Plan`.
     /// </summary>
     public Griot.Domain.Enums.OrganizationPlan PlanName { get; set; } = Griot.Domain.Enums.OrganizationPlan.Free;
 

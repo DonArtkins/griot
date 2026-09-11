@@ -16,9 +16,23 @@ public sealed class TenantContext : ITenantContext
     /// <summary>Sets the ambient tenant scope (middleware + tests only).</summary>
     public static void SetCurrent(Guid? organizationId) => Current.Value = organizationId;
 
+    /// <summary>
+    /// Spec 29: SuperAdmin flag travels on the ambient scope too — the middleware
+    /// marks platform principals, and the pooled-factory wrapper must copy it onto
+    /// each scoped context so org-wide reads stay resolvable without a tenant id.
+    /// (The DI registration stays scoped, so the flag never leaks across requests.)
+    /// </summary>
+    private static readonly System.Threading.AsyncLocal<bool> SuperAdminFlag = new();
+
+    public static void SetSuperAdmin(bool value) => SuperAdminFlag.Value = value;
+
     public Guid? OrganizationId => Current.Value;
 
-    public bool IsSuperAdmin { get; set; }
+    public bool IsSuperAdmin
+    {
+        get => SuperAdminFlag.Value;
+        set => SuperAdminFlag.Value = value;
+    }
 
     public void WithTenantScope(Guid? organizationId, Action action)
     {

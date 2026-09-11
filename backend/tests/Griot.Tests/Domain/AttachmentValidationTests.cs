@@ -27,11 +27,13 @@ public class AttachmentValidationTests
 
     private static (DomainService Service, Mock<IGenericRepository<Attachment>> Attachments) BuildService()
     {
-        var task = new TaskItem { Id = TaskId, ColumnId = Guid.NewGuid() };
-        var column = new Column { Id = task.ColumnId, BoardId = Guid.NewGuid() };
-        var board = new Board { Id = column.BoardId, ProjectId = Guid.NewGuid() };
-        var project = new Project { Id = board.ProjectId, WorkspaceId = WorkspaceId };
-        var workspace = new Workspace { Id = WorkspaceId, OwnerId = UserId };
+        // Spec 29: fixtures stamp the required tenant column — the tenant scope
+        // below is WorkspaceId, so every row in the chain carries it.
+        var task = new TaskItem { Id = TaskId, ColumnId = Guid.NewGuid(), OrganizationId = WorkspaceId };
+        var column = new Column { Id = task.ColumnId, BoardId = Guid.NewGuid(), OrganizationId = WorkspaceId };
+        var board = new Board { Id = column.BoardId, ProjectId = Guid.NewGuid(), OrganizationId = WorkspaceId };
+        var project = new Project { Id = board.ProjectId, WorkspaceId = WorkspaceId, OrganizationId = WorkspaceId };
+        var workspace = new Workspace { Id = WorkspaceId, OwnerId = UserId, OrganizationId = WorkspaceId };
 
         var users = new Mock<IGenericRepository<User>>();
         var workspaces = new Mock<IGenericRepository<Workspace>>();

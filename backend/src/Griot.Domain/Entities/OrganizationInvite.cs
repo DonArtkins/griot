@@ -18,7 +18,8 @@ public class OrganizationInvite
     public Guid? CustomRoleId { get; set; }
     public virtual Role? CustomRole { get; set; }
     public string Token { get; set; } = string.Empty;
-    public InviteStatus Status { get; set; } = InviteStatus.Pending;
+    /// <summary>Lifecycle of the org invite; resolves into an org membership on accept (spec 32).</summary>
+    public OrganizationMemberStatus Status { get; set; } = OrganizationMemberStatus.Invited;
     public Guid InvitedById { get; set; }
     public virtual User InvitedBy { get; set; } = null!;
     public DateTime ExpiresAt { get; set; }

@@ -1,7 +1,7 @@
 # Griot Multi-Tenancy Guide — Companies, Lifecycle, Roles, Client Support, Critical-Action OTP & Safe Deletion [own-stack]
 
 **Created:** 2026-09-11 · **Last updated:** 2026-09-11 (OTP + account-deletion-request + destructive-safety wave)
-**Status:** PLANNING WAVE — implementation-ready contract (no production code yet; each section ships on its owning spec branch)
+**Status:** SPEC 29 IMPLEMENTED (2026-09-11, commit `9447e15` on `feature/backend/29-multi-tenant-foundation-organizations` — schema + Pool-model isolation live; organization lifecycle/read surface ships with specs 30–35). Contract sections below remain authoritative; ERD amendment awaits Figma approval before 29 is marked complete.
 **Source of research:** `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md` (v1.0.0) + `research/ai-features-research.md` §1/§3.6 (OTP/step-up) + `research/ai-integration.md` §2a (AI boundary)
 **Owner:** backend spec 29 (foundation) — dependents: backend 30–51, all other systems' bumped specs
 **Contract-sync:** every cross-system surface in this file is mirrored in `project-kit/context/integration-contracts.md`, `docs/api/auth-contract.md`, `docs/communication/COMMUNICATION-GUIDE.md`, `docs/observability/HOW-LOGGING-WORKS.md`, `diagrams/erd/multi-tenant-amendment.md`, and each owning spec (23/21/22/32/33 + web 13/14 + mobile 08/09 + qa 14). Planned behavior is labeled PLANNED and is not acceptance evidence until its owning spec ships.

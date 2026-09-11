@@ -94,14 +94,19 @@ namespace Griot.Infrastructure.Migrations
                 name: "OrganizationId",
                 table: "ActivityLogs",
                 type: "uniqueidentifier",
-                nullable: false);
+                // Amendment v2: observability OrganizationId is nullable (null =
+                // platform-level event), consistent with ApiLogs/ErrorLogs/AuditLogs.
+                nullable: true);
 
             // Spec 29 backfill (idempotent): one legacy organization per pre-existing
             // owner (workspace owners + activity actors), rows reassigned through the
             // ownership chain, leftovers quarantined under the 'legacy-quarantine'
             // org so nothing silently drops out of scope. Re-runs are no-ops.
-
-
+            //
+            // Approved ERD path (amendment v2): per-owner legacy companies with the
+            // quarantine fallback. The deterministic alternative (single bootstrap
+            // org, spec 37) is deferred to the spec-37 revision migration; this spec
+            // only needs existing data to survive with a stable, queryable mapping.
 
             migrationBuilder.CreateTable(
                 name: "Organizations",
@@ -310,10 +315,15 @@ namespace Griot.Infrastructure.Migrations
                 LEFT JOIN dbo.Workspaces w ON w.OwnerId = n.UserId
                 WHERE n.OrganizationId = '00000000-0000-0000-0000-000000000000';
 
+                -- Amendment v2: ActivityLogs carry nullable OrganizationId (orphaned /
+                -- platform rows legitimately keep NULL). Only stamped rows from live
+                -- workspaces are remapped here; the ISNULL fallback would hide orphans.
                 UPDATE a SET a.OrganizationId = w.OrganizationId
                 FROM dbo.ActivityLogs a JOIN dbo.Workspaces w ON w.Id = a.WorkspaceId
                 WHERE a.OrganizationId = '00000000-0000-0000-0000-000000000000';
 
+                -- Backfill uses the approved OrganizationMemberStatus vocabulary
+                -- (Invited/Active/Suspended), not the workspace-invite lifecycle.
                 INSERT INTO dbo.OrganizationMembers (Id, OrganizationId, UserId, Role, CustomRoleId, Status, JoinedAt)
                 SELECT NEWID(), w.OrganizationId, w.OwnerId, 'Owner', NULL, 'Active', SYSUTCDATETIME()
                 FROM dbo.Workspaces w
@@ -460,7 +470,9 @@ namespace Griot.Infrastructure.Migrations
                 column: "OrganizationId",
                 principalTable: "Organizations",
                 principalColumn: "Id",
-                onDelete: ReferentialAction.Restrict);
+                // Amendment v2: org removal = full cascade to children (spec 33
+                // offboarding purge); suspension blocks writes without deleting.
+                onDelete: ReferentialAction.Cascade);
         }
 
         /// <inheritdoc />

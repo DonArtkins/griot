@@ -10,7 +10,9 @@ public sealed record AuditEntry(
     Guid EntityId,
     string? Before,
     string? After,
-    Guid? ActivityId = null);
+    Guid? ActivityId = null,
+    // Spec 29: tenant stamp resolved by the caller at write time (null = platform/legacy).
+    Guid? OrganizationId = null);
 
 /// <summary>Input for one ActivityLogs row (spec 20, user-facing subset of mutations).</summary>
 public sealed record ActivityEntry(
@@ -19,7 +21,9 @@ public sealed record ActivityEntry(
     string EntityType,
     Guid EntityId,
     string Action,
-    string? Payload);
+    string? Payload,
+    // Spec 29: tenant stamp resolved by the caller at write time (null = platform/legacy).
+    Guid? OrganizationId = null);
 
 /// <summary>
 /// Audit trail writer (spec 20, pipeline §3–4 + failure isolation hard rule):

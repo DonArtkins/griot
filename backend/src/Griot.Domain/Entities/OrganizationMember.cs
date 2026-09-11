@@ -23,6 +23,6 @@ public class OrganizationMember
     public Guid? CustomRoleId { get; set; }
     public virtual Role? CustomRole { get; set; }
 
-    public InviteStatus Status { get; set; } = InviteStatus.Pending;
+    public OrganizationMemberStatus Status { get; set; } = OrganizationMemberStatus.Invited;
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
 }
