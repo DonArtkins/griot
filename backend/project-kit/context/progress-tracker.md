@@ -2,7 +2,7 @@
 
 ## Current State
 
-Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propagation) on `feature/backend/09-ai-service-token-and-webhooks`: build 0W/0E, SQL-enabled tests **108 passed / 0 skipped / 0 failed** (current 2026-09-11 follow-up result; the historical 2026-09-10 Spec 09 baseline was 71 passed); `/health` reports `Healthy`. **No hardcoded GUIDs or pseudo users exist in runtime logic** (only in test fixtures, grandfathered). The 2026-09-10 observability/hardening wave is **next**: spec **20** (observability pipeline — ApiLogs/ErrorLogs/AuditLogs/ActivityLogs writers + exception-handler persistence) is the first gate.
+Week 2. Spec 20 is implemented on `feature/backend/20-observability-logging-pipeline` (2026-09-11): all four observability tables have writers — `ApiLoggingMiddleware` (every request incl. 401/404/429, masked IPs, redacted query secrets, `DurationMs ≥ 1`), global handler → `ErrorLogs` + RFC 7807 `application/problem+json`, `IAuditService` rows committed in the same SQL transaction as every state-changing write (domain mutations + `ErrorLog.FixStatusChanged` triage + auth events: login, attributable login failure, refresh, replay-revoke, logout), `ActivityLogs` feed writer, and `usp_PruneObservabilityLogs` retention (SQL-gated integration test green against the local SQL Server container). Build 0W/0E; unit suite green (see Next Steps note for the exact current run). The durable outbox/webhook-inbox/idempotency store inside spec 20 stays PLANNED until Trigger.dev callers ship (webhook remains 503 on valid HMAC by design). **Next spec: 18 (search/filter/pagination/sorting)** on its own feature branch.
 
 | Spec | Title | Status |
 |---|---|---|
@@ -25,7 +25,7 @@ Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propaga
 | 17 | Attachments (metadata) & Webhooks | ✅ Done |
 | 18 | Search, filtering, pagination & sorting | 📋 Spec written (PLANNED) — implementation after 20 |
 | 19 | Caching & rate limiting | 📋 Spec written (PLANNED) — after 18 |
-| 20 | Observability & logging pipeline (ApiLogs/ErrorLogs/AuditLogs/ActivityLogs) | 📋 Spec written (PLANNED) — **first hardening gate** |
+| 20 | Observability & logging pipeline (ApiLogs/ErrorLogs/AuditLogs/ActivityLogs) | ✅ Done (2026-09-11: middleware + RFC 7807 handler + same-transaction audit/activity + auth audit events + retention proc + runId/index migration; durable outbox/webhook-inbox/idempotency store inside spec 20 stays PLANNED until Trigger.dev callers ship) |
 | 21 | Database resilience: triggers, backups & restore | 📋 Spec written (PLANNED) — after 22 |
 | 22 | Notification fan-out (in-app + Brevo email) | 📋 Spec written (PLANNED) — after 19 |
 | 23 | Critical-action OTP & step-up [own-stack] | 📋 Spec written (PLANNED) — after 21 |
@@ -39,7 +39,7 @@ Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propaga
 
 ## Next Steps
 
-1. Implement spec **20** (Observability & logging pipeline) on its own feature branch — audit-log / error-log / activity-log writer methods + exception handler middleware persistence + DashboardController writer routes are the deliverables. **Why first:** every route currently returns 200/401/403/404 but *nothing writes* to ApiLogs/ErrorLogs/AuditLogs/ActivityLogs tables — CWE-778 (insufficient logging) blocks any meaningful QA 06/07 OWASP pass. Rationale + per-concern gap: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004.
+1. Implement spec **18** (Search, filtering, pagination & sorting) on its own feature branch `feature/backend/18-…` — the uniform capped/whitelisted query contract over all list endpoints, building directly on spec 20's now-live log routes. Spec 20 was delivered on `feature/backend/20-observability-logging-pipeline` (2026-09-11): unit + SQL-gated suites green (**154 passed / 0 skipped / 0 failed**, SQL-gated run incl. `ObservabilityPruneSqlTests` against the local SQL Server container; plain run 146 passed / 8 skipped). Rationale + per-concern gap: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004.
 2. Then the **hardening wave**: **20** → **18** (search/filter/pagination/sorting) → **19** (Redis cache-aside + per-route rate-limit partitions + GraphQL cost caps) → **22** (notification fan-out in-app + Brevo email) → **21** (DB audit triggers + FULL/DIFF/LOG backup chain + restore drill).
 3. Then **23** (Critical-action OTP & step-up — login 2FA enforcement, forgot/reset password, delete account, guarded-op step-up; human-only surface — AI OBO callers 403; Brevo single verified sender; spec 23).
 4. Then **11** (Blob storage — Cloudinary via `CloudinaryDotNet`; unblocks web 07 + mobile attachment upload UI so the Web phase never stalls on a backend detour; also backs spec-24 report artifacts). Spec 11 decision matrix + R2 path: `backend/project-kit/feature-specs/11-blob-storage-cloudinary.md`.

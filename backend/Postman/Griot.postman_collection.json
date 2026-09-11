@@ -2671,7 +2671,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/logs/audit?entityType=TaskItem&page=1&pageSize=25",
+              "raw": "{{baseUrl}}/api/logs/audit?entityType=Task&page=1&pageSize=25",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2683,7 +2683,7 @@
               "query": [
                 {
                   "key": "entityType",
-                  "value": "TaskItem"
+                  "value": "Task"
                 },
                 {
                   "key": "page",
@@ -2719,7 +2719,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/logs/audit?entityType=TaskItem&entityId={{taskId}}",
+              "raw": "{{baseUrl}}/api/logs/audit?entityType=Task&entityId={{taskId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2731,7 +2731,7 @@
               "query": [
                 {
                   "key": "entityType",
-                  "value": "TaskItem"
+                  "value": "Task"
                 },
                 {
                   "key": "entityId",
@@ -2746,8 +2746,16 @@
               "script": {
                 "exec": [
                   "pm.test('trail endpoint reachable', () => pm.expect([200,403]).to.include(pm.response.code));",
-                  "// TOLERANT today (tables empty until backend spec 20 ships). When spec 20 lands, tighten to:",
-                  "// pm.test('audit rows exist for the task created by folder 7', () => pm.expect(pm.response.json().items.length).to.be.above(0));"
+                  "// Spec 20 shipped the durable audit trail (AuditLogs rows are mandatory",
+                  "// on every state-changing write), so the task created by folder 7 must",
+                  "// have at least one audit row.",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('audit rows exist for the task created by folder 7 (spec 20: durable trail)', () => {",
+                  "        const body = pm.response.json();",
+                  "        const rows = Array.isArray(body) ? body : (body.items || []);",
+                  "        pm.expect(rows.length).to.be.above(0);",
+                  "    });",
+                  "}"
                 ]
               }
             }
