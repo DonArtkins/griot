@@ -4,6 +4,13 @@
 
 NEW FEATURE · MULTI-TENANT MIGRATION WAVE (2026-09-11) · **PLANNED — not implemented**
 
+**2026-09-11 checkpoint:** partial, uncommitted implementation exists on this
+feature's branch; it is not accepted implementation. ERD approval, schema alignment,
+complete tenant enforcement and SQL acceptance remain outstanding. See the
+[preflight findings and completion plan](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md).
+Build passed and 152 tests passed with 8 SQL tests skipped; acceptance boxes below
+remain unchecked. No migration or commit/push was performed during this preflight.
+
 ## What This Delivers
 
 The tenant root of the platform: `Organizations` (Companies) become the unit of isolation and lifecycle. Every tenant-owned table gains `OrganizationId`, EF Core global query filters + a request-level `ITenantContext` enforce isolation (Pool model — `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §1), and the ERD amendment (`diagrams/erd/multi-tenant-amendment.md`) is approved in Figma Make before any migration code exists (hard rule 4).

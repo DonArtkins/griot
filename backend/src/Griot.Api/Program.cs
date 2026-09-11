@@ -63,7 +63,15 @@ builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 
 // Generic repositories (specs 13-17): one per domain entity, injected into DomainService.
+// Spec 29 tenancy: ITenantContext (AsyncLocal scope by default) + the generic
+// repositories needed below, incl. the new organization stores.
+builder.Services.AddScoped<Griot.Application.Tenancy.ITenantContext, Griot.Application.Tenancy.TenantContext>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.User>, GenericRepository<Griot.Domain.Entities.User>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Organization>, GenericRepository<Griot.Domain.Entities.Organization>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.OrganizationMember>, GenericRepository<Griot.Domain.Entities.OrganizationMember>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Role>, GenericRepository<Griot.Domain.Entities.Role>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.OrganizationInvite>, GenericRepository<Griot.Domain.Entities.OrganizationInvite>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.OrganizationLifecycleEvent>, GenericRepository<Griot.Domain.Entities.OrganizationLifecycleEvent>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Workspace>, GenericRepository<Griot.Domain.Entities.Workspace>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.WorkspaceMember>, GenericRepository<Griot.Domain.Entities.WorkspaceMember>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Invite>, GenericRepository<Griot.Domain.Entities.Invite>>();
@@ -111,11 +119,15 @@ builder.Services.AddPooledDbContextFactory<GriotDbContext>(options =>
     options.UseLazyLoadingProxies();
 });
 
-// Also register as scoped for controllers that expect DbContext injection
-builder.Services.AddScoped(sp => 
+// Also register as scoped for controllers that expect DbContext injection.
+// Spec 29: every scoped context inherits the active tenant scope so the
+// global query filters isolate reads to the request's organization
+// (null scope outside requests / SuperAdmin bypass = see filter semantics).
+builder.Services.AddScoped(sp =>
 {
     var factory = sp.GetRequiredService<IDbContextFactory<GriotDbContext>>();
-    return factory.CreateDbContext();
+    return factory.CreateDbContext().WithTenant(
+        sp.GetRequiredService<Griot.Application.Tenancy.ITenantContext>());
 });
 
 // Redis (spec 07): sliding-window rate limiting on /api/auth/login.
@@ -351,7 +363,11 @@ app.UseRateLimiter();
 // Must be before UseAuthentication so bad signatures are rejected without leaking auth details.
 app.UseMiddleware<WebhookHmacMiddleware>();
 
+// Spec 29: resolve the request tenant from the JWT `org` claim right after
+// authentication so the whole downstream pipeline (controllers, services,
+// scoped DbContext) runs inside the tenant scope.
 app.UseAuthentication();
+app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

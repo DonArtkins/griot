@@ -4,12 +4,30 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Griot.Domain.Entities;
 using Griot.Domain.Enums;
+using Griot.Application.Tenancy;
 
 namespace Griot.Infrastructure.Persistence;
 
 public class GriotDbContext : DbContext
 {
         public GriotDbContext(DbContextOptions<GriotDbContext> options) : base(options) { }
+
+    /// <summary>
+    /// Spec 29 — per-context tenant captured for the global query filters.
+    /// IMPORTANT (EF model cache): the SAME compiled model is shared across
+    /// all context instances, but the filter parameterizes on this FIELD, so
+    /// each context instance evaluates its own value at query time (standard
+    /// EF Core pattern — see ApplyTenantQueryFilters). Set immediately after
+    /// constructing the context (middleware sets it per request; tests set it
+    /// directly or via <see cref="TenantContext"/>).
+    /// </summary>
+    public Guid? TenantId
+    {
+        get => _tenantId;
+        set => _tenantId = value;
+    }
+
+    private Guid? _tenantId;
 
     // NOTE: OnConfiguring is intentionally NOT overridden. Lazy-loading proxies are
     // configured exclusively through DI (AddPooledDbContextFactory / design-time factory).
@@ -18,6 +36,11 @@ public class GriotDbContext : DbContext
     //  pooling is enabled" — the pooled factory is used by runtime + DataLoaders.
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<OrganizationInvite> OrganizationInvites => Set<OrganizationInvite>();
+    public DbSet<OrganizationLifecycleEvent> OrganizationLifecycleEvents => Set<OrganizationLifecycleEvent>();
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<WorkspaceMember> WorkspaceMembers => Set<WorkspaceMember>();
     public DbSet<Invite> Invites => Set<Invite>();
@@ -49,7 +72,152 @@ public class GriotDbContext : DbContext
             b.Property(u => u.AvatarUrl).HasMaxLength(500);
             b.Property(u => u.PasswordHash).HasMaxLength(512);
             b.Property(u => u.TwoFactorMethod).HasConversion<string>();
+            // Spec 29: platform role on the user (global — users span companies).
+            b.Property(u => u.PlatformRole).HasConversion<string>();
         });
+
+        // Organizations — the tenant root (spec 29, Pool model).
+        modelBuilder.Entity<Organization>(b =>
+        {
+            b.HasIndex(o => o.Slug).IsUnique();
+            b.HasIndex(o => o.OwnerId);
+            b.Property(o => o.Name).HasMaxLength(150);
+            b.Property(o => o.Slug).HasMaxLength(100);
+            b.Property(o => o.Status).HasConversion<string>();
+            // `Plan` is a T-SQL reserved keyword — the CLR property is PlanName
+            // (column PlanName); contract/spec docs keep calling it `Plan`.
+            b.Property(o => o.PlanName).HasColumnName("PlanName").HasConversion<string>();
+
+            b.HasOne(o => o.Owner)
+                .WithMany()
+                .HasForeignKey(o => o.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // OrganizationMembers
+        modelBuilder.Entity<OrganizationMember>(b =>
+        {
+            // One membership row per user per company (spec 29).
+            b.HasIndex(m => new { m.OrganizationId, m.UserId }).IsUnique();
+            b.HasIndex(m => m.UserId);
+            b.Property(m => m.Role).HasConversion<string>();
+            b.Property(m => m.Status).HasConversion<string>();
+
+            b.HasOne(m => m.Organization)
+                .WithMany(o => o.Members)
+                .HasForeignKey(m => m.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // NOTE (spec 29 / 33): User side is Restrict, not Cascade — a user row
+            // must never vanish implicitly; the offboarding purge (spec 33)
+            // removes memberships explicitly (tombstone pattern). Restrict also
+            // avoids converging cascade paths on OrganizationMembers.
+            b.HasOne(m => m.User)
+                .WithMany(u => u.OrganizationMembers)
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(m => m.CustomRole)
+                .WithMany(r => r.Members)
+                .HasForeignKey(m => m.CustomRoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Roles (custom company roles + seeded system roles — spec 31)
+        modelBuilder.Entity<Role>(b =>
+        {
+            b.HasIndex(r => r.OrganizationId);
+            b.Property(r => r.Name).HasMaxLength(100);
+            b.Property(r => r.Permissions).HasMaxLength(2048);
+
+            b.HasOne(r => r.Organization)
+                .WithMany(o => o.Roles)
+                .HasForeignKey(r => r.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // OrganizationInvites
+        modelBuilder.Entity<OrganizationInvite>(b =>
+        {
+            b.HasIndex(i => i.OrganizationId);
+            b.HasIndex(i => i.Token).IsUnique();
+            b.Property(i => i.Role).HasConversion<string>();
+            b.Property(i => i.Status).HasConversion<string>();
+            b.Property(i => i.Email).HasMaxLength(320);
+            b.Property(i => i.Token).HasMaxLength(128);
+
+            b.HasOne(i => i.Organization)
+                .WithMany(o => o.Invites)
+                .HasForeignKey(i => i.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(i => i.CustomRole)
+                .WithMany(r => r.Invites)
+                .HasForeignKey(i => i.CustomRoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(i => i.InvitedBy)
+                .WithMany()
+                .HasForeignKey(i => i.InvitedById)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // OrganizationLifecycleEvents (spec 29 / 32 / 33)
+        modelBuilder.Entity<OrganizationLifecycleEvent>(b =>
+        {
+            b.HasIndex(e => new { e.OrganizationId, e.CreatedAt });
+            b.Property(e => e.Kind).HasMaxLength(30);
+
+            b.HasOne(e => e.Organization)
+                .WithMany(o => o.LifecycleEvents)
+                .HasForeignKey(e => e.OrganizationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        ApplyTenantConfiguration(modelBuilder);
+        ApplyTenantQueryFilters(modelBuilder);
+
+        // --- Pre-existing entity configuration (unchanged below) ---
+
+        // Workspaces
+        modelBuilder.Entity<Workspace>(b =>
+        {
+            b.HasIndex(w => w.Slug).IsUnique();
+            b.Property(w => w.Name).HasMaxLength(100);
+            b.Property(w => w.Slug).HasMaxLength(100);
+
+            b.HasOne(w => w.Owner)
+                .WithMany()
+                .HasForeignKey(w => w.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Spec 29: workspace -> organization (Restrict - companies are
+            // removed only by the spec-33 offboarding purge, explicitly).
+            b.HasIndex(w => w.OrganizationId);
+            b.HasOne(w => w.Organization)
+                .WithMany(o => o.Workspaces)
+                .HasForeignKey(w => w.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // --- Tenant column/index configuration (spec 29, Pool model) ---
+        // NOT NULL OrganizationId on strict-tenant tables; nullable on the four
+        // observability tables (null = platform-level event).
+        modelBuilder.Entity<Project>(b => { b.HasIndex(p => p.OrganizationId); });
+        modelBuilder.Entity<Board>(b => { b.HasIndex(x => x.OrganizationId); });
+        modelBuilder.Entity<Column>(b => { b.HasIndex(x => x.OrganizationId); });
+        modelBuilder.Entity<TaskItem>(b => { b.HasIndex(t => t.OrganizationId); });
+        modelBuilder.Entity<Comment>(b => { b.HasIndex(c => c.OrganizationId); });
+        modelBuilder.Entity<Attachment>(b => { b.HasIndex(a => a.OrganizationId); });
+        modelBuilder.Entity<Invite>(b => { b.HasIndex(i => i.OrganizationId); });
+        modelBuilder.Entity<Notification>(b => { b.HasIndex(n => n.OrganizationId); });
+        modelBuilder.Entity<ActivityLog>(b => { b.HasIndex(a => a.OrganizationId); });
+        modelBuilder.Entity<ApiLog>(b => { b.HasIndex(a => a.OrganizationId); });
+        modelBuilder.Entity<ErrorLog>(b => { b.HasIndex(e => e.OrganizationId); });
+        modelBuilder.Entity<AuditLog>(b => { b.HasIndex(a => a.OrganizationId); });
+
+
+        // --- Pre-existing entity configuration (unchanged below) ---
 
         // Workspaces
         modelBuilder.Entity<Workspace>(b =>
@@ -349,6 +517,77 @@ public class GriotDbContext : DbContext
                 .HasForeignKey(r => r.WorkspaceId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+    }
+
+
+    /// <summary>
+    /// Spec 29: OrganizationId columns + indexes (Pool model). NOT NULL on
+    /// strict-tenant tables; nullable on the four observability tables
+    /// (null = platform-level event). The workspace -> organization FK is
+    /// Restrict: companies are removed only by the spec-33 offboarding
+    /// purge, explicitly - never by cascade.
+    /// </summary>
+    private void ApplyTenantConfiguration(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Project>(b => { b.HasIndex(p => p.OrganizationId); });
+        modelBuilder.Entity<Board>(b => { b.HasIndex(x => x.OrganizationId); });
+        modelBuilder.Entity<Column>(b => { b.HasIndex(x => x.OrganizationId); });
+        modelBuilder.Entity<TaskItem>(b => { b.HasIndex(t => t.OrganizationId); });
+        modelBuilder.Entity<Comment>(b => { b.HasIndex(c => c.OrganizationId); });
+        modelBuilder.Entity<Attachment>(b => { b.HasIndex(a => a.OrganizationId); });
+        modelBuilder.Entity<Invite>(b => { b.HasIndex(i => i.OrganizationId); });
+        modelBuilder.Entity<Notification>(b => { b.HasIndex(n => n.OrganizationId); });
+        modelBuilder.Entity<ActivityLog>(b => { b.HasIndex(a => a.OrganizationId); });
+        modelBuilder.Entity<ApiLog>(b => { b.HasIndex(a => a.OrganizationId); });
+        modelBuilder.Entity<ErrorLog>(b => { b.HasIndex(e => e.OrganizationId); });
+        modelBuilder.Entity<AuditLog>(b => { b.HasIndex(a => a.OrganizationId); });
+    }
+
+    /// <summary>
+    /// Spec 29 — tenant global query filters (Pool model; SQL Server has no
+    /// RLS). The tenant id is captured per-context in the <c>_tenantId</c>
+    /// field so EF can parameterize the filter. Strict-tenant entities return
+    /// EMPTY when there is no active scope (fail closed for reads); the
+    /// nullable-org observability tables additionally surface platform-level
+    /// (null-org) rows. Writes are guarded separately by
+    /// <see cref="Griot.Application.Tenancy.TenantGuard"/> (403).
+    /// </summary>
+    private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Workspace>().HasQueryFilter(w =>
+            _tenantId != null && w.OrganizationId == _tenantId);
+        modelBuilder.Entity<Project>().HasQueryFilter(p =>
+            _tenantId != null && p.OrganizationId == _tenantId);
+        modelBuilder.Entity<Board>().HasQueryFilter(x =>
+            _tenantId != null && x.OrganizationId == _tenantId);
+        modelBuilder.Entity<Column>().HasQueryFilter(x =>
+            _tenantId != null && x.OrganizationId == _tenantId);
+        modelBuilder.Entity<TaskItem>().HasQueryFilter(t =>
+            _tenantId != null && t.OrganizationId == _tenantId);
+        modelBuilder.Entity<Comment>().HasQueryFilter(c =>
+            _tenantId != null && c.OrganizationId == _tenantId);
+        modelBuilder.Entity<Attachment>().HasQueryFilter(a =>
+            _tenantId != null && a.OrganizationId == _tenantId);
+        modelBuilder.Entity<Invite>().HasQueryFilter(i =>
+            _tenantId != null && i.OrganizationId == _tenantId);
+        modelBuilder.Entity<Notification>().HasQueryFilter(n =>
+            _tenantId != null && n.OrganizationId == _tenantId);
+        modelBuilder.Entity<ActivityLog>().HasQueryFilter(a =>
+            _tenantId != null && a.OrganizationId == _tenantId);
+        modelBuilder.Entity<ApiLog>().HasQueryFilter(a =>
+            _tenantId == null || a.OrganizationId == null || a.OrganizationId == _tenantId);
+        modelBuilder.Entity<ErrorLog>().HasQueryFilter(e =>
+            _tenantId == null || e.OrganizationId == null || e.OrganizationId == _tenantId);
+        modelBuilder.Entity<AuditLog>().HasQueryFilter(a =>
+            _tenantId == null || a.OrganizationId == null || a.OrganizationId == _tenantId);
+        modelBuilder.Entity<OrganizationMember>().HasQueryFilter(m =>
+            _tenantId != null && m.OrganizationId == _tenantId);
+        modelBuilder.Entity<Role>().HasQueryFilter(r =>
+            _tenantId != null && r.OrganizationId == _tenantId);
+        modelBuilder.Entity<OrganizationInvite>().HasQueryFilter(i =>
+            _tenantId != null && i.OrganizationId == _tenantId);
+        modelBuilder.Entity<OrganizationLifecycleEvent>().HasQueryFilter(e =>
+            _tenantId != null && e.OrganizationId == _tenantId);
     }
 
     public override int SaveChanges()

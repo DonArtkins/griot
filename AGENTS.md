@@ -1,5 +1,15 @@
 # AGENTS.md — Griot Monorepo Orchestrator (GTP 2026 Bootcamp)
 
+## Current working-tree checkpoint — 2026-09-11
+
+Backend 29 is incomplete on `feature/backend/29-multi-tenant-foundation-organizations`.
+Its existing migration lacks recorded tenancy ERD approval; do not mark it complete
+or advance to backend 30. Roadmap §P0.5 governs after backend 20: 29 → 30 → 31 → 32 →
+33 → 34 → 35, then the hardening sequence. This checkpoint supersedes older
+next-feature statements below. Read the [preflight and completion plan](docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+and the backend tracker before proceeding. No production changes or commit/push
+were made by this preflight; design approval and acceptance gates remain required.
+
 ## Read This First
 
 You are an AI agent working on **Griot** (*GREE-oh*), a project-management web app built for the **Sababisha Solutions GTP 2026 Bootcamp**. Griot is the "accurate, shared record of what happened and what's next" — workspaces, projects, boards, tasks, comments, notifications, and an AI copilot.

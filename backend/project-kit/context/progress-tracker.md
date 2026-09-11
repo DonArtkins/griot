@@ -2,6 +2,17 @@
 
 ## Current State
 
+**2026-09-11 preflight checkpoint:** backend **29 is IN PROGRESS, approval-gated**
+on `feature/backend/29-multi-tenant-foundation-organizations`, with existing
+uncommitted code/migration. Its tenancy ERD is still pending approval. Build passed
+(0 warnings/errors); tests: **152 passed / 8 SQL-skipped / 0 failed**. Contract script
+passed, but semantic review found incomplete tenant enforcement and schema drift.
+No commit/push or migration was performed. See the [findings and completion plan](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md).
+This checkpoint supersedes older next-spec statements: roadmap §P0.5 puts **29**
+before **30–35**, then hardening. Do not advance to 30 before 29 passes its gates,
+is pushed, and receives explicit user approval. The following spec-20 account is
+historical delivery evidence, not the current next-feature instruction.
+
 Week 2. Spec 20 is implemented on `feature/backend/20-observability-logging-pipeline` (2026-09-11): all four observability tables have writers — `ApiLoggingMiddleware` (every request incl. 401/404/429, masked IPs, redacted query secrets, `DurationMs ≥ 1`), global handler → `ErrorLogs` + RFC 7807 `application/problem+json`, `IAuditService` rows committed in the same SQL transaction as every state-changing write (domain mutations + `ErrorLog.FixStatusChanged` triage + auth events: login, attributable login failure, refresh, replay-revoke, logout), `ActivityLogs` feed writer, and `usp_PruneObservabilityLogs` retention (SQL-gated integration test green against the local SQL Server container). Build 0W/0E; unit suite green (see Next Steps note for the exact current run). The durable outbox/webhook-inbox/idempotency store inside spec 20 stays PLANNED until Trigger.dev callers ship (webhook remains 503 on valid HMAC by design). **Next spec: 18 (search/filter/pagination/sorting)** on its own feature branch.
 
 | Spec | Title | Status |
@@ -34,7 +45,7 @@ Week 2. Spec 20 is implemented on `feature/backend/20-observability-logging-pipe
 | 26 | Conversations, preferences and curated memory | PLANNED |
 | 27 | Incident alerts and confirmed notices | PLANNED |
 | 28 | Project lifecycle report evidence | PLANNED (before 24) |
-| 29 | Multi-tenant foundation (Organizations + tenant isolation) | PLANNED — multi-tenant wave (after 20) |
+| 29 | Multi-tenant foundation (Organizations + tenant isolation) | IN PROGRESS — existing uncommitted work; ERD approval and SQL acceptance outstanding; see preflight report |
 | 30 | Auth & JWT v2 (role/tenant claims + org switch + SuperAdmin bootstrap) | PLANNED — multi-tenant wave (needs 29, 31) |
 | 31 | RBAC v2 (system + custom company roles) | PLANNED — multi-tenant wave (needs 29, 30) |
 | 32 | Company onboarding & platform management (SuperAdmin) | PLANNED — multi-tenant wave (needs 29–31) |
@@ -46,6 +57,10 @@ Week 2. Spec 20 is implemented on `feature/backend/20-observability-logging-pipe
 > **One-spec-per-branch:** specs 23, 24, 25, 26, 27 and 28 are six separate PLANNED features — this tracker row-group records planning only. Each implementation ships on its own feature branch and its own PR (`feature/backend/23-…`, `feature/backend/24-…`, …, `feature/backend/28-…`), never batched. Spec 12 is already implemented; its DKIM/DMARC doc correction in this planning wave does not re-open that feature.
 
 ## Next Steps
+
+**Current action:** resolve the spec-29 design/ERD approval and preflight findings;
+complete its relational verification and contract sync before commit/push. The
+older sequence below resumes only after the roadmap's 29–35 wave.
 
 1. Implement spec **18** (Search, filtering, pagination & sorting) on its own feature branch `feature/backend/18-…` — the uniform capped/whitelisted query contract over all list endpoints, building directly on spec 20's now-live log routes. Spec 20 was delivered on `feature/backend/20-observability-logging-pipeline` (2026-09-11): unit + SQL-gated suites green (**154 passed / 0 skipped / 0 failed**, SQL-gated run incl. `ObservabilityPruneSqlTests` against the local SQL Server container; plain run 146 passed / 8 skipped). Rationale + per-concern gap: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004.
 2. Then the **hardening wave**: **20** → **18** (search/filter/pagination/sorting) → **19** (Redis cache-aside + per-route rate-limit partitions + GraphQL cost caps) → **22** (notification fan-out in-app + Brevo email) → **21** (DB audit triggers + FULL/DIFF/LOG backup chain + restore drill).

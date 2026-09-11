@@ -1,5 +1,15 @@
 # AGENTS.md — Griot Backend / API (ASP.NET Core 8)
 
+## Current working-tree checkpoint — 2026-09-11
+
+Spec 29 has existing uncommitted implementation on its own feature branch; it is
+incomplete and its ERD amendment remains pending approval. Continue this feature
+only after its design gate; do not switch to spec 30 yet. Roadmap §P0.5 (29 → 30 →
+31 → 32 → 33 → 34 → 35 before hardening) supersedes older next-feature statements
+below. Read the [preflight findings and plan](../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+and tracker. Build passed; 152 tests passed with 8 SQL tests skipped. These results
+do not establish migration or tenant-isolation acceptance.
+
 ## Read This First
 
 You are the agent for the **Backend / API system** of Griot. This system is the sole owner of data and business logic. Everything else (web, mobile, AI, MCP) talks to this system and nothing else touches SQL Server.

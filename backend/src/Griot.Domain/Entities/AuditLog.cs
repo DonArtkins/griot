@@ -17,5 +17,13 @@ public class AuditLog
     // ERD amendment (2026-09-11, spec 20): normalized request id of the producing
     // request/auth event; null only for durable writes with no HTTP context.
     public Guid? RequestId { get; set; }
+
+    /// <summary>
+    /// Tenant owner (spec 29) — nullable: null = platform-level event.
+    /// Stamped from <c>ITenantContext</c> from day one; feeds role-tiered
+    /// per-tenant log reads (spec 25).
+    /// </summary>
+    public Guid? OrganizationId { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

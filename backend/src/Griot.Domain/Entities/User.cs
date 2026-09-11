@@ -21,7 +21,15 @@ public class User
     /// </summary>
     public bool EmailVerified { get; set; }
 
+    /// <summary>
+    /// Platform-level role (spec 29): User default, SuperAdmin = the operator
+    /// of Griot itself (onboards/suspends/offboards companies). Distinct from
+    /// the per-company <see cref="OrganizationMember"/> role.
+    /// </summary>
+    public virtual Griot.Domain.Enums.PlatformRole PlatformRole { get; set; } = Griot.Domain.Enums.PlatformRole.User;
+
     public virtual ICollection<WorkspaceMember> WorkspaceMembers { get; set; } = new List<WorkspaceMember>();
+    public virtual ICollection<OrganizationMember> OrganizationMembers { get; set; } = new List<OrganizationMember>();
     public virtual ICollection<Invite> SentInvites { get; set; } = new List<Invite>();
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public virtual ICollection<OtpChallenge> OtpChallenges { get; set; } = new List<OtpChallenge>();

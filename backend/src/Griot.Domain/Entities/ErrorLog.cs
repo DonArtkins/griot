@@ -16,6 +16,12 @@ public class ErrorLog
     public virtual ErrorFixStatus FixStatus { get; set; }
     public Guid? SolvedByUserId { get; set; }
     public virtual User? SolvedByUser { get; set; }
+
+    /// <summary>
+    /// Tenant owner (spec 29) — nullable: null = platform-level event.
+    /// </summary>
+    public Guid? OrganizationId { get; set; }
+
     public DateTime? FixedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

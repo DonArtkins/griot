@@ -9,6 +9,10 @@ public class Attachment
     public virtual TaskItem TaskItem { get; set; } = null!;
     public Guid UploaderId { get; set; }
     public virtual User Uploader { get; set; } = null!;
+
+    /// <summary>Tenant owner (spec 29 — mirrors the parent task's org).</summary>
+    public Guid OrganizationId { get; set; }
+
     public string FileName { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
     public long SizeBytes { get; set; }

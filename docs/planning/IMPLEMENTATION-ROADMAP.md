@@ -3,6 +3,13 @@
 **Created:** 2026-09-10 · **Status:** Authoritative
 **Companion docs:** `docs/DEPENDENCY-AUDIT.md` (within-system spec ordering) · `project-kit/context/integration-contracts.md` (wire contracts) · `scripts/check-contract-sync.py` (sync gate)
 
+**2026-09-11 working-tree checkpoint:** backend 29 has incomplete uncommitted code
+on its feature branch; ERD approval and acceptance are outstanding. Follow the
+existing §P0.5 order after 20, not older shorthand that goes directly from 20 to 18.
+Backend 30 starts only after 29 completion, push and explicit user approval.
+See the [preflight report](BACKEND-29-PREFLIGHT-2026-09-11.md). This is a status
+correction, not a reorder or an implementation-completion claim.
+
 This file answers one question: **after finishing the current spec, which layer's which spec is next, and why?** Every progress tracker and system `AGENTS.md` points here. One spec at a time, one feature branch = one PR (hard rule) — so this is a single-threaded sequence; the "parallelizable" notes exist only so you know what *could* be pulled forward if the bootcamp calendar demands it.
 
 ## The Golden Rule of the Order

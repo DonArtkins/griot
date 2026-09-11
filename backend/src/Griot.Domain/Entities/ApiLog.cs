@@ -13,6 +13,13 @@ public class ApiLog
     public string? QueryString { get; set; }
     public int StatusCode { get; set; }
     public int DurationMs { get; set; }
+
+    /// <summary>
+    /// Tenant owner (spec 29) — nullable: null = platform-level event
+    /// (unauthenticated request, SuperAdmin platform action, system job).
+    /// </summary>
+    public Guid? OrganizationId { get; set; }
+
     public string? UserAgent { get; set; }
     public string? IpAddress { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
