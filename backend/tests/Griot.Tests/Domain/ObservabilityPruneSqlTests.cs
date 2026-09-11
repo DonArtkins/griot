@@ -56,11 +56,14 @@ public class ObservabilityPruneSqlTests : IClassFixture<SqlAuthFixture>
             DisplayName = "Prune SQL User",
             PasswordHash = "sql-test-not-real"
         };
+        var pruneOrg = Guid.NewGuid();
         var workspace = new Workspace
         {
             Name = "Prune SQL Workspace",
             Slug = $"{Marker}-{Guid.NewGuid():N}",
-            OwnerId = user.Id
+            OwnerId = user.Id,
+            // Spec 29: required tenant column on the post-tenancy schema.
+            OrganizationId = pruneOrg
         };
 
         var oldApiPath = $"/prune-sql/old/{Guid.NewGuid():N}";
@@ -92,8 +95,8 @@ public class ObservabilityPruneSqlTests : IClassFixture<SqlAuthFixture>
                 new AuditLog { ActorId = user.Id, Action = "Prune.Sql.Fresh", EntityType = "Task", EntityId = Guid.NewGuid(), RequestId = auditFreshRequestId, CreatedAt = now.AddDays(-2) });
 
             ctx.ActivityLogs.AddRange(
-                new ActivityLog { WorkspaceId = workspace.Id, ActorId = user.Id, EntityType = "Task", EntityId = Guid.NewGuid(), Action = "Prune.Sql.Old", Payload = Marker, CreatedAt = now.AddDays(-181) },
-                new ActivityLog { WorkspaceId = workspace.Id, ActorId = user.Id, EntityType = "Task", EntityId = Guid.NewGuid(), Action = "Prune.Sql.Fresh", Payload = Marker, CreatedAt = now.AddDays(-2) });
+                new ActivityLog { WorkspaceId = workspace.Id, OrganizationId = pruneOrg, ActorId = user.Id, EntityType = "Task", EntityId = Guid.NewGuid(), Action = "Prune.Sql.Old", Payload = Marker, CreatedAt = now.AddDays(-181) },
+                new ActivityLog { WorkspaceId = workspace.Id, OrganizationId = pruneOrg, ActorId = user.Id, EntityType = "Task", EntityId = Guid.NewGuid(), Action = "Prune.Sql.Fresh", Payload = Marker, CreatedAt = now.AddDays(-2) });
 
             await ctx.SaveChangesAsync();
         }

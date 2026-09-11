@@ -53,7 +53,7 @@ namespace Griot.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid>("OrganizationId")
+                    b.Property<Guid?>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Payload")
@@ -1365,7 +1365,7 @@ namespace Griot.Infrastructure.Migrations
                     b.HasOne("Griot.Domain.Entities.Organization", "Organization")
                         .WithMany("Workspaces")
                         .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Griot.Domain.Entities.User", "Owner")

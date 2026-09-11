@@ -43,6 +43,9 @@ public sealed class AuditService : IAuditService
         var row = new ActivityLog
         {
             WorkspaceId = entry.WorkspaceId,
+            // Spec 29: log writers stamp the tenant at write time (nullable = legacy /
+            // platform rows); fail-closed write paths resolve the org before queuing.
+            OrganizationId = entry.OrganizationId,
             ActorId = entry.ActorId,
             EntityType = entry.EntityType,
             EntityId = entry.EntityId,
@@ -66,6 +69,8 @@ public sealed class AuditService : IAuditService
             Before = entry.Before,
             After = entry.After,
             RequestId = _requestContext.RequestId,
+            // Spec 29: tenant stamp resolved by the caller at write time.
+            OrganizationId = entry.OrganizationId,
             CreatedAt = DateTime.UtcNow
         }).GetAwaiter().GetResult();
     }
@@ -82,6 +87,8 @@ public sealed class AuditService : IAuditService
             Before = entry.Before,
             After = entry.After,
             RequestId = _requestContext.RequestId,
+            // Spec 29: tenant stamp resolved by the caller at write time.
+            OrganizationId = entry.OrganizationId,
             CreatedAt = DateTime.UtcNow
         }).GetAwaiter().GetResult();
         // Durable without a domain write: commit its own transaction immediately.

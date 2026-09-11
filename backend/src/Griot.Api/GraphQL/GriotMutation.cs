@@ -16,15 +16,15 @@ public class GriotMutation
     /// change tracker as the domain write, so the resolver's next SaveChanges commits
     /// state + audit atomically. Actor is the authenticated (or OBO) user id.
     /// </summary>
-    private void QueueAudit(IAuditService auditService, Guid actorId, string action, string entityType, Guid entityId, object? before, object? after, Guid? workspaceId = null)
+    private void QueueAudit(IAuditService auditService, Guid actorId, string action, string entityType, Guid entityId, object? before, object? after, Guid? workspaceId = null, Guid? organizationId = null)
     {
         Guid? activityId = null;
         if (workspaceId is not null)
             activityId = auditService.QueueActivity(new ActivityEntry(
-                workspaceId.Value, actorId, entityType, entityId, action.Split('.').Last(), null));
+                workspaceId.Value, actorId, entityType, entityId, action.Split('.').Last(), null, organizationId));
         auditService.QueueAudit(new AuditEntry(actorId, action, entityType, entityId,
             before is null ? null : AuditService.Snapshot(before),
-            after is null ? null : AuditService.Snapshot(after), activityId));
+            after is null ? null : AuditService.Snapshot(after), activityId, organizationId));
     }
 
     /// <summary>
@@ -47,11 +47,16 @@ public class GriotMutation
         string slug,
         [Service] GriotDbContext dbContext,
         [Service] IAuditService auditService,
+        [Service] Griot.Application.Tenancy.ITenantContext tenantContext,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
         AiAccess.RequireScope(claimsPrincipal, null);
         var userGuid = AuthenticatedUserId(claimsPrincipal);
+        // Spec 29: GraphQL writes stamp the same tenant scope as REST (fail closed
+        // without a scope — pre-spec-30 tokens carry no `org` claim yet, so the
+        // middleware leaves the scope null and the guard throws 403 here).
+        var organizationId = Griot.Application.Tenancy.TenantGuard.RequireOrganization(tenantContext);
 
         var workspace = new Griot.Domain.Entities.Workspace
         {
@@ -59,12 +64,13 @@ public class GriotMutation
             Name = name,
             Slug = slug,
             OwnerId = userGuid,
+            OrganizationId = organizationId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         dbContext.Workspaces.Add(workspace);
-        QueueAudit(auditService, userGuid, "Workspace.Created", "Workspace", workspace.Id, null, null);
+        QueueAudit(auditService, userGuid, "Workspace.Created", "Workspace", workspace.Id, null, null, workspace.Id, organizationId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new WorkspaceType
@@ -104,7 +110,7 @@ public class GriotMutation
         var oldSlug = workspace.Slug;
         workspace.Name = name;
         workspace.UpdatedAt = DateTime.UtcNow;
-        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Workspace.Updated", "Workspace", workspace.Id, new { Name = oldName, Slug = oldSlug }, workspace);
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Workspace.Updated", "Workspace", workspace.Id, new { Name = oldName, Slug = oldSlug }, workspace, workspace.Id, workspace.OrganizationId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new WorkspaceType
@@ -143,7 +149,7 @@ public class GriotMutation
         await RequireWorkspaceOwnerAsync(dbContext, workspace.Id, claimsPrincipal, cancellationToken);
 
         dbContext.Workspaces.Remove(workspace);
-        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Workspace.Deleted", "Workspace", workspace.Id, workspace, null);
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Workspace.Deleted", "Workspace", workspace.Id, workspace, null, workspace.Id, workspace.OrganizationId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return true;
@@ -163,12 +169,17 @@ public class GriotMutation
         CancellationToken cancellationToken)
     {
         AiAccess.RequireScope(claimsPrincipal, null);
+        // Spec 29: resolve through the scoped workspace so the new row inherits the tenant.
+        var scopedWorkspace = await dbContext.Workspaces.FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
+        if (scopedWorkspace is null)
+            throw new ArgumentException("Workspace not found");
         await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
 
         var project = new Griot.Domain.Entities.Project
         {
             Id = Guid.NewGuid(),
             WorkspaceId = workspaceId,
+            OrganizationId = scopedWorkspace.OrganizationId,
             Name = name,
             Description = description,
             Status = Griot.Domain.Enums.ProjectStatus.Active,
@@ -177,7 +188,7 @@ public class GriotMutation
         };
 
         dbContext.Projects.Add(project);
-        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Project.Created", "Project", project.Id, null, project, workspaceId);
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Project.Created", "Project", project.Id, null, project, workspaceId, project.OrganizationId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new ProjectType
@@ -216,7 +227,7 @@ public class GriotMutation
         var oldName = project.Name;
         project.Name = name;
         project.UpdatedAt = DateTime.UtcNow;
-        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Project.Updated", "Project", project.Id, new { Name = oldName }, project, project.WorkspaceId);
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Project.Updated", "Project", project.Id, new { Name = oldName }, project, project.WorkspaceId, project.OrganizationId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new ProjectType
@@ -286,12 +297,13 @@ public class GriotMutation
         {
             Id = Guid.NewGuid(),
             ProjectId = projectId,
+            OrganizationId = project.OrganizationId,
             Name = name,
             CreatedAt = DateTime.UtcNow
         };
 
         dbContext.Boards.Add(board);
-        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Board.Created", "Board", board.Id, null, board, project.WorkspaceId);
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Board.Created", "Board", board.Id, null, board, project.WorkspaceId, board.OrganizationId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new BoardType
@@ -324,13 +336,14 @@ public class GriotMutation
         var priorityValue = ValidatePriority(priority);
 
         // Caller must belong to the workspace owning the column's board.
-        var workspaceId = await ResolveColumnWorkspaceIdAsync(dbContext, columnId, cancellationToken);
+        var (workspaceId, columnOrg) = await ResolveColumnScopeAsync(dbContext, columnId, cancellationToken);
         await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
 
         var task = new Griot.Domain.Entities.TaskItem
         {
             Id = Guid.NewGuid(),
             ColumnId = columnId,
+            OrganizationId = columnOrg,
             Title = title,
             Description = description,
             Status = Griot.Domain.Enums.TaskStatus.Backlog,
@@ -342,7 +355,7 @@ public class GriotMutation
         };
 
         dbContext.TaskItems.Add(task);
-        QueueAudit(auditService, userGuid, "Task.Created", "Task", task.Id, null, task, workspaceId);
+        QueueAudit(auditService, userGuid, "Task.Created", "Task", task.Id, null, task, workspaceId, task.OrganizationId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new TaskItemType
@@ -454,7 +467,9 @@ public class GriotMutation
             throw new ArgumentException("Task not found");
 
         // Caller must belong to the workspace owning the task's board.
-        var workspaceId = await ResolveColumnWorkspaceIdAsync(dbContext, task.ColumnId, cancellationToken);
+        var (workspaceId, taskOrg) = await ResolveColumnScopeAsync(dbContext, task.ColumnId, cancellationToken);
+        if (task.OrganizationId != taskOrg)
+            throw new ArgumentException("Task not found");
         await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
 
         var comment = new Griot.Domain.Entities.Comment
@@ -462,6 +477,7 @@ public class GriotMutation
             Id = Guid.NewGuid(),
             TaskId = taskId,
             AuthorId = userGuid,
+            OrganizationId = taskOrg,
             Body = content,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -519,6 +535,9 @@ public class GriotMutation
     /// <summary>
     /// Resolve a column's owning workspace id (Column -&gt; Board -&gt; Project) and
     /// throw when the chain is broken so existence is never disclosed.
+    /// Spec 29: the chain is tenant-consistent — a column whose board/project
+    /// resolve to a different org than the column itself is treated as not found
+    /// (global filters already scope each lookup; this is defense-in-depth).
     /// </summary>
     private async Task<Guid> ResolveColumnWorkspaceIdAsync(
         GriotDbContext dbContext,
@@ -534,16 +553,35 @@ public class GriotMutation
         var board = await dbContext.Boards
             .FirstOrDefaultAsync(b => b.Id == column.BoardId, cancellationToken);
 
-        if (board == null)
+        if (board == null || board.OrganizationId != column.OrganizationId)
             throw new ArgumentException("Board not found");
 
         var project = await dbContext.Projects
             .FirstOrDefaultAsync(p => p.Id == board.ProjectId, cancellationToken);
 
-        if (project == null)
+        if (project == null || project.OrganizationId != column.OrganizationId)
             throw new ArgumentException("Project not found");
 
         return project.WorkspaceId;
+    }
+
+    /// <summary>
+    /// Resolve a column's org alongside its workspace (spec 29): new tasks and
+    /// comments inherit the column's tenant so rows are scoped at rest.
+    /// </summary>
+    private async Task<(Guid WorkspaceId, Guid OrganizationId)> ResolveColumnScopeAsync(
+        GriotDbContext dbContext,
+        Guid columnId,
+        CancellationToken cancellationToken)
+    {
+        var column = await dbContext.Columns
+            .FirstOrDefaultAsync(c => c.Id == columnId, cancellationToken);
+
+        if (column == null)
+            throw new ArgumentException("Column not found");
+
+        var workspaceId = await ResolveColumnWorkspaceIdAsync(dbContext, columnId, cancellationToken);
+        return (workspaceId, column.OrganizationId);
     }
 
     /// <summary>

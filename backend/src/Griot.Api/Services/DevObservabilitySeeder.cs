@@ -35,8 +35,20 @@ public static class DevObservabilitySeeder
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<GriotDbContext>();
 
-        if (await db.ApiLogs.AnyAsync().ConfigureAwait(false) || await db.AuditLogs.AnyAsync().ConfigureAwait(false))
+        // Spec 29: never let a dev seed crash startup — the Griot database may be
+        // behind the latest migration (missing columns) when the operator has not
+        // applied it yet. Probe first; any failure is a warning, never a 134 exit.
+        try
+        {
+            if (await db.ApiLogs.AnyAsync().ConfigureAwait(false) || await db.AuditLogs.AnyAsync().ConfigureAwait(false))
+                return;
+        }
+        catch (Exception probeEx)
+        {
+            var probeLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DevObservabilitySeeder");
+            probeLogger.LogWarning(probeEx, "Dev observability seed skipped: observability tables are not queryable yet (run 'dotnet ef database update' to apply pending migrations).");
             return;
+        }
 
         var user = await db.Users.OrderBy(u => u.CreatedAt).FirstOrDefaultAsync().ConfigureAwait(false);
         if (user is null)

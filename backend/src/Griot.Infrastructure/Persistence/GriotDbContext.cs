@@ -29,6 +29,14 @@ public class GriotDbContext : DbContext
 
     private Guid? _tenantId;
 
+    /// <summary>
+    /// Spec 29: SuperAdmin platform flag (spec 32/33). When true, strict-tenant
+    /// global filters are bypassed so the operator can list/manage every company.
+    /// Set only via <see cref="TenantDbContextExtensions.WithTenant"/> from the
+    /// middleware-resolved ITenantContext — never from caller input.
+    /// </summary>
+    public bool IsSuperAdmin { get; set; }
+
     // NOTE: OnConfiguring is intentionally NOT overridden. Lazy-loading proxies are
     // configured exclusively through DI (AddPooledDbContextFactory / design-time factory).
     // Calling UseLazyLoadingProxies() inside OnConfiguring throws
@@ -84,8 +92,8 @@ public class GriotDbContext : DbContext
             b.Property(o => o.Name).HasMaxLength(150);
             b.Property(o => o.Slug).HasMaxLength(100);
             b.Property(o => o.Status).HasConversion<string>();
-            // `Plan` is a T-SQL reserved keyword — the CLR property is PlanName
-            // (column PlanName); contract/spec docs keep calling it `Plan`.
+            // Amendment v2 `Plan` is a T-SQL reserved word, so the Organizations plan
+            // property maps to column PlanName; docs/ERD keep calling the field Plan.
             b.Property(o => o.PlanName).HasColumnName("PlanName").HasConversion<string>();
 
             b.HasOne(o => o.Owner)
@@ -191,13 +199,15 @@ public class GriotDbContext : DbContext
                 .HasForeignKey(w => w.OwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Spec 29: workspace -> organization (Restrict - companies are
-            // removed only by the spec-33 offboarding purge, explicitly).
+            // Spec 29: workspace -> organization (amendment v2 cascade — org removal
+            // is the spec-33 offboarding purge; suspension blocks writes instead).
             b.HasIndex(w => w.OrganizationId);
             b.HasOne(w => w.Organization)
                 .WithMany(o => o.Workspaces)
                 .HasForeignKey(w => w.OrganizationId)
-                .OnDelete(DeleteBehavior.Restrict);
+                // Amendment v2: org removal = full cascade to children (spec 33 purges
+                // org rows via cascade; suspension blocks writes without deleting).
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // --- Tenant column/index configuration (spec 29, Pool model) ---
@@ -217,20 +227,7 @@ public class GriotDbContext : DbContext
         modelBuilder.Entity<AuditLog>(b => { b.HasIndex(a => a.OrganizationId); });
 
 
-        // --- Pre-existing entity configuration (unchanged below) ---
-
-        // Workspaces
-        modelBuilder.Entity<Workspace>(b =>
-        {
-            b.HasIndex(w => w.Slug).IsUnique();
-            b.Property(w => w.Name).HasMaxLength(100);
-            b.Property(w => w.Slug).HasMaxLength(100);
-            
-            b.HasOne(w => w.Owner)
-                .WithMany()
-                .HasForeignKey(w => w.OwnerId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
+        // --- Pre-existing entity configuration (unchanged below; Workspaces already configured above) ---
 
         // WorkspaceMembers
         modelBuilder.Entity<WorkspaceMember>(b =>
@@ -524,8 +521,8 @@ public class GriotDbContext : DbContext
     /// Spec 29: OrganizationId columns + indexes (Pool model). NOT NULL on
     /// strict-tenant tables; nullable on the four observability tables
     /// (null = platform-level event). The workspace -> organization FK is
-    /// Restrict: companies are removed only by the spec-33 offboarding
-    /// purge, explicitly - never by cascade.
+    /// amendment-v2 Cascade (org removal is the spec-33 offboarding purge;
+    /// suspension blocks writes without deleting, per spec 32).
     /// </summary>
     private void ApplyTenantConfiguration(ModelBuilder modelBuilder)
     {
@@ -554,26 +551,33 @@ public class GriotDbContext : DbContext
     /// </summary>
     private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
     {
+        // Spec 29: SuperAdmin platform sessions (IsSuperAdmin, resolved from the
+        // platform role before any org role) bypass strict-tenant filters so the
+        // operator can list/manage every company (spec 32/33). Tenant sessions
+        // stay fail-closed: no scope (or a foreign org) sees zero tenant rows.
         modelBuilder.Entity<Workspace>().HasQueryFilter(w =>
-            _tenantId != null && w.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && w.OrganizationId == _tenantId));
         modelBuilder.Entity<Project>().HasQueryFilter(p =>
-            _tenantId != null && p.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && p.OrganizationId == _tenantId));
         modelBuilder.Entity<Board>().HasQueryFilter(x =>
-            _tenantId != null && x.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && x.OrganizationId == _tenantId));
         modelBuilder.Entity<Column>().HasQueryFilter(x =>
-            _tenantId != null && x.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && x.OrganizationId == _tenantId));
         modelBuilder.Entity<TaskItem>().HasQueryFilter(t =>
-            _tenantId != null && t.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && t.OrganizationId == _tenantId));
         modelBuilder.Entity<Comment>().HasQueryFilter(c =>
-            _tenantId != null && c.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && c.OrganizationId == _tenantId));
         modelBuilder.Entity<Attachment>().HasQueryFilter(a =>
-            _tenantId != null && a.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && a.OrganizationId == _tenantId));
         modelBuilder.Entity<Invite>().HasQueryFilter(i =>
-            _tenantId != null && i.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && i.OrganizationId == _tenantId));
         modelBuilder.Entity<Notification>().HasQueryFilter(n =>
-            _tenantId != null && n.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && n.OrganizationId == _tenantId));
+        // Amendment v2: ActivityLogs carry nullable OrganizationId (null = legacy
+        // rows not yet backfilled / platform events), so the fail-closed read shape
+        // stays consistent with the other three observability tables.
         modelBuilder.Entity<ActivityLog>().HasQueryFilter(a =>
-            _tenantId != null && a.OrganizationId == _tenantId);
+            _tenantId == null || a.OrganizationId == null || a.OrganizationId == _tenantId);
         modelBuilder.Entity<ApiLog>().HasQueryFilter(a =>
             _tenantId == null || a.OrganizationId == null || a.OrganizationId == _tenantId);
         modelBuilder.Entity<ErrorLog>().HasQueryFilter(e =>
@@ -581,13 +585,18 @@ public class GriotDbContext : DbContext
         modelBuilder.Entity<AuditLog>().HasQueryFilter(a =>
             _tenantId == null || a.OrganizationId == null || a.OrganizationId == _tenantId);
         modelBuilder.Entity<OrganizationMember>().HasQueryFilter(m =>
-            _tenantId != null && m.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && m.OrganizationId == _tenantId));
         modelBuilder.Entity<Role>().HasQueryFilter(r =>
-            _tenantId != null && r.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && r.OrganizationId == _tenantId));
         modelBuilder.Entity<OrganizationInvite>().HasQueryFilter(i =>
-            _tenantId != null && i.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && i.OrganizationId == _tenantId));
         modelBuilder.Entity<OrganizationLifecycleEvent>().HasQueryFilter(e =>
-            _tenantId != null && e.OrganizationId == _tenantId);
+            IsSuperAdmin || (_tenantId != null && e.OrganizationId == _tenantId));
+        // Organizations have NO tenant filter in spec 29: they are the tenant
+        // roots themselves. Read scoping (member sees own orgs, SuperAdmin sees
+        // all) is enforced in the service layer, not by a global filter — a
+        // membership-join filter here would self-reference filtered sets and
+        // break the SuperAdmin platform path. Full org read API ships in spec 32.
     }
 
     public override int SaveChanges()

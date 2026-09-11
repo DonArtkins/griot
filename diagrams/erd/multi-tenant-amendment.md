@@ -1,6 +1,12 @@
-# ERD Amendment v2 — Multi-Tenancy (PLANNED — pending Figma Make approval)
+# ERD Amendment v2 — Multi-Tenancy (✅ Approved by operator 2026-09-11)
 
-**Status:** PLANNED design artifact. Per hard rule 4 (ERD before schema), no `Organizations`-related migration code may exist until this amendment is transcribed into the approved Figma Make ERD (root AGENTS.md rule 4) and exported to `diagrams/erd/`.
+**Status:** ✅ APPROVED design artifact (operator approval recorded 2026-09-11 during
+spec-29 implementation; Figma Make canvas reviewed, versioned PNG export pending —
+the operator approved the field/enum/index/FK contract transcribed here and
+authorized schema implementation from this markdown contract).
+Per hard rule 4 (ERD before schema), the spec-29 migration implements exactly this
+contract. The PNG export (`diagrams/erd/griot-erd-multi-tenant-v2.*.png`) and
+`diagrams/README.md` ledger row follow in the same feature branch.
 **Owner:** backend spec 29 (`feature-specs/29-multi-tenant-foundation-organizations.md`). Canonical field list: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §2 + §9 (account-deletion delta).
 **Precedent:** this follows the same amendment pattern as `diagrams/erd/auth-family-amendment.md` (RefreshTokens family columns), which was approved without re-opening the full v1.0.0 ERD.
 

@@ -68,15 +68,15 @@ public class DomainService : IDomainService
     // SAME scoped change tracker as the mutation so the caller's SaveChanges commits
     // domain state + audit atomically (mandatory-persistence hard rule). Workspace-scoped
     // user-facing changes additionally queue an ActivityLogs row, linked via ActivityId.
-    private void QueueAudit(Guid actorId, string action, string entityType, Guid entityId, object? before, object? after, Guid? workspaceId = null)
+    private void QueueAudit(Guid actorId, string action, string entityType, Guid entityId, object? before, object? after, Guid? workspaceId = null, Guid? organizationId = null)
     {
         Guid? activityId = null;
         if (workspaceId is not null)
             activityId = _auditService.QueueActivity(new ActivityEntry(
-                workspaceId.Value, actorId, entityType, entityId, action.Split('.').Last(), null));
+                workspaceId.Value, actorId, entityType, entityId, action.Split('.').Last(), null, organizationId));
         _auditService.QueueAudit(new AuditEntry(actorId, action, entityType, entityId,
             before is null ? null : AuditService.Snapshot(before),
-            after is null ? null : AuditService.Snapshot(after), activityId));
+            after is null ? null : AuditService.Snapshot(after), activityId, organizationId));
     }
 
     // Resolve the owning workspace of a task (task → column → board → project) for activity rows.
@@ -104,8 +104,11 @@ public class DomainService : IDomainService
 
     public async Task<List<WorkspaceDto>> GetWorkspacesAsync(Guid userId)
     {
+        // Spec 29: tenant-scoped listing — only workspaces in the active org are
+        // visible (global filter), then membership narrows to the caller's own.
+        var activeOrg = TenantGuard.RequireOrganization(_tenant);
         var mine = (await _workspaces.GetAllAsync())
-            .Where(w => IsMember(w, userId))
+            .Where(w => w.OrganizationId == activeOrg && IsMember(w, userId))
             .ToList();
         return mine.Select(ToWorkspaceDto).ToList();
     }
@@ -139,7 +142,9 @@ public class DomainService : IDomainService
         };
         await _members.AddAsync(ownerMember);
         ws.Members.Add(ownerMember);
-        QueueAudit(ownerId, "Workspace.Created", "Workspace", ws.Id, null, ws);
+        // Spec 29: stamp the tenant on the domain + audit rows so per-tenant reads
+        // (spec 25) can resolve this event without a join.
+        QueueAudit(ownerId, "Workspace.Created", "Workspace", ws.Id, null, ws, ws.Id, organizationId);
         await _workspaces.SaveChangesAsync();
         return ToWorkspaceDto(ws);
     }
@@ -165,7 +170,7 @@ public class DomainService : IDomainService
         }
         ws.UpdatedAt = DateTime.UtcNow;
         _workspaces.Update(ws);
-        QueueAudit(userId, "Workspace.Updated", "Workspace", ws.Id, new { Name = oldName, Slug = oldSlug }, ws);
+        QueueAudit(userId, "Workspace.Updated", "Workspace", ws.Id, new { Name = oldName, Slug = oldSlug }, ws, ws.Id, ws.OrganizationId);
         await _workspaces.SaveChangesAsync();
         return ToWorkspaceDto(ws);
     }
@@ -177,7 +182,7 @@ public class DomainService : IDomainService
         if (ws.OwnerId != userId)
             throw new DomainError(DomainErrorKind.Forbidden, "Only the workspace owner can delete it.");
         _workspaces.Remove(ws);
-        QueueAudit(userId, "Workspace.Deleted", "Workspace", ws.Id, ws, null);
+        QueueAudit(userId, "Workspace.Deleted", "Workspace", ws.Id, ws, null, ws.Id, ws.OrganizationId);
         await _workspaces.SaveChangesAsync();
         return true;
     }
@@ -192,8 +197,7 @@ public class DomainService : IDomainService
 
     public async Task<WorkspaceMemberDto?> AddMemberAsync(Guid workspaceId, AddMemberRequest request, Guid userId)
     {
-        var ws = await ScopedWorkspaceAsync(workspaceId, userId);
-        if (ws is null) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of this workspace.");
+        var ws = (await ScopedWorkspaceAsync(workspaceId, userId))!;
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to add members.");
         if (await _users.GetByIdAsync(request.UserId) is null)
@@ -205,15 +209,14 @@ public class DomainService : IDomainService
             WorkspaceId = workspaceId, UserId = request.UserId, Role = request.Role, JoinedAt = DateTime.UtcNow
         };
         await _members.AddAsync(member);
-        QueueAudit(userId, "Member.Added", "WorkspaceMember", request.UserId, null, new { member.WorkspaceId, member.UserId, Role = member.Role.ToString() });
+        QueueAudit(userId, "Member.Added", "WorkspaceMember", request.UserId, null, new { member.WorkspaceId, member.UserId, Role = member.Role.ToString() }, workspaceId, ws.OrganizationId);
         await _members.SaveChangesAsync();
         return ToMemberDto(member);
     }
 
     public async Task<WorkspaceMemberDto?> UpdateMemberRoleAsync(Guid workspaceId, Guid memberUserId, UpdateMemberRoleRequest request, Guid userId)
     {
-        var ws = await ScopedWorkspaceAsync(workspaceId, userId);
-        if (ws is null) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of this workspace.");
+        var ws = (await ScopedWorkspaceAsync(workspaceId, userId))!;
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to update member roles.");
         var member = (await _members.GetAllAsync()).FirstOrDefault(m => m.WorkspaceId == workspaceId && m.UserId == memberUserId);
@@ -221,42 +224,40 @@ public class DomainService : IDomainService
         var oldRole = member.Role;
         member.Role = request.Role;
         _members.Update(member);
-        QueueAudit(userId, "Member.RoleChanged", "WorkspaceMember", memberUserId, new { Role = oldRole.ToString() }, new { Role = member.Role.ToString() });
+        QueueAudit(userId, "Member.RoleChanged", "WorkspaceMember", memberUserId, new { Role = oldRole.ToString() }, new { Role = member.Role.ToString() }, workspaceId, ws.OrganizationId);
         await _members.SaveChangesAsync();
         return ToMemberDto(member);
     }
 
     public async Task<bool> RemoveMemberAsync(Guid workspaceId, Guid memberUserId, Guid userId)
     {
-        var ws = await ScopedWorkspaceAsync(workspaceId, userId);
-        if (ws is null) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of this workspace.");
+        var ws = (await ScopedWorkspaceAsync(workspaceId, userId))!;
         if (ws.OwnerId != userId)
             throw new DomainError(DomainErrorKind.Forbidden, "Only the workspace owner can remove members.");
         var member = (await _members.GetAllAsync()).FirstOrDefault(m => m.WorkspaceId == workspaceId && m.UserId == memberUserId);
         if (member is null) return false;
         _members.Remove(member);
-        QueueAudit(userId, "Member.Removed", "WorkspaceMember", memberUserId, new { member.WorkspaceId, member.UserId, Role = member.Role.ToString() }, null);
+        QueueAudit(userId, "Member.Removed", "WorkspaceMember", memberUserId, new { member.WorkspaceId, member.UserId, Role = member.Role.ToString() }, null, workspaceId, ws!.OrganizationId);
         await _members.SaveChangesAsync();
         return true;
     }
 
     public async Task<InviteDto?> CreateInviteAsync(Guid workspaceId, CreateInviteRequest request, Guid userId)
     {
-        var ws = await ScopedWorkspaceAsync(workspaceId, userId);
-        if (ws is null) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of this workspace.");
+        var ws = (await ScopedWorkspaceAsync(workspaceId, userId))!;
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to invite.");
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new DomainError(DomainErrorKind.Validation, "Email is required.");
         var invite = new Invite
         {
-            Id = Guid.NewGuid(), WorkspaceId = workspaceId, Email = request.Email.Trim().ToLowerInvariant(),
+            Id = Guid.NewGuid(), WorkspaceId = workspaceId, OrganizationId = ws.OrganizationId, Email = request.Email.Trim().ToLowerInvariant(),
             Role = request.Role, Token = Guid.NewGuid().ToString().Replace("-", "") + Guid.NewGuid().ToString("N"),
             Status = InviteStatus.Pending, InvitedById = userId,
             ExpiresAt = DateTime.UtcNow.AddDays(7), CreatedAt = DateTime.UtcNow
         };
         await _invites.AddAsync(invite);
-        QueueAudit(userId, "Invite.Created", "Invite", invite.Id, null, new { invite.WorkspaceId, invite.Email, Role = invite.Role.ToString() });
+        QueueAudit(userId, "Invite.Created", "Invite", invite.Id, null, new { invite.WorkspaceId, invite.Email, Role = invite.Role.ToString() }, workspaceId, invite.OrganizationId);
         await _invites.SaveChangesAsync();
         return ToInviteDto(invite);
     }
@@ -277,40 +278,47 @@ public class DomainService : IDomainService
         });
         invite.Status = InviteStatus.Accepted;
         _invites.Update(invite);
-        QueueAudit(userId, "Invite.Accepted", "Invite", invite.Id, null, new { invite.WorkspaceId, invite.Email, Role = invite.Role.ToString() }, invite.WorkspaceId);
+        QueueAudit(userId, "Invite.Accepted", "Invite", invite.Id, null, new { invite.WorkspaceId, invite.Email, Role = invite.Role.ToString() }, invite.WorkspaceId, invite.OrganizationId);
         await _invites.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> IsUserMemberAsync(Guid workspaceId, Guid userId)
     {
+        // Spec 29: membership resolution is tenant-scoped — a cross-tenant id
+        // resolves to null here (global filter) and is NOT a membership.
         var ws = await _workspaces.GetByIdAsync(workspaceId);
-        return ws is not null && IsMember(ws, userId);
+        if (ws is null) return false;
+        if (ws.OrganizationId != _tenant.OrganizationId) return false;
+        return IsMember(ws, userId);
     }
 
     // ══════════════════════ PROJECTS ══════════════════════
 
     public async Task<List<ProjectDto>> GetProjectsAsync(Guid workspaceId, Guid userId)
     {
-        await ScopedWorkspaceAsync(workspaceId, userId);
+        // Spec 29: tenant-scoped listing — the scoped workspace asserts the org,
+        // then the org asserts again on every row (defense-in-depth).
+        var ws = (await ScopedWorkspaceAsync(workspaceId, userId))!;
+        var wsOrg = ws.OrganizationId;
         return (await _projects.GetAllAsync())
-            .Where(p => p.WorkspaceId == workspaceId)
+            .Where(p => p.WorkspaceId == workspaceId && p.OrganizationId == wsOrg)
             .Select(ToProjectDto).ToList();
     }
 
     public async Task<ProjectDto> CreateProjectAsync(Guid workspaceId, CreateProjectRequest request, Guid userId)
     {
-        await ScopedWorkspaceAsync(workspaceId, userId);
+        var ws0 = (await ScopedWorkspaceAsync(workspaceId, userId))!;
         RequireText(request.Name, "Name is required.");
         var project = new Project
         {
-            Id = Guid.NewGuid(), WorkspaceId = workspaceId, Name = request.Name.Trim(),
+            Id = Guid.NewGuid(), WorkspaceId = workspaceId, OrganizationId = ws0.OrganizationId, Name = request.Name.Trim(),
             Key = string.IsNullOrWhiteSpace(request.Key) ? Slugify(request.Name).Substring(0, Math.Min(6, request.Name.Length)) : request.Key.Trim(),
             Description = request.Description, Status = ProjectStatus.Active,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         await _projects.AddAsync(project);
-        QueueAudit(userId, "Project.Created", "Project", project.Id, null, project, workspaceId);
+        QueueAudit(userId, "Project.Created", "Project", project.Id, null, project, workspaceId, project.OrganizationId);
         await _projects.SaveChangesAsync();
         return ToProjectDto(project);
     }
@@ -337,7 +345,7 @@ public class DomainService : IDomainService
         if (request.Status is not null) { var v = request.Status; project.Status = v ?? ProjectStatus.Active; };
         project.UpdatedAt = DateTime.UtcNow;
         _projects.Update(project);
-        QueueAudit(userId, "Project.Updated", "Project", project.Id, new { Name = oldName, Key = oldKey, Status = oldStatus.ToString() }, project, project.WorkspaceId);
+        QueueAudit(userId, "Project.Updated", "Project", project.Id, new { Name = oldName, Key = oldKey, Status = oldStatus.ToString() }, project, project.WorkspaceId, project.OrganizationId);
         await _projects.SaveChangesAsync();
         return ToProjectDto(project);
     }
@@ -351,7 +359,7 @@ public class DomainService : IDomainService
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to delete projects.");
         _projects.Remove(project);
-        QueueAudit(userId, "Project.Deleted", "Project", project.Id, project, null, project.WorkspaceId);
+        QueueAudit(userId, "Project.Deleted", "Project", project.Id, project, null, project.WorkspaceId, project.OrganizationId);
         await _projects.SaveChangesAsync();
         return true;
     }
@@ -362,9 +370,10 @@ public class DomainService : IDomainService
     {
         var project = await _projects.GetByIdAsync(projectId);
         if (project is null) throw new DomainError(DomainErrorKind.NotFound, "Project not found.");
-        await ScopedWorkspaceAsync(project.WorkspaceId, userId);
+        var boardsWs = (await ScopedWorkspaceAsync(project.WorkspaceId, userId))!;
+        TenantGuard.AssertTenant(_tenant, project.OrganizationId);
         return (await _boards.GetAllAsync())
-            .Where(b => b.ProjectId == projectId)
+            .Where(b => b.ProjectId == projectId && b.OrganizationId == boardsWs.OrganizationId)
             .Select(ToBoardDto).ToList();
     }
 
@@ -378,11 +387,11 @@ public class DomainService : IDomainService
         var maxOrder = ComputeMaxInt(boardOrders);
         var board = new Board
         {
-            Id = Guid.NewGuid(), ProjectId = projectId, Name = request.Name.Trim(),
+            Id = Guid.NewGuid(), ProjectId = projectId, OrganizationId = project.OrganizationId, Name = request.Name.Trim(),
             Order = request.Order > 0 ? request.Order : maxOrder + 1, CreatedAt = DateTime.UtcNow
         };
         await _boards.AddAsync(board);
-        QueueAudit(userId, "Board.Created", "Board", board.Id, null, board, project.WorkspaceId);
+        QueueAudit(userId, "Board.Created", "Board", board.Id, null, board, project.WorkspaceId, board.OrganizationId);
         await _boards.SaveChangesAsync();
         return ToBoardDto(board);
     }
@@ -393,7 +402,9 @@ public class DomainService : IDomainService
         if (board is null) return null;
         var project = await _projects.GetByIdAsync(board.ProjectId);
         if (project is null) return null;
-        await ScopedWorkspaceAsync(project.WorkspaceId, userId);
+        var boardWs = (await ScopedWorkspaceAsync(project.WorkspaceId, userId))!;
+        TenantGuard.AssertTenant(_tenant, board.OrganizationId);
+        if (board.OrganizationId != boardWs.OrganizationId) throw new DomainError(DomainErrorKind.Forbidden, "cross-tenant");
         return ToBoardDto(board);
     }
 
@@ -404,6 +415,8 @@ public class DomainService : IDomainService
         var project = await _projects.GetByIdAsync(board.ProjectId);
         var ws = await ScopedWorkspaceAsync(project!.WorkspaceId, userId);
         if (ws is null) throw new DomainError(DomainErrorKind.Forbidden, "Not a member.");
+        TenantGuard.AssertTenant(_tenant, board.OrganizationId);
+        if (board.OrganizationId != ws.OrganizationId) throw new DomainError(DomainErrorKind.Forbidden, "cross-tenant");
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to create columns.");
         RequireText(request.Name, "Name is required.");
@@ -411,12 +424,12 @@ public class DomainService : IDomainService
         var maxOrder = ComputeMaxInt(columnOrders);
         var column = new Column
         {
-            Id = Guid.NewGuid(), BoardId = boardId, Name = request.Name.Trim(),
+            Id = Guid.NewGuid(), BoardId = boardId, OrganizationId = board.OrganizationId, Name = request.Name.Trim(),
             Order = request.Order > 0 ? request.Order : maxOrder + 1,
             WipLimit = request.WipLimit, CreatedAt = DateTime.UtcNow
         };
         await _columns.AddAsync(column);
-        QueueAudit(userId, "Column.Created", "Column", column.Id, null, column, ws.Id);
+        QueueAudit(userId, "Column.Created", "Column", column.Id, null, column, ws.Id, column.OrganizationId);
         await _columns.SaveChangesAsync();
         return ToColumnDto(column);
     }
@@ -438,7 +451,7 @@ public class DomainService : IDomainService
         if (request.Order is not null) { var v = request.Order; column.Order = v ?? 0; }
         if (request.WipLimit is not null) column.WipLimit = request.WipLimit;
         _columns.Update(column);
-        QueueAudit(userId, "Column.Updated", "Column", column.Id, new { Name = oldName, Order = oldOrder, WipLimit = oldWip }, column, ws.Id);
+        QueueAudit(userId, "Column.Updated", "Column", column.Id, new { Name = oldName, Order = oldOrder, WipLimit = oldWip }, column, ws.Id, column.OrganizationId);
         await _columns.SaveChangesAsync();
         return ToColumnDto(column);
     }
@@ -454,7 +467,7 @@ public class DomainService : IDomainService
         if (!CanManageMembers(ws, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to delete columns.");
         _columns.Remove(column);
-        QueueAudit(userId, "Column.Deleted", "Column", column.Id, column, null, ws.Id);
+        QueueAudit(userId, "Column.Deleted", "Column", column.Id, column, null, ws.Id, column.OrganizationId);
         await _columns.SaveChangesAsync();
         return true;
     }
@@ -463,6 +476,9 @@ public class DomainService : IDomainService
 
     private async Task<bool> TaskVisibleAsync(TaskItem task, Guid userId)
     {
+        // Spec 29: defense-in-depth — the task row itself must belong to the
+        // active tenant even when the hierarchy lookup is bypassed by a filter.
+        if (task.OrganizationId != _tenant.OrganizationId) return false;
         var column = await _columns.GetByIdAsync(task.ColumnId);
         var board = column is null ? null : await _boards.GetByIdAsync(column.BoardId);
         var project = board is null ? null : await _projects.GetByIdAsync(board.ProjectId);
@@ -474,10 +490,12 @@ public class DomainService : IDomainService
         var board = await _boards.GetByIdAsync(boardId);
         if (board is null) throw new DomainError(DomainErrorKind.NotFound, "Board not found.");
         var project = await _projects.GetByIdAsync(board.ProjectId);
-        await ScopedWorkspaceAsync(project!.WorkspaceId, userId);
-        var columnIds = (await _columns.GetAllAsync()).Where(c => c.BoardId == boardId).Select(c => c.Id).ToList();
+        var tasksWs = (await ScopedWorkspaceAsync(project!.WorkspaceId, userId))!;
+        TenantGuard.AssertTenant(_tenant, board.OrganizationId);
+        if (board.OrganizationId != tasksWs.OrganizationId) throw new DomainError(DomainErrorKind.Forbidden, "cross-tenant");
+        var columnIds = (await _columns.GetAllAsync()).Where(c => c.BoardId == boardId && c.OrganizationId == tasksWs.OrganizationId).Select(c => c.Id).ToList();
         return (await _tasks.GetAllAsync())
-            .Where(t => columnIds.Contains(t.ColumnId))
+            .Where(t => columnIds.Contains(t.ColumnId) && t.OrganizationId == tasksWs.OrganizationId)
             .Select(ToTaskDto).ToList();
     }
 
@@ -486,20 +504,22 @@ public class DomainService : IDomainService
         var board = await _boards.GetByIdAsync(boardId);
         if (board is null) throw new DomainError(DomainErrorKind.NotFound, "Board not found.");
         var project = await _projects.GetByIdAsync(board.ProjectId);
-        await ScopedWorkspaceAsync(project!.WorkspaceId, userId);
+        var createWs = (await ScopedWorkspaceAsync(project!.WorkspaceId, userId))!;
+        TenantGuard.AssertTenant(_tenant, board.OrganizationId);
+        if (board.OrganizationId != createWs.OrganizationId) throw new DomainError(DomainErrorKind.Forbidden, "cross-tenant");
         var column = await _columns.GetByIdAsync(request.ColumnId);
         if (column is null || column.BoardId != boardId)
             throw new DomainError(DomainErrorKind.Validation, "Column must belong to the board.");
         RequireText(request.Title, "Title is required.");
         var task = new TaskItem
         {
-            Id = Guid.NewGuid(), BoardId = boardId, ColumnId = request.ColumnId, Title = request.Title.Trim(),
+            Id = Guid.NewGuid(), BoardId = boardId, ColumnId = request.ColumnId, OrganizationId = column.OrganizationId, Title = request.Title.Trim(),
             Description = request.Description, Status = request.Status, Priority = request.Priority,
             AssigneeId = request.AssigneeId, CreatorId = userId, DueDate = request.DueDate,
             Position = request.Position, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         await _tasks.AddAsync(task);
-        QueueAudit(userId, "Task.Created", "Task", task.Id, null, task, project.WorkspaceId);
+        QueueAudit(userId, "Task.Created", "Task", task.Id, null, task, project.WorkspaceId, task.OrganizationId);
         await _tasks.SaveChangesAsync();
         return ToTaskDto(task);
     }
@@ -532,7 +552,7 @@ public class DomainService : IDomainService
         _tasks.Update(task);
         QueueAudit(userId, "Task.Updated", "Task", task.Id,
             new { Title = oldTitle, Status = oldStatus.ToString(), Priority = oldPriority.ToString(), AssigneeId = oldAssignee },
-            task, await TaskWorkspaceIdAsync(task));
+            task, await TaskWorkspaceIdAsync(task), task.OrganizationId);
         await _tasks.SaveChangesAsync();
         return ToTaskDto(task);
     }
@@ -544,7 +564,7 @@ public class DomainService : IDomainService
         if (!await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of the containing workspace.");
         var workspaceId = await TaskWorkspaceIdAsync(task);
         _tasks.Remove(task);
-        QueueAudit(userId, "Task.Deleted", "Task", task.Id, task, null, workspaceId);
+        QueueAudit(userId, "Task.Deleted", "Task", task.Id, task, null, workspaceId, task.OrganizationId);
         await _tasks.SaveChangesAsync();
         return true;
     }
@@ -561,6 +581,10 @@ public class DomainService : IDomainService
         var targetColumn = await _columns.GetByIdAsync(request.ColumnId);
         if (targetColumn!.BoardId != board!.Id)
             throw new DomainError(DomainErrorKind.Validation, "Target column must belong to the same board.");
+        // Spec 29: cross-org moves fail closed (the target inherits the same tenant).
+        TenantGuard.AssertTenant(_tenant, targetColumn.OrganizationId);
+        if (targetColumn.OrganizationId != task.OrganizationId)
+            throw new DomainError(DomainErrorKind.Forbidden, "cross-tenant");
         var oldColumnId = task.ColumnId;
         var oldPosition = task.Position;
         task.ColumnId = request.ColumnId;
@@ -570,17 +594,16 @@ public class DomainService : IDomainService
         _tasks.Update(task);
         QueueAudit(userId, "Task.Moved", "Task", task.Id,
             new { ColumnId = oldColumnId, Position = oldPosition },
-            new { task.ColumnId, task.Position }, await TaskWorkspaceIdAsync(task));
+            new { task.ColumnId, task.Position }, await TaskWorkspaceIdAsync(task), task.OrganizationId);
         await _tasks.SaveChangesAsync();
         return ToTaskDto(task);
     }
 
     public async Task<BulkUpdateTaskStatusResponse> BulkUpdateTaskStatusAsync(BulkUpdateTaskStatusRequest request, Guid userId)
     {
-        // Validate workspace membership
-        var ws = await _workspaces.GetByIdAsync(request.WorkspaceId);
-        if (ws is null) throw new DomainError(DomainErrorKind.NotFound, "Workspace not found.");
-        if (!IsMember(ws, userId)) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of this workspace.");
+        // Validate workspace membership + tenant scope (spec 29: bypassing the
+        // global filter is not allowed — foreign workspaces fail closed here).
+        var ws = (await ScopedWorkspaceAsync(request.WorkspaceId, userId))!;
         if (request.TaskIds is null || request.TaskIds.Count == 0)
             throw new DomainError(DomainErrorKind.Validation, "No task IDs provided.");
 
@@ -597,7 +620,7 @@ public class DomainService : IDomainService
         foreach (var tid in request.TaskIds)
         {
             var task = await _tasks.GetByIdAsync(tid);
-            if (task is null || !wsColumnIds.Contains(task.ColumnId))
+            if (task is null || !wsColumnIds.Contains(task.ColumnId) || task.OrganizationId != ws.OrganizationId)
                 throw new DomainError(DomainErrorKind.Conflict, $"Task {tid} does not belong to this workspace.");
             var oldStatus = task.Status;
             task.Status = newStatus;
@@ -605,7 +628,7 @@ public class DomainService : IDomainService
             _tasks.Update(task);
             // Spec 20: one audit row AND one activity row per task changed (bulk status).
             QueueAudit(userId, "Task.StatusChanged", "Task", task.Id,
-                new { Status = oldStatus.ToString() }, task, request.WorkspaceId);
+                new { Status = oldStatus.ToString() }, task, request.WorkspaceId, task.OrganizationId);
             updated++;
         }
         await _tasks.SaveChangesAsync();
@@ -625,7 +648,7 @@ public class DomainService : IDomainService
         if (!string.IsNullOrWhiteSpace(request.Name)) board.Name = request.Name.Trim();
         if (request.Order is not null) board.Order = request.Order.Value;
         _boards.Update(board);
-        QueueAudit(userId, "Board.Updated", "Board", board.Id, new { Name = oldName, Order = oldOrder }, board, project.WorkspaceId);
+        QueueAudit(userId, "Board.Updated", "Board", board.Id, new { Name = oldName, Order = oldOrder }, board, project.WorkspaceId, board.OrganizationId);
         await _boards.SaveChangesAsync();
         return ToBoardDto(board);
     }
@@ -639,7 +662,7 @@ public class DomainService : IDomainService
         if (!CanManageMembers(ws!, userId))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to delete boards.");
         _boards.Remove(board);
-        QueueAudit(userId, "Board.Deleted", "Board", board.Id, board, null, project.WorkspaceId);
+        QueueAudit(userId, "Board.Deleted", "Board", board.Id, board, null, project.WorkspaceId, board.OrganizationId);
         await _boards.SaveChangesAsync();
         return true;
     }
@@ -651,7 +674,7 @@ public class DomainService : IDomainService
         var task = await _tasks.GetByIdAsync(taskId);
         if (task is null || !await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.NotFound, "Task not found.");
         return (await _comments.GetAllAsync())
-            .Where(c => c.TaskId == taskId)
+            .Where(c => c.TaskId == taskId && c.OrganizationId == task.OrganizationId)
             .Select(ToCommentDto).ToList();
     }
 
@@ -663,10 +686,11 @@ public class DomainService : IDomainService
         var comment = new Comment
         {
             Id = Guid.NewGuid(), TaskId = taskId, AuthorId = userId, Body = request.Body.Trim(),
+            OrganizationId = task.OrganizationId,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         await _comments.AddAsync(comment);
-        QueueAudit(userId, "Comment.Created", "Comment", comment.Id, null, new { comment.TaskId, comment.Body }, await TaskWorkspaceIdAsync(task));
+        QueueAudit(userId, "Comment.Created", "Comment", comment.Id, null, new { comment.TaskId, comment.Body }, await TaskWorkspaceIdAsync(task), comment.OrganizationId);
         await _comments.SaveChangesAsync();
         return ToCommentDto(comment);
     }
@@ -683,7 +707,7 @@ public class DomainService : IDomainService
         comment.Body = request.Body.Trim();
         comment.UpdatedAt = DateTime.UtcNow;
         _comments.Update(comment);
-        QueueAudit(userId, "Comment.Updated", "Comment", comment.Id, new { Body = oldBody }, new { comment.Body }, await TaskWorkspaceIdAsync(task));
+        QueueAudit(userId, "Comment.Updated", "Comment", comment.Id, new { Body = oldBody }, new { comment.Body }, await TaskWorkspaceIdAsync(task), comment.OrganizationId);
         await _comments.SaveChangesAsync();
         return ToCommentDto(comment);
     }
@@ -696,7 +720,7 @@ public class DomainService : IDomainService
         if (comment is null) return false;
         if (comment.AuthorId != userId) throw new DomainError(DomainErrorKind.Forbidden, "Only the author can delete this comment.");
         _comments.Remove(comment);
-        QueueAudit(userId, "Comment.Deleted", "Comment", comment.Id, new { comment.TaskId, comment.Body }, null, await TaskWorkspaceIdAsync(task));
+        QueueAudit(userId, "Comment.Deleted", "Comment", comment.Id, new { comment.TaskId, comment.Body }, null, await TaskWorkspaceIdAsync(task), comment.OrganizationId);
         await _comments.SaveChangesAsync();
         return true;
     }
@@ -708,7 +732,7 @@ public class DomainService : IDomainService
         var task = await _tasks.GetByIdAsync(taskId);
         if (task is null || !await TaskVisibleAsync(task, userId)) throw new DomainError(DomainErrorKind.NotFound, "Task not found.");
         return (await _attachments.GetAllAsync())
-            .Where(a => a.TaskId == taskId)
+            .Where(a => a.TaskId == taskId && a.OrganizationId == task.OrganizationId)
             .Select(ToAttachmentDto).ToList();
     }
 
@@ -726,12 +750,13 @@ public class DomainService : IDomainService
         var attachment = new Attachment
         {
             Id = Guid.NewGuid(), TaskId = taskId, UploaderId = userId,
+            OrganizationId = task.OrganizationId,
             FileName = request.FileName.Trim(), MimeType = mimeType,
             SizeBytes = request.SizeBytes, StorageUrl = request.Url ?? string.Empty,
             CreatedAt = DateTime.UtcNow
         };
         await _attachments.AddAsync(attachment);
-        QueueAudit(userId, "Attachment.Created", "Attachment", attachment.Id, null, new { attachment.TaskId, attachment.FileName, attachment.MimeType, attachment.SizeBytes });
+        QueueAudit(userId, "Attachment.Created", "Attachment", attachment.Id, null, new { attachment.TaskId, attachment.FileName, attachment.MimeType, attachment.SizeBytes }, await TaskWorkspaceIdAsync(task), attachment.OrganizationId);
         await _attachments.SaveChangesAsync();
         return ToAttachmentDto(attachment);
     }
@@ -743,7 +768,7 @@ public class DomainService : IDomainService
         var attachment = (await _attachments.GetAllAsync()).FirstOrDefault(a => a.Id == attachmentId && a.TaskId == taskId);
         if (attachment is null) return false;
         _attachments.Remove(attachment);
-        QueueAudit(userId, "Attachment.Deleted", "Attachment", attachment.Id, new { attachment.TaskId, attachment.FileName, attachment.MimeType, attachment.SizeBytes }, null);
+        QueueAudit(userId, "Attachment.Deleted", "Attachment", attachment.Id, new { attachment.TaskId, attachment.FileName, attachment.MimeType, attachment.SizeBytes }, null, await TaskWorkspaceIdAsync(task), attachment.OrganizationId);
         await _attachments.SaveChangesAsync();
         return true;
     }
@@ -759,19 +784,20 @@ public class DomainService : IDomainService
     // ══════════════════════ NOTIFICATIONS ══════════════════════
 
     public async Task<List<NotificationDto>> GetNotificationsAsync(Guid userId)
+        // Spec 29: per-user AND per-tenant — a dual-org user sees only the active org's rows.
         => (await _notifications.GetAllAsync())
-            .Where(n => n.UserId == userId)
+            .Where(n => n.UserId == userId && n.OrganizationId == _tenant.OrganizationId)
             .OrderByDescending(n => n.CreatedAt)
             .Take(100)
             .Select(ToNotificationDto).ToList();
 
     public async Task<int> GetUnreadNotificationCountAsync(Guid userId)
         => (await _notifications.GetAllAsync())
-            .Count(n => n.UserId == userId && n.ReadAt is null);
+            .Count(n => n.UserId == userId && n.ReadAt is null && n.OrganizationId == _tenant.OrganizationId);
 
     public async Task<bool> MarkAllNotificationsReadAsync(Guid userId)
     {
-        foreach (var n in (await _notifications.GetAllAsync()).Where(n => n.UserId == userId && n.ReadAt is null))
+        foreach (var n in (await _notifications.GetAllAsync()).Where(n => n.UserId == userId && n.ReadAt is null && n.OrganizationId == _tenant.OrganizationId))
         {
             n.ReadAt = DateTime.UtcNow;
             _notifications.Update(n);
@@ -783,7 +809,9 @@ public class DomainService : IDomainService
     public async Task<bool> MarkNotificationReadAsync(Guid notificationId, Guid userId)
     {
         var n = await _notifications.GetByIdAsync(notificationId);
-        if (n is null || n.UserId != userId) return false;
+        // Spec 29: a foreign-org row resolves to null via the global filter; the
+        // belt-and-braces org check below keeps mocked repos (no filters) honest.
+        if (n is null || n.UserId != userId || n.OrganizationId != _tenant.OrganizationId) return false;
         if (n.ReadAt is not null) return true; // already read — idempotent
         n.ReadAt = DateTime.UtcNow;
         _notifications.Update(n);
@@ -795,21 +823,23 @@ public class DomainService : IDomainService
 
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(Guid workspaceId, Guid userId)
     {
-        await ScopedWorkspaceAsync(workspaceId, userId);
+        var dashWs = await ScopedWorkspaceAsync(workspaceId, userId)
+            ?? throw new DomainError(DomainErrorKind.Forbidden, "Not a member of this workspace.");
+        var dashOrg = dashWs.OrganizationId;
         var counts = new Dictionary<string, int>();
         var urgentOpen = 0;
         foreach (var status in new[] { Griot.Domain.Enums.TaskStatus.Backlog, Griot.Domain.Enums.TaskStatus.Todo, Griot.Domain.Enums.TaskStatus.InProgress, Griot.Domain.Enums.TaskStatus.InReview, Griot.Domain.Enums.TaskStatus.Done })
             counts[status.ToString()] = 0;
-        var wsProjectIds = (await _projects.GetAllAsync()).Where(p => p.WorkspaceId == workspaceId).Select(p => p.Id).ToList();
-        var wsBoardIds = (await _boards.GetAllAsync()).Where(b => wsProjectIds.Contains(b.ProjectId)).Select(b => b.Id).ToList();
-        var wsColumnIds = (await _columns.GetAllAsync()).Where(c => wsBoardIds.Contains(c.BoardId)).Select(c => c.Id).ToList();
-        foreach (var t in (await _tasks.GetAllAsync()).Where(t => wsColumnIds.Contains(t.ColumnId)))
+        var wsProjectIds = (await _projects.GetAllAsync()).Where(p => p.WorkspaceId == workspaceId && p.OrganizationId == dashOrg).Select(p => p.Id).ToList();
+        var wsBoardIds = (await _boards.GetAllAsync()).Where(b => wsProjectIds.Contains(b.ProjectId) && b.OrganizationId == dashOrg).Select(b => b.Id).ToList();
+        var wsColumnIds = (await _columns.GetAllAsync()).Where(c => wsBoardIds.Contains(c.BoardId) && c.OrganizationId == dashOrg).Select(c => c.Id).ToList();
+        foreach (var t in (await _tasks.GetAllAsync()).Where(t => wsColumnIds.Contains(t.ColumnId) && t.OrganizationId == dashOrg))
         {
             counts[t.Status.ToString()] = (counts.ContainsKey(t.Status.ToString()) ? counts[t.Status.ToString()] : 0) + 1;
             if (t.Status == Griot.Domain.Enums.TaskStatus.InProgress && t.Priority == Priority.Urgent) urgentOpen++;
         }
         var recentActivity = (await _activity.GetAllAsync())
-            .Where(a => a.WorkspaceId == workspaceId)
+            .Where(a => a.WorkspaceId == workspaceId && a.OrganizationId == dashOrg)
             .OrderByDescending(a => a.CreatedAt)
             .Take(10)
             .Select(ToActivityDto).ToList();
@@ -821,11 +851,11 @@ public class DomainService : IDomainService
 
     public async Task<List<ActivityLogDto>> GetActivityAsync(Guid workspaceId, Guid userId, int page, int pageSize)
     {
-        await ScopedWorkspaceAsync(workspaceId, userId);
+        var activityWs = (await ScopedWorkspaceAsync(workspaceId, userId))!;
         var pageNumber = Math.Max(1, page);
         var size = Math.Clamp(pageSize, 1, 100);
         return (await _activity.GetAllAsync())
-            .Where(a => a.WorkspaceId == workspaceId)
+            .Where(a => a.WorkspaceId == workspaceId && a.OrganizationId == activityWs.OrganizationId)
             .OrderByDescending(a => a.CreatedAt)
             .Skip((pageNumber - 1) * size)
             .Take(size)
@@ -834,11 +864,12 @@ public class DomainService : IDomainService
 
     public async Task<List<ErrorLogDto>> GetErrorLogsAsync(Guid workspaceId, Guid userId, int limit)
     {
-        await ScopedWorkspaceAsync(workspaceId, userId);
+        var errWs = (await ScopedWorkspaceAsync(workspaceId, userId))!;
         var ws = await _workspaces.GetByIdAsync(workspaceId);
         if (ws is null || (ws.OwnerId != userId && !(await _members.GetAllAsync()).Any(m => m.WorkspaceId == workspaceId && m.UserId == userId && m.Role == WorkspaceRole.Admin)))
             throw new DomainError(DomainErrorKind.Forbidden, "Owner/Admin required to view error logs.");
         return (await _errors.GetAllAsync())
+            .Where(e => e.OrganizationId == errWs.OrganizationId)
             .OrderByDescending(e => e.CreatedAt)
             .Take(Math.Clamp(limit, 1, 200))
             .Select(ToErrorLogDto).ToList();
@@ -871,21 +902,26 @@ public class DomainService : IDomainService
         log.FixStatus = fixStatus;
         log.FixedAt = resolved ? DateTime.UtcNow : null;
         log.SolvedByUserId = resolved ? userId : null;
+        // Spec 29: triage rows resolve the workspace org context (log rows are
+        // observability-scoped; the stamp here keeps per-tenant reads join-free).
+        var logWs = await _workspaces.GetByIdAsync(workspaceId);
         QueueAudit(userId, "ErrorLog.FixStatusChanged", "ErrorLog", log.Id,
             new { FixStatus = oldStatus, FixedAt = oldFixedAt, SolvedByUserId = oldSolvedBy },
             new { FixStatus = log.FixStatus.ToString(), log.FixedAt, log.SolvedByUserId },
-            workspaceId);
+            workspaceId, logWs?.OrganizationId);
         await _errors.SaveChangesAsync();
         return ToErrorLogDto(log);
     }
 
     public async Task<List<AuditLogDto>> GetAuditLogsAsync(Guid workspaceId, Guid userId, string? entityType, Guid? entityId, int limit)
     {
-        await ScopedWorkspaceAsync(workspaceId, userId);
+        var auditWs = (await ScopedWorkspaceAsync(workspaceId, userId))!;
         var ws = await _workspaces.GetByIdAsync(workspaceId);
         if (ws is null || ws.OwnerId != userId)
             throw new DomainError(DomainErrorKind.Forbidden, "Owner-only to view audit logs.");
-        var all = (await _audit.GetAllAsync()).ToList();
+        // Spec 29: audit reads are tenant-scoped — a dual-org user sees only the
+        // active org's rows even when the entity filter matches elsewhere.
+        var all = (await _audit.GetAllAsync()).Where(a => a.OrganizationId == auditWs.OrganizationId).ToList();
         if (!string.IsNullOrWhiteSpace(entityType)) all = all.Where(a => a.EntityType == entityType).ToList();
         if (entityId is not null) all = all.Where(a => a.EntityId == entityId).ToList();
         return all.OrderByDescending(a => a.CreatedAt).Take(Math.Clamp(limit, 1, 200)).Select(ToAuditLogDto).ToList();

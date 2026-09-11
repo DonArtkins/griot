@@ -24,13 +24,22 @@ public sealed class TenantResolutionMiddleware
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext)
     {
-        _ = tenantContext;
         Guid? organizationId = null;
         var raw = context.User?.Claims.FirstOrDefault(c => c.Type == OrgClaimType)?.Value;
         if (!string.IsNullOrWhiteSpace(raw) && Guid.TryParse(raw, out var parsed))
             organizationId = parsed;
 
+        // Spec 29: SuperAdmin platform principals (spec 32/33) are resolved before
+        // any org role — they bypass tenant scoping without an `org` claim. The
+        // flag travels ambiently so the pooled-factory wrapper stays org-aware.
+        var isSuperAdmin = string.Equals(
+            context.User?.FindFirst("role")?.Value, "super_admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                context.User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value,
+                "super_admin", StringComparison.OrdinalIgnoreCase);
+
         TenantContext.SetCurrent(organizationId);
+        TenantContext.SetSuperAdmin(isSuperAdmin);
         try
         {
             await _next(context);
@@ -38,6 +47,7 @@ public sealed class TenantResolutionMiddleware
         finally
         {
             TenantContext.SetCurrent(null);
+            TenantContext.SetSuperAdmin(false);
         }
     }
 }

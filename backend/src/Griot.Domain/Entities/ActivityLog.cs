@@ -8,8 +8,8 @@ public class ActivityLog
     public Guid WorkspaceId { get; set; }
     public virtual Workspace Workspace { get; set; } = null!;
 
-    /// <summary>Tenant owner (spec 29 — mirrors the parent workspace's org).</summary>
-    public Guid OrganizationId { get; set; }
+    /// <summary>Tenant owner (spec 29 — mirrors the parent workspace's org; nullable until the spec-37 backfill stamps it).</summary>
+    public Guid? OrganizationId { get; set; }
 
     public Guid ActorId { get; set; }
     public virtual User Actor { get; set; } = null!;
