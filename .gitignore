@@ -21,16 +21,4 @@ coverage/
 # EFS (extracted PDF text temp)
 research/_bootcamp_*.txt
 
-# Binary files (tracked in .cloudinary-manifest.json)
-# Download with: ./scripts/cloudinary-download.sh
-research/*.pdf
-research/*.pptx
-research/*.docx
-research/screenshots/*.png
-research/screenshots/*.jpg
-research/screenshots/*.jpeg
-
-# Cloudinary manifest (committed)
-!.cloudinary-manifest.json
-
 .bug

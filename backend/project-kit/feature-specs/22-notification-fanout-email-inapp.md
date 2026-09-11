@@ -76,5 +76,15 @@ Push notifications (mobile/web FCM), digest scheduling (ai/ spec 03 calls the fa
 - [ ] Postman folder 10 + 14 updated (preferences GET/PUT + fanout negative test)
 - [ ] Migration `AddNotificationPreferences` applies clean on a fresh + an existing DB
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Fan-out becomes org-scoped:** every `Notifications` row and every email recipient is resolved **within `ITenantContext`** (active `OrganizationMembers` only); the service-token `fanout` endpoint (scheduled agents, spec 09/44) requires the delegation's `OrganizationId` and never crosses it.
+- **New recipients (PLANNED):** the **company owner/Admin** for onboard/suspend/reactivate/offboard lifecycle events (specs 32/33/45), the **assigned ProjectManager** for client feedback posted (spec 34), the **client** for handoff `AwaitingClientAcceptance` and PM responses (specs 34/35).
+- `NotificationType` gains tenant/client values (org lifecycle, client feedback, handoff) appended to the enum — `data-layer.md` + `docs/api` contract-synced in the same branch.
+- `NotificationPreferences` semantics unchanged (per-user, org-independent); suspend/offboard lifecycle notices honor `MutedNotificationTypes` like every other fan-out.
+- The 25-recipient per-event cap is retained; org **broadcasts** never route through raw fan-out — they use spec 27's draft/confirm path (its Multi-Tenant Update separates the platform channel from org-scoped confirmed notices).
+- Cross-org mention/assignment attempts resolve zero recipients and write an `ErrorLogs`/audit row (org id on the row — spec 51 revision) instead of notifying foreign users.
+- Client fan-out visibility: clients receive only client-surface notifications (progress/handoff/PM-response) — never internal board chatter (field/type allowlist test in spec 49 revision).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -705,5 +705,11 @@ These procedures deliberately stress system resources and can cause outages. Rai
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Per-tenant dashboards are **deferred to Phase 2, evidence-gated**: only after k6 multi-tenant runs (qa 14) prove per-org p95 misses do per-org latency/error correlation views become justified (`docs/planning/OPTIMIZATION-RECOMMENDATIONS.md` gate).
+- Near-term (cheap): API request logs already carry `OrganizationId` (backend 51) so a future per-tenant view needs no agent, node or collector changes.
+- No new agent, node or Netdata Cloud seat this wave — the free-tier 5-node cap is preserved.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

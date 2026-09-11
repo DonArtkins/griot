@@ -53,5 +53,12 @@ Auth flows (feature 02), data wiring (03/04).
 - [ ] Feature-first folders in place
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Scaffold the new multi-tenant DTO types alongside the existing models: `OrganizationDto`, `ClientProjectViewDto`, `ClientFeedbackDto` (contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; owners: backend 29/34).
+- Add feature-first folders for the new surfaces — `lib/features/organizations/` (org list + switcher) and `lib/features/client-portal/` (progress view + feedback) — so specs 08/09 only fill screens in.
+- Extend the core DTO barrel/export so the typed API methods (spec 03) can reference the new models without circular imports.
+- Keep the scaffold otherwise unchanged: no tenant logic in `core/` yet — JWT v2 claim parsing lands with spec 02. All of this is PLANNED, not implemented acceptance evidence.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

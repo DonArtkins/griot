@@ -16,6 +16,10 @@ public class TaskItem
     public Guid BoardId { get; set; }
     public Guid ColumnId { get; set; }
     public virtual Column Column { get; set; } = null!;
+
+    /// <summary>Tenant owner (spec 29 — mirrors the parent column's org).</summary>
+    public Guid OrganizationId { get; set; }
+
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public Griot.Domain.Enums.TaskStatus Status { get; set; }

@@ -66,5 +66,12 @@ CREATE: `ai/agents.ts` stub, `ai/tasks/health.ts` (runnable scheduled task), `ai
 - [ ] `.env.example` matches the ai rows in root `integration-contracts.md`
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Task payloads and events become org-stamped: every task invocation resolves the OBO principal **and** the active `org` claim from the backend job context (backend 29/30) and records `organizationId` in run metadata and the payload envelope.
+- Run metadata/observability (Trigger dashboard tags, completion callbacks) carries the org stamp so per-tenant tracing is possible once backend logs gain `OrganizationId`.
+- The OBO delegation becomes org-stamped: `ServiceToken:Delegations:{userId}` grants are scoped per organization (backend 29–33 wave); the GraphQL client passes the delegation's org through the headers it already sends and never invents an org value.
+- Scheduled runs and HMAC webhook callbacks must **fail closed** when no org context is resolvable from the backend job — no default-tenant fallback.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

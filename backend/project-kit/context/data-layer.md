@@ -1,5 +1,13 @@
 # Backend Data Layer
 
+## Spec 29 preflight — 2026-09-11
+
+The working tree contains an unapproved tenancy migration and partial tenant
+filters. These are not the accepted schema contract. The [preflight report](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+records enum/field/nullability drift, backfill review findings, missing persistence
+guards and pooled-context coverage. Do not apply that migration to Griot before
+ERD approval and preservation/isolation tests. No schema was changed by this run.
+
 ## Entities (from the approved Figma Make ERD — names are contracts)
 
 **Core (13):** `Users` · `Workspaces` · `WorkspaceMembers` (M:N join with `Role`) · `Invites` · `Projects` · `Boards` · `Columns` · `TaskItems` · `Comments` · `Attachments` · `ActivityLogs` (feed + AI audit) · `Notifications` · `RefreshTokens`

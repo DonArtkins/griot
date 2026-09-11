@@ -55,6 +55,13 @@ Feature pages (features 06–09).
 - [ ] `theme.ts` from tokens; zero hardcoded colors in components
 - [ ] Chips render per the severity map; empty/loading/error primitives exist
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- New status chip maps extend the existing severity-map pattern: `OrganizationStatus` (Active/Suspended/Offboarding/Archived), `ClientFeedbackStatus` (New/Acknowledged/Resolved/Rejected), `HandoffStatus` (NotStarted/InProgress/AwaitingClientAcceptance/Completed) — colors from tokens only.
+- `ProjectStatus` gains `Handoff`, `Maintenance`, `PostDeploymentSupport` values (append-only); the `taskStatusColor`-style maps extend while existing ordinals/colors stay unchanged.
+- `OrganizationPlan` (Free/Pro/Enterprise) rendered as a plan badge/chip — display metadata only, no billing UI this wave.
+- The new consoles (web 13 company admin, web 14 platform console, web 15 client portal, web 16 handoff/maintenance) consume the existing registry primitives (`StatusChip`, `EmptyState`, `LoadingSkeleton`, `ErrorState`, `Toast`) — zero new hardcoded colors.
+- Lifecycle timeline (web 14) reuses registry components: monospace tabular timestamps, actor→event copy, kind chips per `LifecycleEventKind`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

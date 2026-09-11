@@ -49,6 +49,13 @@ Mutations through Apollo (web uses REST for writes per architecture) except wher
 - [ ] Dashboard/board/task queries resolve from the backend; cache reorder-safe
 - [ ] No N+1 in feature reads (uses backend DataLoaders)
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Apollo attaches the JWT v2 access token; the backend scopes every GraphQL read to the active organization from the `org` claim — no org argument is passed client-side.
+- Org-switch cache hygiene: on `select-organization` success the web performs a full `client.clearStore()` reset so cached entities from the previous company can never leak into the new one; typePolicies/fragments repopulate from the new org's queries.
+- Fragments gain `OrganizationId` on tenant-owned types (Workspace, Project, Board, TaskItem, Comment, Notification) once the ERD amendment ships; `ClientProjectViewDto`-shaped selections power the client progress view reads.
+- New read hooks for org surfaces (organizations, members, roles, client progress, handoff status) colocate fragments in their feature folders per the existing convention.
+- Tests assert the cache reset on org switch (no cross-org stale reads) alongside the existing reorder-safety tests.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

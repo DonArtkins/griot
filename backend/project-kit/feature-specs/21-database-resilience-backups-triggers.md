@@ -79,5 +79,14 @@ redundant implementation MUST NOT be started outside the spec + hard gates.
 - [ ] Prune proc (spec 20) does not fight triggers (no AuditLogs recursion)
 - [ ] `.env.example` + compose carry the backup sidecar rows; infra specs 03/06 sync notes merged
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **Triggers become org-stamped:** `audit-triggers.sql` writes `AuditLogs` rows carrying the affected row's `OrganizationId` (best-effort `SESSION_CONTEXT(N'ActorOrgId')` alongside `N'ActorId'`; NULL for migration/platform paths) — the DB-level safety net answers "which tenant" too.
+- **Backup/restore drills include a per-org export restore check:** after `RESTORE ... WITH VERIFYONLY` + the scratch-DB rehearsal, the drill spot-checks one seeded org's rows by `OrganizationId` (row counts + `AuditLogs`/`ActivityLogs` timestamp smoke) before any cutover per RUNBOOK-ROLLBACK.
+- **Offboarding purge interplay (spec 33):** purge runs as org-scoped chunked bulk deletes (spec 41 revision) — trigger behavior during purge is verified (no unbounded `AuditLogs` amplification, no recursion on the purge's own audit rows); the purge path is part of the trigger guard-rail tests.
+- Trigger coverage of the **new tenant tables** (`OrganizationMembers`, `Roles`, `OrganizationInvites`, `ProjectClients`, `ClientFeedback`) is added to the operational-table list once spec 37's migration ships.
+- Restore runbook gains the tenant note: the PITR-style cutover (`docs/planning/RUNBOOK-ROLLBACK.md`) validates `AuditLogs`/`ActivityLogs` timestamps **per OrganizationId**, so a tenant-scoped rollback window is provable, not inferred.
+- Prune proc (spec 20/51 revision) carries the new nullable `OrganizationId` through untouched — prune/trigger non-fighting acceptance still holds.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

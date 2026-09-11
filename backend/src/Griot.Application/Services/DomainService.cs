@@ -6,6 +6,7 @@ using System.Text;
 using Griot.Application.DTOs;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Interfaces.Repositories;
+using Griot.Application.Tenancy;
 using Griot.Domain.Entities;
 using Griot.Domain.Enums;
 
@@ -34,6 +35,9 @@ public class DomainService : IDomainService
     private readonly IGenericRepository<AuditLog> _audit;
     private readonly IAuditService _auditService;
 
+    /// <summary>Active tenant scope (spec 29 — fail-closed tenant writes).</summary>
+    private readonly ITenantContext _tenant;
+
     public DomainService(
         IGenericRepository<User> users,
         IGenericRepository<Workspace> workspaces,
@@ -49,13 +53,15 @@ public class DomainService : IDomainService
         IGenericRepository<ActivityLog> activity,
         IGenericRepository<ErrorLog> errors,
         IGenericRepository<AuditLog> audit,
-        IAuditService auditService)
+        IAuditService auditService,
+        ITenantContext tenant)
     {
         _users = users; _workspaces = workspaces; _members = members; _invites = invites;
         _projects = projects; _boards = boards; _columns = columns; _tasks = tasks;
         _comments = comments; _attachments = attachments; _notifications = notifications;
         _activity = activity; _errors = errors; _audit = audit;
         _auditService = auditService;
+        _tenant = tenant;
     }
 
     // Spec 20 (pipeline §3–4): one AuditLogs row per state-changing write, queued into the
@@ -111,17 +117,28 @@ public class DomainService : IDomainService
         if ((await _workspaces.GetAllAsync()).Any(w => w.Slug == slug))
             throw new DomainError(DomainErrorKind.Conflict, "Slug is already in use.");
 
+        // Spec 29 acceptance (POST member user-data fix): resolve tenant + owner
+        // up-front. Every workspace belongs to exactly one company — the active
+        // org scope owns it (fail closed when there is no scope).
+        var organizationId = TenantGuard.RequireOrganization(_tenant);
+        var owner = await _users.GetByIdAsync(ownerId)
+            ?? throw new DomainError(DomainErrorKind.NotFound, "Owner not found.");
+
         var now = DateTime.UtcNow;
         var ws = new Workspace
         {
             Id = Guid.NewGuid(), Name = request.Name.Trim(), Slug = slug, OwnerId = ownerId,
+            OrganizationId = organizationId,
             CreatedAt = now, UpdatedAt = now
         };
         await _workspaces.AddAsync(ws);
-        await _members.AddAsync(new WorkspaceMember
+        var ownerMember = new WorkspaceMember
         {
-            WorkspaceId = ws.Id, UserId = ownerId, Role = WorkspaceRole.Owner, JoinedAt = now
-        });
+            WorkspaceId = ws.Id, UserId = ownerId, Role = WorkspaceRole.Owner, JoinedAt = now,
+            User = owner
+        };
+        await _members.AddAsync(ownerMember);
+        ws.Members.Add(ownerMember);
         QueueAudit(ownerId, "Workspace.Created", "Workspace", ws.Id, null, ws);
         await _workspaces.SaveChangesAsync();
         return ToWorkspaceDto(ws);
@@ -880,6 +897,9 @@ public class DomainService : IDomainService
     {
         var ws = await _workspaces.GetByIdAsync(workspaceId);
         if (ws is null) throw new DomainError(DomainErrorKind.NotFound, "Workspace not found.");
+        // Spec 29: cross-tenant writes fail closed even if the repository layer
+        // lacks the ambient scope (defense in depth — global filters cover reads).
+        TenantGuard.AssertTenant(_tenant, ws.OrganizationId);
         if (!IsMember(ws, userId)) throw new DomainError(DomainErrorKind.Forbidden, "Not a member of this workspace.");
         return ws;
     }
@@ -911,7 +931,7 @@ public class DomainService : IDomainService
     // DTO mappers
     private WorkspaceDto ToWorkspaceDto(Workspace w)
     {
-        var dto = new WorkspaceDto { Id = w.Id, Name = w.Name, Slug = w.Slug, OwnerId = w.OwnerId, CreatedAt = w.CreatedAt, UpdatedAt = w.UpdatedAt };
+        var dto = new WorkspaceDto { Id = w.Id, Name = w.Name, Slug = w.Slug, OwnerId = w.OwnerId, OrganizationId = w.OrganizationId, CreatedAt = w.CreatedAt, UpdatedAt = w.UpdatedAt };
         dto.Members = w.Members?.Select(ToMemberDto).ToList() ?? new();
         return dto;
     }

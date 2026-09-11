@@ -61,5 +61,13 @@ Existing Trigger cloud project and AI provider only. Batch embeddings with the e
 
 The user approved keeping this planning correction on the backend 09 review branch for this batch on 2026-09-11, directing "COMMIT AND PUSH TO GITHUB" in response to the exception request. See `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md` for the bounded exception. Future production implementation still requires its own feature branch/PR; this approval does not approve schema implementation or merge.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Institutional memory reuse is org-scoped: lessons carry `OrganizationId`; retrieval filters to the active organization (token `org` claim) BEFORE candidate ranking — no lesson from company A ever reaches company B sessions (this extends the existing cross-workspace isolation to cross-tenant isolation).
+- Pattern-detection corpora (fingerprints, embeddings, provenance) are computed and stored per org; budget keys partition per org (`budget:org:{orgId}:…`).
+- Custom roles are respected in candidate filtering: visible lessons follow the `perms` claim, never inferred access.
+- Client-role sessions receive no proactive memory suggestions (no task-creation surface exists for clients); pattern reuse inside the client portal belongs to ai 13/15's client boundary.
+- Offboarding (backend 33) purges/anonymizes org lessons on the retention schedule; derived snippets and vectors invalidate with the source.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

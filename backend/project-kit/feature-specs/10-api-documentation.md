@@ -72,5 +72,14 @@ configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **New route families to document** (all PLANNED, owned by specs 29–35 + revisions 36–51): `/api/organizations` platform routes (SuperAdmin create/list/suspend/reactivate/transfer-ownership/offboard — specs 32/33), `/api/auth/select-organization` + `GET /api/auth/organizations` (spec 30/42 revision), `/api/organizations/{id}/roles` + invites (specs 31/46), client portal routes `/api/client/projects` + `/api/client/projects/{id}/feedback` + maintenance requests (specs 34/35), handoff routes `/api/projects/{id}/handoff*` (specs 35/50).
+- **JWT v2 claims documented:** access tokens carry `name`, `org` (active OrganizationId), `role` (effective role incl. `super_admin` / `custom:{roleId}`), `perms` (space-separated permission keys); refresh token stays **opaque 64-hex — not a JWT, by design**; docs must never imply the refresh token decodes.
+- **Error catalogue gains** `403 org_suspended` (suspended/offboarding org writes blocked, reads allowed — spec 32) and the 404-not-403 cross-tenant convention (no existence leak — spec 39 revision).
+- `docs/api/CHANGELOG.md` gains the multi-tenant wave entry; the contract-sync gate must include docs/api + Postman + `backend/project-kit/context/api-surface.md` in the same branch for every tenant route change.
+- Postman-first rule holds: the collection (spec 43 revision) is the machine-readable source for the new org/company/client/handoff folders; REST.md/GraphQL.md are derived from it.
+- Hot-path examples gain an **org-switched login** example (login → `select-organization` → board read) alongside the existing four.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -5,6 +5,7 @@ using Griot.Application.DTOs;
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
+using Griot.Application.Tenancy;
 using Griot.Domain.Entities;
 using Moq;
 using Xunit;
@@ -57,7 +58,9 @@ public class AttachmentValidationTests
             projects.Object, boards.Object, columns.Object, tasks.Object,
             comments.Object, attachments.Object, notifications.Object,
             activity.Object, errors.Object, audit.Object,
-            Mock.Of<IAuditService>());
+            Mock.Of<IAuditService>(),
+            // Spec 29: tests run inside an explicit tenant scope.
+            Mock.Of<ITenantContext>(t => t.OrganizationId == WorkspaceId));
 
         return (service, attachments);
     }

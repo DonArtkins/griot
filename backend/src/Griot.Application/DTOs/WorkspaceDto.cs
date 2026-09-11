@@ -10,6 +10,10 @@ public class WorkspaceDto
     public string Name { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public Guid OwnerId { get; set; }
+
+    /// <summary>Tenant owner (spec 29 — the company this workspace belongs to).</summary>
+    public Guid OrganizationId { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public List<WorkspaceMemberDto> Members { get; set; } = new();

@@ -53,5 +53,12 @@ Compose orchestration (03), registry push (06).
 - [ ] No secrets in the image layers
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Migration on deploy includes `AddMultiTenantColumns` (backend 29/36): `OrganizationId` on every tenant table + nullable org id on the observability tables; the Railway release command `dotnet ef database update` picks it up unchanged.
+- New env: `SUPERADMIN__EMAIL` / `SUPERADMIN__PASSWORD` for SuperAdmin bootstrap (backend 30/32) — secret-store only, never baked into image layers.
+- `JWT__Key` production policy (backend 30): ≥ 64 chars (512 bits), CSPRNG-generated, secret-store only; dev keys exempt.
+- Image remains free of secrets — all tenant/JWT/SuperAdmin env injected at runtime.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -73,5 +73,11 @@ configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Topology unchanged: `api` + `sababisha-sqlserver` + `sababisha-postgres` + `sababisha-redis` (+ `mcp` via 04) — Pool-model tenancy is schema-level (`OrganizationId` columns), so no per-tenant containers, volumes or databases are ever added.
+- `.env.example` gains the JWT v2 rows: `JWT__Key` (dev placeholder; production ≥ 64 chars per backend 30), `SUPERADMIN__EMAIL`, `SUPERADMIN__PASSWORD`, `Organizations__RetentionDays=30` (offboard purge window, backend 33).
+- Suspend/offboard behavior (`403 org_suspended`, purge jobs) is backend-owned; compose carries env parity only.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

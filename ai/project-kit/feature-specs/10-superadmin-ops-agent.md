@@ -61,5 +61,12 @@ Existing Trigger cloud, backend and Brevo only. No new alert product, payment mo
 
 The user approved keeping this planning correction on the backend 09 review branch for this batch on 2026-09-11, directing "COMMIT AND PUSH TO GITHUB" in response to the exception request. See `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md` for the bounded exception. Future production implementation still requires its own feature branch/PR; this approval does not approve schema implementation or merge.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- The ops agent is the platform-level agent for company lifecycle: incident summaries and broadcasts operate across organizations as a **SuperAdmin-delegated principal** (never an invented synthetic identity), with backend 27 building and redacting the permitted snapshot per organization.
+- Per-org incident summaries carry the `OrganizationId` (log rows gain a nullable org column; platform-level events stay null); a suspended/offboarding org still produces incident facts but blocks org-scoped fan-out (`403 org_suspended`).
+- SuperAdmin broadcasts resolve platform-wide audiences via backend 27's authoritative resolution; per-tenant recipient scoping (role/org filters) is re-checked at preview AND confirmation.
+- Every lifecycle broadcast (onboard/suspend/offboard notices, backend 32/33) lands in AuditLogs with org + SuperAdmin actor attribution — no AI-initiated cross-tenant email without an audit trail.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

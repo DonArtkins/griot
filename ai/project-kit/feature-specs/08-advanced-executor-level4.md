@@ -56,5 +56,12 @@ Existing Trigger cloud retry primitives and backend durable jobs. No new contain
 
 `npm run lint && npm run typecheck && npm test`; golden transcripts with mocked LLM and backend failure/retry scenarios.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Executor bounds are per org: every approved plan is bound to the organization in effect at approval time (from the JWT v2 `org` claim), and execution re-checks active-org match at each state-changing step — a mismatch returns 403 before any write.
+- A `Client` role never receives executor capabilities: internal capability tools (task/comment write proposals, multi-step plans) are absent from client manifests; clients get only the feedback-shaped surface (ai 13), enforced by the capability gateway (backend 25 bump).
+- Custom roles (`custom:{roleId}`) bound plans to the permission keys in the token `perms` claim; role/membership/grant expiry re-checks happen at execution, per org.
+- Idempotency keys and audit rows become org-stamped (`org:{orgId}:…`), keeping step attribution per tenant for backend 25 log tiers.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

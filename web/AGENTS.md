@@ -74,5 +74,15 @@ implemented acceptance evidence. Run the system verification gates as well.
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
+## Multi-Tenant Migration Wave (2026-09-11 — PLANNED)
+
+Canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`. The tenant is the **Organization (Company)** — pool model server-side (every tenant-owned row carries `OrganizationId`). The web never sends a tenant id: the JWT v2 `org` claim is authoritative, and client-side visibility (guards, rail filtering) mirrors but never enforces the server boundary.
+
+- **JWT v2 client handling (backend 30):** the access token adds `name`, `org` (active company; absent for platform-only sessions), `role` and `perms` claims — decoded into the auth store (memory only). The **refresh token stays opaque** — never a JWT, never decoded client-side (jwt.io blank = correct). `POST /api/auth/select-organization` re-issues the token pair on org switch; the web then resets the Apollo cache and invalidates org-scoped TanStack queries. Role-based guards (`RequirePerm`/`RequireRole`) gate the new consoles.
+- **Four NEW specs (PLANNED):** `13-company-admin-console.md` (Owner/Admin: members, custom roles, all-projects-in-company view, settings), `14-superadmin-platform-console.md` (all companies, onboard/suspend/offboard flows, lifecycle event timeline), `15-client-portal-ui.md` (client progress view, feedback → assigned PM, handoff acceptance, maintenance requests), `16-project-handoff-maintenance-ui.md` (PM handoff checklist, documents incl. AI manual, client offboarding, maintenance queue).
+- **Existing specs 01–12** each carry a "Multi-Tenant Update (2026-09-11 — PLANNED)" section (org-aware API/GraphQL clients + new DTOs; org selector + role-aware nav in 07; client board boundary in 08; org-scoped feeds/copilot/reports/AI workspace; pricing plan metadata in 06).
+- Web-side contract addendum: `web/project-kit/context/integration-contracts.md` (JWT v2 claims, select-organization, new REST routes, client-view DTO note).
+- All of the above is PLANNED — no production code; implemented-status claims elsewhere in this file are unchanged until each spec ships on its own feature branch.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -54,5 +54,12 @@ MCP validates input and delegates to backend endpoints. Backend owns eligibility
 
 Existing stdio and HTTPS Streamable HTTP transports; no new container, provider or secret. Poll report status through .NET only.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Per-org audit-summary: `system_audit`/`get_audit_log` aggregate within the active org only (observability tables gain nullable `OrganizationId` — backend 51/29); no cross-org rollups.
+- Client progress report variant: a new report type on the backend 24/34 surface whose audience is the Client tier — client-scoped data only (progress view, milestones, no internal board internals), same async `generate_report` job path.
+- `list_reports`/`get_report`/`download_report` resolve org from the delegated principal; org B report ids from an org A session are denied before dispatch.
+- Client-tier session manifests expose client-portal read tools only (mcp 07 v3 roster per backend 25).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

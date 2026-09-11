@@ -57,5 +57,12 @@ Existing Trigger cloud project and cost budget. No additional data store, webhoo
 
 `npm run lint && npm run typecheck && npm test`; mocked LLM, manifest and authorization golden tests.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Knowledge/auditor answers are org-scoped: retrieval filters by the active organization (token `org` claim) before ranking; a Member/Admin in org A never sees org B rows — server-side filters (backend 29) and the capability gateway (backend 25 bump) enforce it.
+- Custom roles: the capability manifest resolves `custom:{roleId}` permissions from the token `perms` claim; the agent never infers capabilities beyond the manifest.
+- Client-role sessions get knowledge answers only from client-scoped data (progress, public PM responses, handoff docs) — the boundary contract is ai 13.
+- Audit-summary access stays role-tiered per the active org (Admin sees their company only; SuperAdmin sees platform level with `OrganizationId` on log rows, nullable for platform events).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -1,5 +1,15 @@
 # AGENTS.md — Griot Backend / API (ASP.NET Core 8)
 
+## Current working-tree checkpoint — 2026-09-11
+
+Spec 29 has existing uncommitted implementation on its own feature branch; it is
+incomplete and its ERD amendment remains pending approval. Continue this feature
+only after its design gate; do not switch to spec 30 yet. Roadmap §P0.5 (29 → 30 →
+31 → 32 → 33 → 34 → 35 before hardening) supersedes older next-feature statements
+below. Read the [preflight findings and plan](../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+and tracker. Build passed; 152 tests passed with 8 SQL tests skipped. These results
+do not establish migration or tenant-isolation acceptance.
+
 ## Read This First
 
 You are the agent for the **Backend / API system** of Griot. This system is the sole owner of data and business logic. Everything else (web, mobile, AI, MCP) talks to this system and nothing else touches SQL Server.
@@ -99,6 +109,10 @@ the repository root. Synchronize the owning spec, dependent specs, planning,
 research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
+
+## Multi-Tenant Migration Wave — 2026-09-11 [own-stack] (PLANNED)
+
+Backend owns the tenant foundation: specs **29–35** (29 Organizations schema + Pool-model isolation via `ITenantContext` + EF global query filters; 30 JWT v2 claims `name/org/role/perms` + `POST /api/auth/select-organization` + SuperAdmin bootstrap + `JWT__Key` ≥512-bit policy — refresh tokens stay opaque, never JWTs; 31 RBAC: system roles Owner/Admin/ProjectManager/Member/Client + Admin/PM-created custom roles from a fixed permission catalogue; 32 SuperAdmin company onboarding/suspend/reactivate; 33 offboarding export → 30-day retention → purge; 34 client portal + `ClientFeedback` + AI client boundary; 35 handoff + AI-generated client manual + client offboarding + maintenance) plus revision specs **36–51** for every *implemented* backend feature (36→01 … 51→20 — the implemented spec files themselves stay frozen). Spec 29 requires the Figma-Make-approved ERD amendment `diagrams/erd/multi-tenant-amendment.md` first (hard rule 4). Canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`. Includes the workspace POST fix: `CreateWorkspaceAsync` must hydrate member user data (`displayName`/`email`/`avatarUrl`) so POST responses match GET.
 
 ## Audit synchronization — 2026-09-11
 

@@ -49,5 +49,12 @@ CREATE: agent definition; tools `get_board`, `get_task`, `list_boards`, `list_pr
 - [ ] Every read tool call audited
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Copilot reads/writes are scoped to the active organization from the token's `org` claim (backend 29) — tools never receive or accept a caller-supplied org id.
+- Client boundary: when the effective role is `Client`, the copilot answers only from client-scoped data (progress view, public PM responses, handoff docs) — the full boundary contract lives in ai 13; internal board internals are never exposed to client sessions.
+- Cross-tenant questions ("show me another company's board") are refused and logged; every answer stays inside the active org's data (server-side EF global query filters back this up).
+- Streaming access tokens issued for the web Copilot panel carry the same org/role context; an org switch invalidates the prior stream context.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

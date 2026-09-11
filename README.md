@@ -28,21 +28,6 @@ Each system is self-contained (own `AGENTS.md`, `.agents/skills/`, `project-kit/
 
 ## Getting Started
 
-### First-time setup (after git clone)
-
-Binary files (PDFs, PowerPoints, screenshots) are stored in Cloudinary to avoid bloating the Git repository. Download them with:
-
-```bash
-./scripts/cloudinary-download.sh
-```
-
-This restores all research documents and screenshots (~15 MB, 14 files). See `docs/tooling/CLOUDINARY-BINARY-FILES.md` for details.
-
-**What you get:**
-- `research/GTP 2026 BOOTCAMP EDITION.pdf` — Official bootcamp spec
-- `research/Netdata_RD_Presentation.pptx` — Monitoring strategy
-- `research/screenshots/*.png` — Deployment evidence & UI references
-
 ## How to run & build (command reference)
 
 > **Which folder:** every block says the exact directory to `cd` into first. Repo root = `~/sababisha/projects/gtp/griot`. Node auto-switches to v20 (`.nvmrc`) on `cd`. **Docker the container** is the real Docker Engine, not Podman (see `research/gtp-2026-prep.md` §6).
@@ -225,6 +210,10 @@ open http://localhost:5064/swagger                        # browse every route +
 - **Docs**: `docs/README.md` · **Architecture**: `docs/ARCHITECTURE.md` · **Database**: `docs/database/DATABASE-DESIGN.md`
 - **Diagrams**: `diagrams/README.md` · **Prompts**: `PROMPTS/README.md`
 - **Contribute**: `CONTRIBUTING.md` · **Security**: `SECURITY.md` · **License**: `LICENSE` (MIT)
+
+## Multi-Tenant Migration Wave (2026-09-11 — PLANNED)
+
+Griot becomes a **multi-tenant platform** (research: `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md`; canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`): the **SuperAdmin** (system owner) onboards **Companies (`Organizations`)**, each with a company **Admin** who sees all projects inside that company only, **ProjectManagers** for their projects, **Members**, and **Clients** — a satisfaction-first portal (progress view, feedback routed to the PM, AI-scoped answers, project handoff with an AI-generated user manual, client offboarding into a maintenance/post-deployment-support phase with data retained). Company offboarding = export → retention window → purge. JWT v2 access tokens carry `name`/`org`/`role`/`perms` (role attribute added system-wide; custom roles creatable by Admin/PM inside their company); **refresh tokens remain opaque by design** — they are not JWTs, so jwt.io decoding them blank is correct behavior; production `JWT__Key` ≥ 512 bits, secret-store only, so signature verification succeeds with the real key. Spec wave: backend 29–35 (new) + 36–51 (revisions of implemented specs, originals frozen) + bumps across every layer; order and dependency edges in `docs/planning/IMPLEMENTATION-ROADMAP.md` §P0.5 and `docs/DEPENDENCY-AUDIT.md`.
 
 ## Roadmap (bootcamp)
 

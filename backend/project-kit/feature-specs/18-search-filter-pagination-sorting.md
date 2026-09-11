@@ -78,5 +78,14 @@ Full-text/catalog indexes, cursor pagination for infinite scroll (post-bootcamp)
 - [ ] Postman folder 14 + Tasks requests updated to strict assertions (400s asserted as 400)
 - [ ] `docs/database/DATABASE-DESIGN.md` Phase-2 covering index `TaskItems(BoardId, ColumnId, Position)` evaluated with the new ORDER BY shapes (evidence note added)
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- **All list endpoints become org-scoped automatically** through the spec-37 EF global query filters bound to `ITenantContext` (JWT `org`) — the query contract on this page (page/pageSize cap/sortBy whitelist/`q` escaping) is applied **on top of** tenant scoping, never instead of it.
+- **New list endpoints from the tenant wave adopt `PagedResult<T>` + whitelists** (PLANNED, revisions 46–51): `GET /api/organizations` (SuperAdmin), `/api/organizations/{id}/members`, `/api/organizations/{id}/roles`, `/api/organizations/{id}/invites`, project feedback lists, `/api/organizations/{id}/lifecycle-events`, client progress/feed lists — each gets a per-endpoint whitelist entry in the matrix above.
+- **Dapper paths gain `@OrganizationId`** (spec 38 revision): `totalCount`/`SELECT COUNT(*)` runs in the same org-filter state as the page query; stored-proc signatures carry the mandatory org parameter.
+- Cross-tenant id semantics: an org-scoped list/page resolving a foreign id returns **empty** → 404 conventions per the spec-39 revision (no existence leak).
+- **Pagination whitelist is unchanged** — no new sortable columns beyond the per-endpoint whitelists added by the tenant revisions; `pageSize=5000` → 400 still holds everywhere.
+- Postman strict assertions extended to the new org folders (spec 43 revision): envelope shape + three `X-` headers asserted on every tenant list endpoint.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

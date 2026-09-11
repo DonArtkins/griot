@@ -50,6 +50,9 @@ namespace Griot.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Payload")
                         .HasColumnType("nvarchar(max)");
 
@@ -59,6 +62,8 @@ namespace Griot.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ActorId");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("WorkspaceId", "CreatedAt")
                         .IsDescending(false, true);
@@ -87,6 +92,9 @@ namespace Griot.Infrastructure.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("nvarchar(8)");
 
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Path")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -112,6 +120,8 @@ namespace Griot.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("Path");
 
@@ -142,6 +152,9 @@ namespace Griot.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint");
 
@@ -157,6 +170,8 @@ namespace Griot.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("TaskId");
 
@@ -199,6 +214,9 @@ namespace Griot.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("RequestId")
                         .HasColumnType("uniqueidentifier");
 
@@ -207,6 +225,8 @@ namespace Griot.Infrastructure.Migrations
                     b.HasIndex("ActivityId");
 
                     b.HasIndex("ActorId");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("RequestId");
 
@@ -232,10 +252,15 @@ namespace Griot.Infrastructure.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("ProjectId");
 
@@ -262,12 +287,17 @@ namespace Griot.Infrastructure.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int?>("WipLimit")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("BoardId");
+
+                    b.HasIndex("OrganizationId");
 
                     b.ToTable("Columns");
                 });
@@ -288,6 +318,9 @@ namespace Griot.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
@@ -297,6 +330,8 @@ namespace Griot.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AuthorId");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("TaskId");
 
@@ -328,6 +363,9 @@ namespace Griot.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("RequestId")
                         .HasColumnType("uniqueidentifier");
 
@@ -350,6 +388,8 @@ namespace Griot.Infrastructure.Migrations
                         .HasFilter("[FixStatus] IN ('Open', 'Investigating')");
 
                     b.HasIndex("FixedAt");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("RequestId");
 
@@ -380,6 +420,9 @@ namespace Griot.Infrastructure.Migrations
                     b.Property<Guid>("InvitedById")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -399,6 +442,8 @@ namespace Griot.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("InvitedById");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("Token")
                         .IsUnique();
@@ -420,6 +465,9 @@ namespace Griot.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("datetime2");
@@ -443,9 +491,182 @@ namespace Griot.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OrganizationId");
+
                     b.HasIndex("UserId", "ReadAt");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.Organization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("OffboardedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PlanName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("PlanName");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("Organizations");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.OrganizationInvite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CustomRoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("InvitedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomRoleId");
+
+                    b.HasIndex("InvitedById");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("OrganizationInvites");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.OrganizationLifecycleEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "CreatedAt");
+
+                    b.ToTable("OrganizationLifecycleEvents");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.OrganizationMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CustomRoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomRoleId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("OrganizationId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("OrganizationMembers");
                 });
 
             modelBuilder.Entity("Griot.Domain.Entities.OtpChallenge", b =>
@@ -512,6 +733,9 @@ namespace Griot.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -523,6 +747,8 @@ namespace Griot.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("WorkspaceId");
 
@@ -606,6 +832,38 @@ namespace Griot.Infrastructure.Migrations
                     b.ToTable("Reports");
                 });
 
+            modelBuilder.Entity("Griot.Domain.Entities.Role", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Permissions")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("Roles");
+                });
+
             modelBuilder.Entity("Griot.Domain.Entities.TaskItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -633,6 +891,9 @@ namespace Griot.Infrastructure.Migrations
                     b.Property<DateTime?>("DueDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("Position")
                         .HasColumnType("decimal(18,4)");
 
@@ -659,6 +920,8 @@ namespace Griot.Infrastructure.Migrations
                     b.HasIndex("CreatorId");
 
                     b.HasIndex("DueDate");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("ColumnId", "Position");
 
@@ -696,6 +959,10 @@ namespace Griot.Infrastructure.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("nvarchar(512)");
 
+                    b.Property<string>("PlatformRole")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("TwoFactorMethod")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -725,6 +992,9 @@ namespace Griot.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
@@ -737,6 +1007,8 @@ namespace Griot.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
 
                     b.HasIndex("OwnerId");
 
@@ -922,6 +1194,80 @@ namespace Griot.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Griot.Domain.Entities.Organization", b =>
+                {
+                    b.HasOne("Griot.Domain.Entities.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.OrganizationInvite", b =>
+                {
+                    b.HasOne("Griot.Domain.Entities.Role", "CustomRole")
+                        .WithMany("Invites")
+                        .HasForeignKey("CustomRoleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Griot.Domain.Entities.User", "InvitedBy")
+                        .WithMany()
+                        .HasForeignKey("InvitedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Griot.Domain.Entities.Organization", "Organization")
+                        .WithMany("Invites")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CustomRole");
+
+                    b.Navigation("InvitedBy");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.OrganizationLifecycleEvent", b =>
+                {
+                    b.HasOne("Griot.Domain.Entities.Organization", "Organization")
+                        .WithMany("LifecycleEvents")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.OrganizationMember", b =>
+                {
+                    b.HasOne("Griot.Domain.Entities.Role", "CustomRole")
+                        .WithMany("Members")
+                        .HasForeignKey("CustomRoleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Griot.Domain.Entities.Organization", "Organization")
+                        .WithMany("Members")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Griot.Domain.Entities.User", "User")
+                        .WithMany("OrganizationMembers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CustomRole");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Griot.Domain.Entities.OtpChallenge", b =>
                 {
                     b.HasOne("Griot.Domain.Entities.User", "User")
@@ -935,11 +1281,19 @@ namespace Griot.Infrastructure.Migrations
 
             modelBuilder.Entity("Griot.Domain.Entities.Project", b =>
                 {
+                    b.HasOne("Griot.Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Griot.Domain.Entities.Workspace", "Workspace")
                         .WithMany("Projects")
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Organization");
 
                     b.Navigation("Workspace");
                 });
@@ -964,6 +1318,17 @@ namespace Griot.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.Role", b =>
+                {
+                    b.HasOne("Griot.Domain.Entities.Organization", "Organization")
+                        .WithMany("Roles")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("Griot.Domain.Entities.TaskItem", b =>
@@ -994,11 +1359,19 @@ namespace Griot.Infrastructure.Migrations
 
             modelBuilder.Entity("Griot.Domain.Entities.Workspace", b =>
                 {
+                    b.HasOne("Griot.Domain.Entities.Organization", "Organization")
+                        .WithMany("Workspaces")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Griot.Domain.Entities.User", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Organization");
 
                     b.Navigation("Owner");
                 });
@@ -1032,9 +1405,29 @@ namespace Griot.Infrastructure.Migrations
                     b.Navigation("TaskItems");
                 });
 
+            modelBuilder.Entity("Griot.Domain.Entities.Organization", b =>
+                {
+                    b.Navigation("Invites");
+
+                    b.Navigation("LifecycleEvents");
+
+                    b.Navigation("Members");
+
+                    b.Navigation("Roles");
+
+                    b.Navigation("Workspaces");
+                });
+
             modelBuilder.Entity("Griot.Domain.Entities.Project", b =>
                 {
                     b.Navigation("Boards");
+                });
+
+            modelBuilder.Entity("Griot.Domain.Entities.Role", b =>
+                {
+                    b.Navigation("Invites");
+
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Griot.Domain.Entities.TaskItem", b =>
@@ -1063,6 +1456,8 @@ namespace Griot.Infrastructure.Migrations
                     b.Navigation("ErrorLogs");
 
                     b.Navigation("Notifications");
+
+                    b.Navigation("OrganizationMembers");
 
                     b.Navigation("OtpChallenges");
 

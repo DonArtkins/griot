@@ -8,6 +8,10 @@ public class Invite
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid WorkspaceId { get; set; }
     public virtual Workspace Workspace { get; set; } = null!;
+
+    /// <summary>Tenant owner (spec 29 — mirrors the parent workspace's org).</summary>
+    public Guid OrganizationId { get; set; }
+
     public string Email { get; set; } = string.Empty;
     public virtual WorkspaceRole Role { get; set; }
     public string Token { get; set; } = string.Empty;

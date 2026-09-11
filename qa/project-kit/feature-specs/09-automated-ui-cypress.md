@@ -41,5 +41,11 @@ CREATE: `web/cypress/e2e/core-loop.cy.ts`, `copilot.cy.ts` (MSW stub), support c
 - [ ] Copilot flow green with MSW stub (no LLM)
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Multi-tenant E2E journeys: onboard company (SuperAdmin) → admin console (Admin) → PM/Member flows → client feedback → handoff acceptance → maintenance request → offboard (backend 32–35 parity).
+- Cross-tenant E2E negatives: org A users never see org B projects in any screen; suspended org renders the read-only state with working switch-org path.
+- Client persona journey included end-to-end (progress view → feedback → handoff → maintenance) alongside the core loop.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

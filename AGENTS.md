@@ -1,5 +1,15 @@
 # AGENTS.md — Griot Monorepo Orchestrator (GTP 2026 Bootcamp)
 
+## Current working-tree checkpoint — 2026-09-11
+
+Backend 29 is incomplete on `feature/backend/29-multi-tenant-foundation-organizations`.
+Its existing migration lacks recorded tenancy ERD approval; do not mark it complete
+or advance to backend 30. Roadmap §P0.5 governs after backend 20: 29 → 30 → 31 → 32 →
+33 → 34 → 35, then the hardening sequence. This checkpoint supersedes older
+next-feature statements below. Read the [preflight and completion plan](docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+and the backend tracker before proceeding. No production changes or commit/push
+were made by this preflight; design approval and acceptance gates remain required.
+
 ## Read This First
 
 You are an AI agent working on **Griot** (*GREE-oh*), a project-management web app built for the **Sababisha Solutions GTP 2026 Bootcamp**. Griot is the "accurate, shared record of what happened and what's next" — workspaces, projects, boards, tasks, comments, notifications, and an AI copilot.
@@ -136,6 +146,12 @@ the repository root. Synchronize the owning spec, dependent specs, planning,
 research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
+
+## Multi-Tenant Migration Wave — 2026-09-11 [own-stack] (PLANNED)
+
+User-directed planning wave (research: `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md`; canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment: `diagrams/erd/multi-tenant-amendment.md`). Griot becomes a **multi-tenant platform**: the operator (**SuperAdmin** — you, owner of Griot) onboards **Companies (`Organizations`)**, each company has an **Admin (owner)** who sees ALL projects **inside that company only**, ProjectManagers manage their projects, and **Clients** get a satisfaction-first portal (progress view + feedback + handoff + maintenance). Pool tenancy model; `OrganizationId` on every tenant table; JWT v2 access tokens carry `name`/`org`/`role`/`perms` while **refresh tokens stay opaque by design** (they are not JWTs — jwt.io decoding them blank is correct); production `JWT__Key` ≥ 512 bits, secret-store only.
+
+**Spec-numbering rule of this wave:** implemented backend specs are **frozen** — their multi-tenant behavior ships via NEW revision specs **36–51** (36→01 … 51→20); unimplemented backend specs are bumped in place; NEW multi-tenant specs are **29–35**. Other layers: all existing specs bumped + **web 13–16, mobile 08–09, ai 13–15, mcp 07, qa 14** added. Order after backend 20: **29 → 30 → 31 → 32 → 33 → 34 → 35**, then the existing hardening order, revisions landing with the branches that touch their base features, **10** last. JWT skills installed for agents: `.agents/skills/jwt-{decode,encode,validate}/` (`npx skills add jsonwebtoken/jwt-skills`). Roadmap: `docs/planning/IMPLEMENTATION-ROADMAP.md` §P0.5; dependency edges: `docs/DEPENDENCY-AUDIT.md`.
 
 ## Audit synchronization — 2026-09-11
 

@@ -12,6 +12,7 @@
 | 04 | Container + Railway deploy | Pending | mcp 03, **infra 02–04, 06** |
 | 05 | Contract testing + MCP Inspector smoke | Pending | mcp 01–03 |
 | 06 | Report & audit tools (v2 roster) | Pending (**P5 wave**) | mcp 02, backend 20/24/25, ai 06/07 |
+| 07 | Tenant-scoped tools v3 (org-aware manifest per role tier) | 📋 Spec written (PLANNED) — multi-tenant wave | mcp 06, backend 25/29/30/32/34/35 |
 
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P5)
 
@@ -26,6 +27,8 @@
 3. Verification gates: `npm run lint && npm run typecheck && npm test` green (contract tests, mocked GraphQL) + MCP Inspector stdio smoke.
 
 ## Session Notes
+
+- **2026-09-11 (multi-tenant wave sync)** — PLANNED wave per `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`: specs 01–06 each gained a "Multi-Tenant Update (2026-09-11 — PLANNED)" section (tenant context from the OBO principal's `org` claim; role-aware results per backend 25 tiers; delegation gains `OrganizationId`; env/deploy unchanged; cross-tenant negative tool tests; per-org audit-summary + client progress report variant) and NEW spec 07 (tenant-scoped tool manifest v3) was written. No production code; existing statuses untouched.
 
 - **2026-09-11 (superpowers wave sync)** — Added PLANNED mcp spec 06 (v2 report/audit tools: list_reports, get_report, generate_report, download_report, system_audit, get_audit_log, get_metrics). V1 8-tool roster untouched until mcp 02 ships; v2 needs backend 20/24/25 + CreateReport scope + ai 06/07. Never OTP/auth/delete/invite/member tools. No production code; contract-sync run.
 

@@ -3,6 +3,13 @@
 **Generated:** 2026-09-08 · **Updated:** 2026-09-11
 **Purpose:** System-wide audit of all feature spec dependencies to ensure correct implementation order and prevent dependency violations.
 
+**2026-09-11 working-tree checkpoint:** roadmap §P0.5 governs the next features:
+29 → 30 → 31 → 32 → 33 → 34 → 35 after 20, then hardening. Backend 29 already has
+incomplete uncommitted work; its ERD and acceptance gates are outstanding. Do not
+advance to 30. The [preflight report](planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+supersedes older current/next-feature statements below without changing the
+approved sequence or treating planning as completed implementation.
+
 > **2026-09-10:** This file audits *within-system* spec ordering. The **cross-system layer order** (which system's which spec comes next, and why) is now canonical in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — P0 backend 09→20→18→19→22→21→23→11→28→24→25→26→27→10 (2026-09-10 observability/hardening wave + 2026-09-11 AI-superpowers/OTP/BI wave inserted; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` §3 + ADR-004) → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–12 (web 11/12 inserted at their dependency points) → P3 mobile → P4 infra → P5 mcp (06) → P6 qa. It also resolves the web 10 ↔ ai 02 circular reference (see the roadmap P2 section and the build-order note added to `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`).
 
 > **2026-09-11:** New PLANNED specs — backend **23** (critical-action OTP/step-up), backend **24** (AI reports & export surface + FIFTH OBO scope `CreateReport`), backend **25** (role-tiered log access + AI capability gateway), backend **26** (AI memory & conversations), backend **27** (incident alerting + confirmed broadcasts), backend **28** (project lifecycle report evidence), ai **06–12** (knowledge+auditor · reports PDF/CSV · advanced executor · agentic BI copilot · SuperAdmin ops agent · institutional memory · assignment suggestions), web **11–12** (Reports & Audit Center, AI Workspace sidebar), mcp **06** (v2 report/audit tools). Roadmap P0: … → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10; P2 adds ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10–12; P5 adds mcp 06. No AI spec touches auth/OTP (backend 23).
@@ -202,6 +209,26 @@ The AI 06/07 → web 11, AI 09 → web 12 and backend → AI/UI dependencies wer
 - Backend: Spec **08** (API testing with Postman).
 - Branch: `feature/backend/08-api-testing-postman`.
 - Auth Spec 07 is implemented; after 08: 09 (AI token) → 10 (docs) → 11 (blob).
+
+---
+
+## Multi-Tenant Migration Wave — 2026-09-11 (PLANNED dependency edges)
+
+New nodes and edges (full contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment: `diagrams/erd/multi-tenant-amendment.md`; roadmap section: `docs/planning/IMPLEMENTATION-ROADMAP.md` §P0.5):
+
+| Upstream | Unblocks |
+|---|---|
+| backend 29 (Organizations schema + tenant isolation, Pool model) | 30, 31, 32, 33, 34, 35, all revision specs 36–51, web 13–16, mobile 08–09, ai 13–15, mcp 07, qa 14 |
+| backend 30 (JWT v2 claims + org switch + SuperAdmin bootstrap) | 31 (`perms` claim), 39/40 (REST/GraphQL authorization), web 05/07/13–16, mobile 02/08 |
+| backend 31 (RBAC + custom company roles) | 32 (role seeding at onboarding), 34 (client permissions), 25 (capability tiers incl. Client), web 13 |
+| backend 32 (company onboarding, SuperAdmin-only) | 33 (offboarding), web 14, ai 10 (platform ops agent) |
+| backend 33 (company offboarding: export → retention → purge) | qa 14 (purge/restore evidence), web 14 |
+| backend 34 (client portal + feedback + AI client boundary) | 35 (handoff needs the client relationship), web 15, mobile 09, ai 13, mcp 06/07 client variants |
+| backend 35 (handoff + client offboarding + maintenance) | web 16, ai 14 (manual generator), ai 15 (maintenance triage), backend 28 evidence extension |
+
+**Boundary unchanged:** AI (ai/ + mcp/) still never touches SQL Server or auth/OTP; the OBO principal now resolves **inside a tenant** (delegation gains `OrganizationId`); the spec-25 capability gateway gains a Client tier (progress-only capabilities); AI memory is org-stamped (backend 26) and never crosses tenants. SuperAdmin platform actions (backend 32/33) remain **human-only** — no AI path to company lifecycle.
+
+**Implemented backend specs are frozen** — multi-tenant behavior for them ships via revision specs 36–51 (mapping 36→01 … 51→20); originals stay untouched (user-directed numbering rule of this wave).
 
 ---
 

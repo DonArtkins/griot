@@ -10,6 +10,14 @@ public class Workspace
     public string Slug { get; set; } = string.Empty;
     public Guid OwnerId { get; set; }
     public virtual User Owner { get; set; } = null!;
+
+    /// <summary>
+    /// Tenant owner (spec 29 — Pool model). Every workspace belongs to exactly
+    /// one company; global query filters scope reads to the request tenant.
+    /// </summary>
+    public Guid OrganizationId { get; set; }
+    public virtual Organization Organization { get; set; } = null!;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

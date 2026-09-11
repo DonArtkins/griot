@@ -43,5 +43,12 @@ CREATE: golden-transcript fixtures (`(conversation, mocked LLM outputs) -> expec
 - [ ] Budget enforced per workspace; alarms fire on over-budget
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Add multi-tenant transcript suites: two-org fixtures proving no cross-tenant data leakage (org A sessions never receive org B rows), suspended-org fixtures (writes rejected, reads scoped), and org-switch mid-thread fixtures (post-switch context is rebuilt from the new token `org` claim).
+- Add client-boundary suites: a `Client`-role session never receives internal board internals, raw logs, other tenants' data, or internal capability names — asserted at the tool-call level, not in prose.
+- Custom-role fixtures: `custom:{roleId}` permissions resolve exactly from the token `perms` claim in transcripts.
+- Budget fixtures extend to per-org partitioning (`budget:org:{orgId}:…`); over-budget in one org does not consume another org's allowance.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

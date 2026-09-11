@@ -46,5 +46,11 @@ configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Isolation integration tests (qa 14): `WebApplicationFactory` with two seeded companies — cross-tenant reads return empty, writes rejected, EF global filters + repository guards proven across every tenant path.
+- `IPermissionService` coverage extended for org-role resolution (SuperAdmin/Admin/PM/Member/Client/`custom:{roleId}`) — counts toward the ≥80% service-layer/auth gate.
+- Suspended-org write-rejection tests (`403 org_suspended`) and org-switch token re-issue integration tests.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

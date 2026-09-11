@@ -59,5 +59,12 @@ Existing AI project, API and web only; no new container, schema migration or cre
 
 The user approved keeping this planning correction on the backend 09 review branch for this batch on 2026-09-11, directing "COMMIT AND PUSH TO GITHUB" in response to the exception request. See `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md` for the bounded exception. Future production implementation still requires its own feature branch/PR; this approval does not approve schema implementation or merge.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Suggestions become role/permission-aware: candidate pools, visible evidence and proposal types respect the active org's effective role and `perms` claim — including custom roles (`custom:{roleId}`), which the agent resolves from the token/manifest, never by inference.
+- Candidate history is filtered to the active organization before ranking (backend 29 server-side filters); the bounded-window query never crosses tenants.
+- A company Admin may request suggestions for their company's members only; SuperAdmin-delegated platform-level suggestion runs (if ever added) must be a separate explicit delegation — none exists in this wave.
+- Client role is out of scope for assignment suggestions (clients have no assignment surface); client feedback triage routing belongs to ai 13.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

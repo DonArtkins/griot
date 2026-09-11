@@ -50,6 +50,13 @@
 | infra | all | Docker images, env, CI/CD | infra secrets |
 | qa | all | HTTP + test harnesses | test credentials / CI tokens |
 
+## Multi-Tenant tenant map (2026-09-11 wave — PLANNED)
+
+- **SuperAdmin (platform operator)** → all `Organizations`; onboards/suspends/offboards companies (backend 32/33); platform console = web 14.
+- **Organization (Company tenant)** → `OrganizationMembers` (Owner/Admin | ProjectManager | Member | Client | Custom) → `Workspaces` → `Projects` → boards/columns/tasks/comments (all `OrganizationId`-stamped).
+- **Client** → `ProjectClients` → client portal (progress + `ClientFeedback`) → handoff (`ProjectHandoffs`/`HandoffDocuments`) → maintenance; served by web 15/16, mobile 09, ai 13–15, mcp 07.
+- **Tenant isolation:** JWT `org` claim → `ITenantContext` → EF global query filters + repository guard (qa 14). Cache/rate-limit/notifications keys org-prefixed (backend 19/22).
+
 ## Non-negotiable boundary
 
 AI (`ai/` + `mcp/`) never connects to SQL Server/Redis directly and never holds DB credentials. All data access is through the backend API. `web/` and `mobile/` never touch a database. `backend/` never contains UI or agent code. **AI never touches the auth/OTP surface** (spec 23 — 403 for AI OBO callers, permanently; enforced by a shared auth-route guard once 23 ships); AI reports/audits ride the scoped `CreateReport` capability (spec 24) and the read-only log surface (spec 20), filtered per OBO role by the spec-25 capability gateway.

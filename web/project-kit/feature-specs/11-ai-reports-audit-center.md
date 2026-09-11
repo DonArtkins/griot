@@ -42,5 +42,13 @@ Two connected surfaces inside the App shell:
 
 Submit typed RunId, Page, TotalPages and TotalResults with paged test evidence. Duplicate pages return 409; show incomplete/conflicting runs as ineligible, and surface backend validation reasons. Corrections append a replacement run with provenance; the UI cannot mark it complete or bypass backend 24 eligibility checks.
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Org-scoped reports: `Report` rows carry `OrganizationId`; the gallery/detail/filters read only the active org; `OrganizationPlan` may badge report limits as display metadata only.
+- SuperAdmin platform view: web 14's platform console hosts the cross-company report/lifecycle oversight; the Reports Center itself stays company-scoped (a SuperAdmin acting inside a company sees that company's reports).
+- Role-tiered audit access (backend 25): the Audit Explorer's raw-log tier is SuperAdmin/Dev-only; Owner/Admin see their company's tier; PM/Member see project-scoped trails; `Client` never sees the Audit Center at all.
+- Client feedback digests: client satisfaction/feedback report cards (backend 34 data) appear in the gallery for Admin/PM.
+- All report/audit queries ride the org-scoped token; org switch resets the gallery/audit caches (web 04 hygiene).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

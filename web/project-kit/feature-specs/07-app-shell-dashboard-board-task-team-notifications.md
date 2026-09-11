@@ -50,5 +50,14 @@ Drag-drop interactions (feature 08), bell/feed polish (feature 09).
 - [ ] Empty/loading/error states present on all async surfaces
 
 
+## Multi-Tenant Update (2026-09-11 — PLANNED)
+
+- Org selector in the top bar: lists the user's organization memberships (company name + role chip); selecting one calls `POST /api/auth/select-organization` and re-grounds the whole shell (Apollo cache reset + org-scoped refetch) — the store flow is web 05's.
+- Company admin console entry: rail/top-bar item visible only when `perms` includes `org.members.manage`/`org.roles.manage` (Owner/Admin) → routes to web 13.
+- Client portal entry: users with the `Client` org role route to the client progress view (web 15) instead of boards/dashboard internals; internal board routes are not rendered for them.
+- Role-aware navigation: the rail filters on the JWT v2 `perms` claim — PM sees only their assigned projects, Member only member surfaces, SuperAdmin additionally gets the platform console entry (web 14).
+- Dashboard/project cards render the active org's data (org-scoped queries); the Team settings page becomes the in-company member list over `OrganizationMembers` (company-level member/role management is web 13's console).
+- Suspended org: shell switches to read-only mode with a `org_suspended` banner (writes disabled client-side; server-enforced).
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.
