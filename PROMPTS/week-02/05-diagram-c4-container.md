@@ -14,7 +14,7 @@
 | **Mobile App** | Flutter 3.19 / Dart 3 | Android companion; same endpoints as web |
 | **API** | ASP.NET Core 8 (.NET) | ONE process serving REST `/api` + GraphQL `/graphql` + `/health`; port 8080; container `api` |
 | **MCP Server** | Node 20 + @modelcontextprotocol/sdk | Streamable HTTP (3001) + stdio; container `mcp` |
-| **AI Agents** | Trigger.dev v3 (Node 20) | Copilot agent + scheduled tasks; hosted by Trigger cloud |
+| **AI Agents** | Trigger.dev v4 (Node 20) | Copilot agent + scheduled tasks; hosted by Trigger cloud |
 | **SQL Server** | 2022 | Primary DB; container `sababisha-sqlserver`; port 14333 host |
 | **PostgreSQL** | 16 | Secondary/test store; container `sababisha-postgres`; port 5433 host |
 | **Redis** | 7 | Rate limit + refresh tokens + token budgets; container `sababisha-redis`; port 6380 host |
@@ -54,7 +54,7 @@ C4 Container diagram Level 2 for Griot, the box-level deployment view. Draw thes
 2. mobile — Flutter 3.19 / Dart 3; Android companion [host: Play/APK]
 3. api — ASP.NET Core 8; REST /api + GraphQL /graphql + /health; port 8080 [host: Railway container:api]
 4. mcp — Node 20 + @modelcontextprotocol/sdk; Streamable HTTP 3001 + stdio [host: Railway container:mcp]
-5. ai — Trigger.dev v3; Copilot agent + scheduled tasks [host: Trigger cloud]
+5. ai — Trigger.dev v4; Copilot agent + scheduled tasks [host: Trigger cloud]
 6. sababisha-sqlserver — SQL Server 2022; primary DB [host: Railway container:sababisha-sqlserver, host port 14333]
 7. sababisha-postgres — PostgreSQL 16; secondary/test [host: Railway container:sababisha-postgres, host port 5433]
 8. sababisha-redis — Redis 7; rate limit + refresh + budgets [host: Railway container:sababisha-redis, host port 6380]

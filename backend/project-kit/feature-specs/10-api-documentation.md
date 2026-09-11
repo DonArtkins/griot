@@ -10,7 +10,7 @@ The API documentation surface for Griot: the **Postman collection is the machine
 
 ## Dependencies
 
-- Backend features 04–08 (routes + auth exist).
+- Backend features 04–09 and the completed P0 surface: 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27. This final gate documents every shipped route and capability contract, including backend 25–28; no surface is excluded.
 - Backend feature 08 (Postman collection is the source).
 - API surface map diagram (`PROMPTS/week-02/13-diagram-api-surface.md` — a diagram *prompt* #13, not a backend feature spec).
 
@@ -62,7 +62,7 @@ MODIFY: `docs/api/README.md` — index + how to render (Stoplight/Postman publis
 ## Acceptance Criteria
 
 - [ ] `docs/api/` complete; matches `api-surface.md` + Postman + diagram
-- [ ] REST + GraphQL + auth + errors + hot-path examples all documented
+- [ ] REST + GraphQL + auth + errors + hot-path examples all documented, including backend 25–28 log/capability, conversation, notice and lifecycle-evidence routes
 - [ ] A route change updates docs + collection + api-surface in the same branch
 
 ## Implemented authentication contract (Feature 07)

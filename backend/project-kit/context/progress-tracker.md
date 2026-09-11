@@ -30,7 +30,6 @@ Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propaga
 | 22 | Notification fan-out (in-app + Brevo email) | 📋 Spec written (PLANNED) — after 19 |
 | 23 | Critical-action OTP & step-up [own-stack] | 📋 Spec written (PLANNED) — after 21 |
 | 24 | AI reports & export surface [own-stack] | 📋 Spec written (PLANNED) — after 11 (blob) + 20 (audit) + 28 (lifecycle evidence) |
-
 | 25 | Role-tiered logs and capability gateway | PLANNED |
 | 26 | Conversations, preferences and curated memory | PLANNED |
 | 27 | Incident alerts and confirmed notices | PLANNED |
@@ -46,8 +45,9 @@ Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propaga
 4. Then **11** (Blob storage — Cloudinary via `CloudinaryDotNet`; unblocks web 07 + mobile attachment upload UI so the Web phase never stalls on a backend detour; also backs spec-24 report artifacts). Spec 11 decision matrix + R2 path: `backend/project-kit/feature-specs/11-blob-storage-cloudinary.md`.
 5. Then **28** (Project lifecycle report evidence — readiness/deployment/test-run records; the smallest evidence store the CAB/post-deployment/regression templates need; spec 28).
 6. Then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary, FIFTH OBO scope `CreateReport`; **requires 28 lifecycle evidence before it begins**; spec 24).
-6. Then **10** (API documentation — freezes the hardened 18–22 surface into reference docs right before Web consumes it; contract artifact QA 04/05 polishes against).
-5. After 10, **P0 closes and the next layer is Web (P1)** — follow `docs/planning/IMPLEMENTATION-ROADMAP.md` (Web 01–09 → ai 01–02 → web 10 → ai 03–12 → mobile → infra → mcp → qa). Canonical backend order: `docs/DEPENDENCY-AUDIT.md`.
+7. Then **25** (role-tiered logs/capabilities) → **26** (conversations/memory) → **27** (incident alerts and confirmed notices), each on its own feature branch.
+8. Then **10** (API documentation — covers the complete 18–28 surface, including lifecycle evidence, capabilities, conversations and notice contracts; QA 04/05 consume it).
+9. After 10, **P0 closes and the next layer is Web (P1)** — follow `docs/planning/IMPLEMENTATION-ROADMAP.md` (Web 01–09 → ai 01–02 → web 10 → ai 03–12 → mobile → infra → mcp → qa). Canonical backend order: `docs/DEPENDENCY-AUDIT.md`.
 
 ## Session Notes
 
@@ -99,6 +99,10 @@ Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propaga
 ## Audit synchronization — 2026-09-11
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+
+## CodeRabbit follow-up — 2026-09-11
+
+Review corrections are documented in `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`: backend 24/28 schema proposals, backend 27 incident/delivery boundaries, notification availability and final documentation dependencies are synchronized. AI 01 pins the existing Trigger.dev v4 decision to 4.5.16. Future features remain PLANNED. The user authorized this one-time review-batch grouping and commit/push on 2026-09-11 ("COMMIT AND PUSH TO GITHUB" in response to the exception request). Build, 108 SQL-enabled tests, API health, clean npm install/imports and contract-sync passed; details are recorded in the ledger. Future features remain on separate branches/PRs; backend 20 starts only after backend 09 review approval.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

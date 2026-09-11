@@ -9,14 +9,14 @@
     "deploy": "trigger deploy"
   },
   "dependencies": {
-    "@trigger.dev/react-hooks": "^4.5.16",
-    "@trigger.dev/sdk": "^4.0.0"
+    "@trigger.dev/react-hooks": "4.5.16",
+    "@trigger.dev/sdk": "4.5.16"
   },
   "devDependencies": {
-    "trigger.dev": "4.0.0",
+    "trigger.dev": "4.5.16",
     "typescript": "^5.3.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

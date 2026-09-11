@@ -58,5 +58,9 @@ Existing Trigger cloud project and provider; artifacts go through backend 11/24.
 
 `npm run lint && npm run typecheck && npm test`; mocked model/vector calls, deterministic CSV fixtures, PDF text/metadata checks and visual sample review. Backend download/eligibility tests remain owned by backend 24.
 
+## Test-run input completeness (planned backend 28 contract)
+
+Consume only backend-validated complete runs from the source manifest. Typed RunId/Page/TotalPages/TotalResults columns must cover all declared pages and exactly the declared result count with unique case IDs. Do not reconstruct completeness from ContentJson or treat an incomplete replacement as completed evidence. Missing evidence remains an explicit eligibility failure in backend 24.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

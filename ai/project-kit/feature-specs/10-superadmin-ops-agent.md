@@ -18,7 +18,7 @@
 ## Boundaries
 
 - The ops agent itself never holds delivery secrets: it produces copy + intents; backend 27 owns Brevo/Trigger.dev sends. No LLM key or Brevo key in this agent's context beyond its own.
-- Delivery idempotency: backend 27 keys are scoped **per recipient, channel and event** (not just per batch) and provider delivery status is persisted for each key. Workers check per-delivery keys and persisted statuses before every send, so retries and partial provider responses can never repeat a successful delivery. Re-click cannot double-send; a changed recipient list/time/copy requires a new preview and confirmation.
+- Delivery idempotency: backend 27 keys are scoped **per recipient, channel and event** (not just per batch) and provider delivery status is persisted for each key. Workers check per-delivery keys and persisted statuses before every send, so retries skip accepted/delivered items and persist partial responses individually. Ambiguous delivery outcomes require reconciliation or operator resolution before retry, as specified by backend 27. Re-click cannot double-send; a changed recipient list/time/copy requires a new preview and confirmation.
 - After backend 20/27, everything lands in AuditLogs with the directing SuperAdmin's identity (backend 27) — no AI-initiated mass email without an audit trail.
 
 ## Dependencies
@@ -31,7 +31,7 @@
 - [ ] Broadcast intent → draft + count preview; NOTHING sent until confirm (roster-level contract test: no send tool fires pre-confirm)
 - [ ] Confirm → approval + immediate/T-1 delivery intents + AuditLogs persist atomically; external sends retry independently (backend 27 test)
 - [ ] Cancel → nothing further fires
-- [ ] Non-SuperAdmin identity cannot resolve `all_users` recipients (403 at the tool layer)
+- [ ] Non-SuperAdmin identity cannot resolve `all_users` recipients (403 at backend preview and confirmation even when the optional tool check is bypassed)
 
 ## Workspace role-check notices
 
@@ -56,6 +56,10 @@ Existing Trigger cloud, backend and Brevo only. No new alert product, payment mo
 ## Verification
 
 `npm run lint && npm run typecheck && npm test` (mocked LLM) — golden transcripts for summarizer + composer; MCP contract tests; Newman on backend 27 routes (post-27).
+
+## Planning PR review gate
+
+The user approved keeping this planning correction on the backend 09 review branch for this batch on 2026-09-11, directing "COMMIT AND PUSH TO GITHUB" in response to the exception request. See `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md` for the bounded exception. Future production implementation still requires its own feature branch/PR; this approval does not approve schema implementation or merge.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.
