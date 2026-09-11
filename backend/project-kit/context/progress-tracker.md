@@ -15,6 +15,17 @@ docker exec infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
 cd backend && dotnet ef database update --project src/Griot.Infrastructure --startup-project src/Griot.Api
 ```
 
+**2026-09-11 seed-script restore (post-reset dev data):** the multi-tenant DB rebuild left dev
+tables empty, so `src/Griot.Infrastructure/Sql/seed-test-data.sql` was rewritten for the spec-29
+schema — one Organization (`Sababisha Solutions`, `88888888-…-888888888888`) with four
+OrganizationMembers (Owner/Admin/ProjectManager/Client), `Users.PlatformRole` (`SuperAdmin` on
+owner@griot.test so the seeded tenant is visible to a platform-admin JWT), and `OrganizationId`
+stamped on every tenant row; org tables were added to the reset DELETEs (children-first, matching
+the NO ACTION FKs). Verified applied: 1 org / 4 members / 4 users / 2 workspaces / 3 projects /
+3 boards / 4 columns / 4 tasks / 3 comments / 3 notifications / 3 activity logs. Seed accounts keep
+DUMMY password hashes (cannot log in) — register real users via `/api/auth/register`.
+`README-SEED-DATA.md` synced. Note: seed users do not satisfy the email-verified/2FA login path
+by design; use fresh registrations for auth testing.
 
 # Progress Tracker — Backend / API
 
