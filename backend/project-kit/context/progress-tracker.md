@@ -2,7 +2,7 @@
 
 ## Current State
 
-Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propagation) on `feature/backend/09-ai-service-token-and-webhooks`: build 0W/0E, SQL-enabled tests 71 passed / 0 skipped / 0 failed; `/health` reports `Healthy`. **No hardcoded GUIDs or pseudo users exist in runtime logic** (only in test fixtures, grandfathered). The 2026-09-10 observability/hardening wave is **next**: spec **20** (observability pipeline — ApiLogs/ErrorLogs/AuditLogs/ActivityLogs writers + exception-handler persistence) is the first gate.
+Week 2. Spec 09 is complete (AI service token + webhooks + OBO principal propagation) on `feature/backend/09-ai-service-token-and-webhooks`: build 0W/0E, SQL-enabled tests **108 passed / 0 skipped / 0 failed** (current 2026-09-11 follow-up result; the historical 2026-09-10 Spec 09 baseline was 71 passed); `/health` reports `Healthy`. **No hardcoded GUIDs or pseudo users exist in runtime logic** (only in test fixtures, grandfathered). The 2026-09-10 observability/hardening wave is **next**: spec **20** (observability pipeline — ApiLogs/ErrorLogs/AuditLogs/ActivityLogs writers + exception-handler persistence) is the first gate.
 
 | Spec | Title | Status |
 |---|---|---|

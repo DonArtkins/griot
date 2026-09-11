@@ -11,7 +11,7 @@ metadata:
 
 ```bash
 cd ai && npx trigger.dev@latest login
-npx trigger.dev@latest init --project-ref <PROJECT_REF>
+npx trigger.dev@latest init --skip-package-install --project-ref <PROJECT_REF>
 npm i @trigger.dev/sdk @trigger.dev/react-hooks
 ```
 

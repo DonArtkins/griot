@@ -35,7 +35,7 @@ COMPONENTS:
 - Left group "WEB": box "Web Copilot panel (app-shell right rail, chat UI)"; box "External AI clients (Claude Desktop / Cursor / Cline)".
 - Center group "ai/ (Trigger.dev v3)": box "griotCopilot agent" + box "scheduled: dueReminders, sprintDigest, staleBoard, standupBuilder"; small box "token budget (Redis)" attached.
 - Lower-left group "mcp/": box "Griot MCP server" listing the 8 tools: list_projects, list_boards, get_board, get_task, create_task, add_comment, get_activity_feed, summarize_project.
-- Right group "backend": box "API — GraphQL + /api/webhooks/trigger" with badges "GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → real-user OBO principal (ai-on-behalf-of): ReadWorkspace, CreateTask, AddComment, CreateNotification" and "HMAC X-Trigger-Signature". Show no synthetic member and no fifth scope; bulk status, deletes, invites and member management are denied.
+- Right group "backend": box "API — GraphQL + /api/webhooks/trigger" with badges "GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → real-user OBO principal (ai-on-behalf-of): ReadWorkspace, CreateTask, AddComment, CreateNotification" and "HMAC X-Trigger-Signature". Show no synthetic member; CreateReport is planned for backend 24 but is not active. Bulk status, deletes, invites and member management are denied.
 - Far right: box "SQL Server 2022 (source of truth)" with a BIG RED X annotation "AI NEVER writes to SQL Server directly — every read/write through the API".
 
 ARROWS (label each):

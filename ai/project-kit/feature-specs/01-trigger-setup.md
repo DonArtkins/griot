@@ -31,7 +31,7 @@ mkdir -p ai && cd ai
 npm ci   # installs the RESOLVED pinned CLI, not a drifted one
 npm exec -- trigger --version   # commit the result — must match the pinned version
 npm exec -- trigger login
-npm exec -- trigger init --project-ref <PROJECT_REF>
+npm exec -- trigger init --skip-package-install --project-ref <PROJECT_REF>
 # Resolve/review compatible exact SDK/react-hooks/zod versions before adding them.
 ```
 

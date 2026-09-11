@@ -108,7 +108,7 @@ Both new dirs are **type-checked, linted, and tested inside the same GitHub Acti
 ```bash
 cd ~/sababisha/projects/gtp/griot/ai
 # Node 20 auto-switches via .nvmrc (no manual nvm use needed)
-npx trigger.dev@latest init --project-ref <PROJECT_REF> --api-url https://api.trigger.dev
+npx trigger.dev@latest init --skip-package-install --project-ref <PROJECT_REF> --api-url https://api.trigger.dev
 # generates trigger.config.ts + .trigger/ registry + src/ sample task
 echo "ANTHROPIC_API_KEY=..." >> .env   # or OPENAI_API_KEY — both supported
 npm install @trigger.dev/sdk @trigger.dev/react-hooks
