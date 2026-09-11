@@ -141,7 +141,7 @@ There's no database GUI (like Azure Data Studio or DBeaver) installed yet — ri
 ### 6.1 The command you already used, broken down
 
 ```bash
-docker exec -it infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "SababishaDev2026!" -C -Q "CREATE DATABASE Griot"
+docker exec -it infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "CREATE DATABASE Griot"
 ```
 
 | Piece | What it means |
@@ -152,18 +152,18 @@ docker exec -it infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S loc
 | `/opt/mssql-tools18/bin/sqlcmd` | The actual SQL Server command-line client, installed inside the container |
 | `-S localhost` | Server to connect to (from inside the container, SQL Server is always `localhost`) |
 | `-U sa` | Username — `sa` is the built-in admin account |
-| `-P "..."` | Password — this is `SababishaDev2026!`, the default set in your `docker-compose.yml` |
+| `-P "..."` | Password — this is `$SABABISHA_SA_PASSWORD`, set in your environment / `docker-compose.yml` (`MSSQL_SA_PASSWORD`) |
 | `-C` | Trust the server's certificate (needed since it's self-signed, dev-only) |
 | `-Q "..."` | Run this one SQL statement and exit |
 
-**Your password is `SababishaDev2026!`** — it's not secret in the sense of hidden from you; it was set by you (or the default) in `docker-compose.yml` under `MSSQL_SA_PASSWORD`. It's only meant to stay out of git.
+**Your password is `$SABABISHA_SA_PASSWORD`** — it's not secret in the sense of hidden from you; it was set by you (or the default) in `docker-compose.yml` under `MSSQL_SA_PASSWORD`. It's only meant to stay out of git.
 
 ### 6.2 Opening an interactive session (instead of one-off `-Q` commands)
 
 Drop `-Q "..."` and you get a live prompt where you can type multiple SQL statements:
 
 ```bash
-docker exec -it infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "SababishaDev2026!" -C
+docker exec -it infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C
 ```
 
 You'll land on a `1>` prompt. SQL Server needs `GO` on its own line to actually *run* what you typed — this trips up almost everyone the first time:
@@ -205,7 +205,7 @@ dbeaver &
    | Database | `Griot` (or leave blank to connect at the server level and see every database) |
    | Authentication | SQL Server Authentication |
    | Username | `sa` |
-   | Password | `SababishaDev2026!` |
+   | Password | `$SABABISHA_SA_PASSWORD` |
 
 4. Click the **Driver properties** or **SSL** tab and enable **Trust server certificate** (it's self-signed, dev-only — without this the connection will fail with a certificate error).
 5. Click **Test Connection**. First time only, DBeaver will say the SQL Server driver isn't downloaded yet and offer to download it — click **Download**. Takes a few seconds.

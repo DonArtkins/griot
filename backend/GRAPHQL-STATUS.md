@@ -78,7 +78,7 @@
 ```bash
 cd backend
 docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -d Griot \
   < src/Griot.Infrastructure/Sql/seed-test-data.sql
 ```
 

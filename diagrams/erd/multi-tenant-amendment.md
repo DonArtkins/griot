@@ -1,26 +1,32 @@
 # ERD Amendment v2 — Multi-Tenancy (✅ Approved by operator 2026-09-11)
 
-**Status:** ✅ APPROVED design artifact (operator approval recorded 2026-09-11 during
-spec-29 implementation; Figma Make canvas reviewed, versioned PNG export pending —
-the operator approved the field/enum/index/FK contract transcribed here and
-authorized schema implementation from this markdown contract).
-Per hard rule 4 (ERD before schema), the spec-29 migration implements exactly this
-contract. The PNG export (`diagrams/erd/griot-erd-multi-tenant-v2.*.png`) and
-`diagrams/README.md` ledger row follow in the same feature branch.
+**Status:** ✅ APPROVED + EXPORTED (operator approval recorded 2026-09-11 during spec-29
+implementation and confirmed on the v2 canvas; versioned PNGs
+`diagrams/erd/griot-erd-v2.0.0.png` + `diagrams/erd/griot-erd2-v2.0.0.png` +
+`diagrams/erd/griot-erd3-v2.0.0.png` added 2026-09-11, together with the v2
+architecture PNGs `diagrams/architecture/c4-system-context-v2.0.0.png` +
+`diagrams/architecture/griot-api-v2.0.0.png` — full set indexed in the
+`diagrams/README.md` ledger). Per hard rule 4 (ERD before schema),
+the spec-29 migration implements exactly this contract.
+**FK correction (2026-09-11, shipped):** all Organization FKs are **ON DELETE NO ACTION**
+(RESTRICT) — the cascade variant failed with SQL error 1785 (multiple cascade paths via
+the owner edges and the Workspace→Project chain). Org removal is app-managed (spec-33
+offboarding purge); the lines below reflect this correction and the v2 PNGs show the
+org→child edges without cascade notation.
 **Owner:** backend spec 29 (`feature-specs/29-multi-tenant-foundation-organizations.md`). Canonical field list: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §2 + §9 (account-deletion delta).
 **Precedent:** this follows the same amendment pattern as `diagrams/erd/auth-family-amendment.md` (RefreshTokens family columns), which was approved without re-opening the full v1.0.0 ERD.
 
 ## New entities (10 — entity 10 is the §9 account-deletion delta)
 
 1. `Organizations` — tenant root. PK `Id` (uuid). `Name`, `Slug` (unique, `UX_Organizations_Slug`), `OwnerId` → `Users.Id`, `Status` (`OrganizationStatus`), `Plan` (`OrganizationPlan`), `CreatedAt`, `UpdatedAt`, `OffboardedAt?`. Index: `IX_Organizations_OwnerId`.
-2. `OrganizationMembers` — PK `Id`. FK `OrganizationId` → `Organizations.Id` (cascade), FK `UserId` → `Users.Id`. `Role` (`OrganizationRole`), `CustomRoleId?` → `Roles.Id` (nullable; only valid when `Role == Custom`), `Status` (member status: `Invited`/`Active`/`Suspended`), `JoinedAt`. Unique index `UX_OrganizationMembers_Org_User (OrganizationId, UserId)`; index `IX_OrganizationMembers_UserId`.
-3. `Roles` — PK `Id`. FK `OrganizationId` → `Organizations.Id` (cascade). `Name`, `IsSystem`, `Permissions` (nvarchar(2048), comma-separated permission keys), `CreatedAt`. Index `IX_Roles_OrganizationId`.
-4. `OrganizationInvites` — PK `Id`. FK `OrganizationId`. `Email`, `Role`, `CustomRoleId?`, `Token` (unique), `ExpiresAt`, `AcceptedAt?`, `InvitedBy`. Index `IX_OrganizationInvites_OrganizationId`.
+2. `OrganizationMembers` — PK `Id`. FK `OrganizationId` → `Organizations.Id` (NO ACTION), FK `UserId` → `Users.Id`. `Role` (`OrganizationRole`), `CustomRoleId?` → `Roles.Id` (nullable; only valid when `Role == Custom`), `Status` (member status: `Invited`/`Active`/`Suspended`), `JoinedAt`. Unique index `UX_OrganizationMembers_Org_User (OrganizationId, UserId)`; index `IX_OrganizationMembers_UserId`.
+3. `Roles` — PK `Id`. FK `OrganizationId` → `Organizations.Id` (NO ACTION). `Name`, `IsSystem`, `Permissions` (nvarchar(2048), comma-separated permission keys), `CreatedAt`. Index `IX_Roles_OrganizationId`.
+4. `OrganizationInvites` — PK `Id`. FK `OrganizationId` → `Organizations.Id` (NO ACTION). `Email`, `Role`, `CustomRoleId?`, `Token` (unique), `ExpiresAt`, `AcceptedAt?`, `InvitedBy`. Index `IX_OrganizationInvites_OrganizationId`.
 5. `ProjectClients` — PK `Id`. FK `ProjectId` → `Projects.Id` (cascade), FK `UserId` → `Users.Id`, `OrganizationId`. `AccessLevel` (default `ProgressOnly`), `AddedAt`, `RemovedAt?`. Unique `UX_ProjectClients_Project_User`.
 6. `ClientFeedback` — PK `Id`. FK `ProjectId`, `AuthorUserId`. `Body` (nvarchar(max)), `Kind` (`ClientFeedbackKind`), `Status` (`ClientFeedbackStatus`), `PmResponse?`, `ResolvedBy?`, `CreatedAt`. Index `IX_ClientFeedback_ProjectId_CreatedAt`.
 7. `ProjectHandoffs` — PK `Id`. FK `ProjectId` (one-to-one). `Status` (`HandoffStatus`), `ChecklistJson`, `InitiatedBy`, `AcceptedBy?`, `CompletedAt?`, `CreatedAt`. Index `UX_ProjectHandoffs_ProjectId` (unique).
 8. `HandoffDocuments` — PK `Id`. FK `HandoffId` → `ProjectHandoffs.Id` (cascade). `Title`, `BlobKey?` (populated by backend 11), `Kind` (`HandoffDocumentKind`), `GeneratedByAi`, `UploadedBy`, `CreatedAt`. Index `IX_HandoffDocuments_HandoffId`.
-9. `OrganizationLifecycleEvents` — PK `Id`. FK `OrganizationId` (cascade). `Kind` (`LifecycleEventKind`), `ActorUserId`, `PayloadJson`, `CreatedAt`. Index `IX_OrganizationLifecycleEvents_OrgId_CreatedAt`.
+9. `OrganizationLifecycleEvents` — PK `Id`. FK `OrganizationId` (NO ACTION). `Kind` (`LifecycleEventKind`), `ActorUserId`, `PayloadJson`, `CreatedAt`. Index `IX_OrganizationLifecycleEvents_OrgId_CreatedAt`.
 
 10. `AccountDeletionRequests` (guide §9 delta — PLANNED) — PK `Id`. FK `UserId` → `Users.Id`. `Reason` (nvarchar(2000), required), `Status` (`DeletionRequestStatus`: `Requested`, `Approved`, `Rejected`, `Cancelled`, `ExportAvailable`, `PurgeScheduled`, `Purged`), `RequestedAt`, `DecidedBy?` FK `Users.Id`, `DecidedAt?`, `DecisionNote?` (nvarchar(2000)), `ExportBlobKey?` (backend 11), `ScheduledPurgeAtUtc?` (NOT NULL once set), `PurgedAt?`, `CancelReason?` (nvarchar(2000)). Index `IX_AccountDeletionRequests_UserId`; **partial unique index** (one open request per user — enforced at DB level, also asserted by app before insert):
     ```sql
@@ -39,7 +45,7 @@ contract. The PNG export (`diagrams/erd/griot-erd-multi-tenant-v2.*.png`) and
 
 ## Relationships added (cardinality + FK behavior)
 
-- `Organizations 1—N OrganizationMembers`, `1—N Roles`, `1—N OrganizationInvites`, `1—N OrganizationLifecycleEvents`, `1—N Workspaces` (OrganizationId FK, **ON DELETE NO ACTION** — SQL Server forbids cascading from Organizations to both Workspaces and Projects (multiple cascade paths, error 1785); org removal is app-managed: the spec-33 offboarding purge deletes children explicitly in dependency order inside one transaction; org suspension = writes 403, no delete)
+- `Organizations 1—N OrganizationMembers` (NO ACTION), `1—N Roles` (NO ACTION), `1—N OrganizationInvites` (NO ACTION), `1—N OrganizationLifecycleEvents` (NO ACTION), `1—N Workspaces` (NO ACTION), `1—N Projects` (NO ACTION, explicit `Project.Organization` config — EF would otherwise convention-cascade it) (OrganizationId FKs, **all ON DELETE NO ACTION** — SQL Server forbids cascading from Organizations to both Workspaces and Projects (multiple cascade paths, error 1785); org removal is app-managed: the spec-33 offboarding purge deletes children explicitly in dependency order (leaves-first: workspaces/projects subtrees, then members/roles/invites/lifecycle rows, then the organization row) with each org-scoped chunk in its own transaction that records a resumable `OrganizationLifecycleEvents` progress checkpoint (spec 33 + spec 41 revision); org suspension = writes 403, no delete)
 - `Users 1—N OrganizationMembers` (a user joins many companies), `1—N ProjectClients`, `1—N AccountDeletionRequests` (guide §9; at most one **open** per user — partial unique index enforces this; multiple historical cancelled/purged rows allowed per user). **Reverse FK:** `Users.DeletionRequestId? → AccountDeletionRequests.Id` (nullable; ON DELETE SET NULL when AccountDeletionRequests rows are pruned).
 - `Projects 1—N ProjectClients`, `1—1 ProjectHandoffs` (unique UX constraint), `1—N ClientFeedback`
 - `ProjectHandoffs 1—N HandoffDocuments`

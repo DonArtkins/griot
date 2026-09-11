@@ -3,8 +3,10 @@
 Date: 2026-09-11. Branch: `feature/backend/29-multi-tenant-foundation-organizations`.
 Status (2026-09-11, superseded by implementation): this preflight snapshot described the
 working tree before the spec-29 implementation commit `9447e15` — the feature is now
-IMPLEMENTED and pushed after explicit user approval; only the tenancy ERD approval and
-migration-apply gates remain before spec 30. The findings below are preserved as history.
+**✅ COMPLETE**: all gates closed 2026-09-11 (tenancy ERD approved by the operator and
+exported as `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png`; the
+migration-apply gate closed with the rebuilt database verified up to date). The findings
+below are preserved as history.
 
 ## Outcome
 
