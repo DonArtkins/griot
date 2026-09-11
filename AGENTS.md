@@ -2,13 +2,17 @@
 
 ## Current working-tree checkpoint — 2026-09-11
 
-Backend 29 is incomplete on `feature/backend/29-multi-tenant-foundation-organizations`.
-Its existing migration lacks recorded tenancy ERD approval; do not mark it complete
-or advance to backend 30. Roadmap §P0.5 governs after backend 20: 29 → 30 → 31 → 32 →
-33 → 34 → 35, then the hardening sequence. This checkpoint supersedes older
+Backend 29 (multi-tenant foundation) is IMPLEMENTED on
+`feature/backend/29-multi-tenant-foundation-organizations` — commit `9447e15`
+(fail-closed `ITenantContext` scoping, `OrganizationId` on tenant tables + observability
+stamps, migration `20260911151030`, ERD Amendment v2; build 0W/0E, 152 tests passed /
+8 SQL-skipped). Pushed after explicit user approval (2026-09-11). Outstanding gates
+before backend 30: tenancy ERD approval (`diagrams/erd/multi-tenant-amendment.md`) and
+migration apply (`dotnet ef database update --project src/Griot.Infrastructure
+--startup-project src/Griot.Api`). Roadmap §P0.5 governs: 29 → 30 → 31 → 32 → 33 →
+34 → 35, then the hardening sequence. This checkpoint supersedes older
 next-feature statements below. Read the [preflight and completion plan](docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
-and the backend tracker before proceeding. No production changes or commit/push
-were made by this preflight; design approval and acceptance gates remain required.
+and the backend tracker before proceeding.
 
 ## Read This First
 
@@ -44,7 +48,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Where We Are — Implementation Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–12 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–06 → P6 qa 01–13**. Right now: backend specs 01–09, 12 (Email-only), 13–17 are ✅ (09 = AI service token + webhooks, implemented OBO) — **the next spec is backend 20 (observability/logging pipeline)**, the first of the 2026-09-10 observability/hardening wave (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups → **23** critical-action OTP/step-up → **11** blob storage → **28** project lifecycle report evidence → **24** AI reports & export surface (`CreateReport` scope) → **25** role-tiered log access + AI capability gateway → **26** AI memory & conversations → **27** incident alerting + confirmed SuperAdmin broadcasts; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
+The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–12 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–06 → P6 qa 01–13**. Right now: backend specs 01–09, 12 (Email-only), 13–17, 20 (observability pipeline) and 29 (multi-tenant foundation, 2026-09-11 — pending its ERD-approval + migration-apply gates) are ✅ — **the next spec is backend 30 (Auth & JWT v2)** per roadmap §P0.5, which supersedes the older post-20 hardening order below (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups → **23** critical-action OTP/step-up → **11** blob storage → **28** project lifecycle report evidence → **24** AI reports & export surface (`CreateReport` scope) → **25** role-tiered log access + AI capability gateway → **26** AI memory & conversations → **27** incident alerting + confirmed SuperAdmin broadcasts; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
 
 ## Required Skills
 
@@ -155,7 +159,7 @@ User-directed planning wave (research: `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENG
 
 ## Audit synchronization — 2026-09-11
 
-Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ## Review-batch exception — 2026-09-11
 

@@ -1,7 +1,10 @@
 # Backend 29 preflight and completion plan
 
 Date: 2026-09-11. Branch: `feature/backend/29-multi-tenant-foundation-organizations`.
-Status: existing implementation is incomplete; design approval and acceptance gates are outstanding.
+Status (2026-09-11, superseded by implementation): this preflight snapshot described the
+working tree before the spec-29 implementation commit `9447e15` — the feature is now
+IMPLEMENTED and pushed after explicit user approval; only the tenancy ERD approval and
+migration-apply gates remain before spec 30. The findings below are preserved as history.
 
 ## Outcome
 
