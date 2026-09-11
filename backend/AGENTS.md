@@ -3,13 +3,15 @@
 ## Current working-tree checkpoint — 2026-09-11
 
 Spec 29 (multi-tenant foundation) is IMPLEMENTED on its own feature branch — commit
-`9447e15`, pushed after explicit user approval (2026-09-11). Fail-closed `ITenantContext`
-scoping across REST/GraphQL, `OrganizationId` on tenant tables + observability stamps,
-migration `20260911151030`, ERD Amendment v2. Build 0W/0E; 152 tests passed with 8 SQL
-tests skipped. Do NOT switch to spec 30 until its outstanding gates close: tenancy ERD
-approval (`diagrams/erd/multi-tenant-amendment.md`) and migration apply
-(`dotnet ef database update --project src/Griot.Infrastructure --startup-project src/Griot.Api`)
-on the user's machine. Roadmap §P0.5 (29 → 30 → 31 → 32 → 33 → 34 → 35 before hardening)
+`9447e15`, `9f7400e`, pushed after explicit user approval (2026-09-11). Fail-closed
+`ITenantContext` scoping across REST/GraphQL, `OrganizationId` on tenant tables +
+observability stamps, migration `20260911190926` (all Organization FKs ON DELETE
+NO ACTION — the cascade variant failed with SQL error 1785), ERD Amendment v2.
+Build 0W/0E; 152 tests passed with 8 SQL tests skipped. The database was rebuilt from
+all migrations and is verified up to date on the user's machine (2026-09-11). Do NOT
+switch to spec 30 until the remaining gate closes: tenancy ERD approval
+(`diagrams/erd/multi-tenant-amendment.md`). Roadmap §P0.5
+(29 → 30 → 31 → 32 → 33 → 34 → 35 before hardening)
 supersedes older next-feature statements below. Read the
 [preflight findings and plan](../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md) and tracker.
 

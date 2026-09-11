@@ -15,7 +15,8 @@ namespace Griot.Infrastructure.Migrations
                 name: "OrganizationId",
                 table: "Workspaces",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<string>(
                 name: "PlatformRole",
@@ -28,25 +29,29 @@ namespace Griot.Infrastructure.Migrations
                 name: "OrganizationId",
                 table: "TaskItems",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "OrganizationId",
                 table: "Projects",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "OrganizationId",
                 table: "Notifications",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "OrganizationId",
                 table: "Invites",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "OrganizationId",
@@ -58,19 +63,22 @@ namespace Griot.Infrastructure.Migrations
                 name: "OrganizationId",
                 table: "Comments",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "OrganizationId",
                 table: "Columns",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "OrganizationId",
                 table: "Boards",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "OrganizationId",
@@ -82,7 +90,8 @@ namespace Griot.Infrastructure.Migrations
                 name: "OrganizationId",
                 table: "Attachments",
                 type: "uniqueidentifier",
-                nullable: false);
+                nullable: false,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
             migrationBuilder.AddColumn<Guid>(
                 name: "OrganizationId",
@@ -94,19 +103,7 @@ namespace Griot.Infrastructure.Migrations
                 name: "OrganizationId",
                 table: "ActivityLogs",
                 type: "uniqueidentifier",
-                // Amendment v2: observability OrganizationId is nullable (null =
-                // platform-level event), consistent with ApiLogs/ErrorLogs/AuditLogs.
                 nullable: true);
-
-            // Spec 29 backfill (idempotent): one legacy organization per pre-existing
-            // owner (workspace owners + activity actors), rows reassigned through the
-            // ownership chain, leftovers quarantined under the 'legacy-quarantine'
-            // org so nothing silently drops out of scope. Re-runs are no-ops.
-            //
-            // Approved ERD path (amendment v2): per-owner legacy companies with the
-            // quarantine fallback. The deterministic alternative (single bootstrap
-            // org, spec 37) is deferred to the spec-37 revision migration; this spec
-            // only needs existing data to survive with a stable, queryable mapping.
 
             migrationBuilder.CreateTable(
                 name: "Organizations",
@@ -133,7 +130,6 @@ namespace Griot.Infrastructure.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-
             migrationBuilder.CreateTable(
                 name: "OrganizationLifecycleEvents",
                 columns: table => new
@@ -153,7 +149,7 @@ namespace Griot.Infrastructure.Migrations
                         column: x => x.OrganizationId,
                         principalTable: "Organizations",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -175,9 +171,8 @@ namespace Griot.Infrastructure.Migrations
                         column: x => x.OrganizationId,
                         principalTable: "Organizations",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
-
 
             migrationBuilder.CreateTable(
                 name: "OrganizationInvites",
@@ -203,7 +198,7 @@ namespace Griot.Infrastructure.Migrations
                         column: x => x.OrganizationId,
                         principalTable: "Organizations",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_OrganizationInvites_Roles_CustomRoleId",
                         column: x => x.CustomRoleId,
@@ -238,7 +233,7 @@ namespace Griot.Infrastructure.Migrations
                         column: x => x.OrganizationId,
                         principalTable: "Organizations",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_OrganizationMembers_Roles_CustomRoleId",
                         column: x => x.CustomRoleId,
@@ -330,7 +325,8 @@ namespace Griot.Infrastructure.Migrations
                 WHERE NOT EXISTS (
                     SELECT 1 FROM dbo.OrganizationMembers m
                     WHERE m.OrganizationId = w.OrganizationId AND m.UserId = w.OwnerId);
-            """);
+                """);
+
 
 
             migrationBuilder.CreateIndex(
@@ -462,7 +458,7 @@ namespace Griot.Infrastructure.Migrations
                 column: "OrganizationId",
                 principalTable: "Organizations",
                 principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+                onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Workspaces_Organizations_OrganizationId",
@@ -470,9 +466,7 @@ namespace Griot.Infrastructure.Migrations
                 column: "OrganizationId",
                 principalTable: "Organizations",
                 principalColumn: "Id",
-                // Amendment v2: org removal = full cascade to children (spec 33
-                // offboarding purge); suspension blocks writes without deleting.
-                onDelete: ReferentialAction.Cascade);
+                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />

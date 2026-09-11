@@ -39,7 +39,7 @@ contract. The PNG export (`diagrams/erd/griot-erd-multi-tenant-v2.*.png`) and
 
 ## Relationships added (cardinality + FK behavior)
 
-- `Organizations 1—N OrganizationMembers`, `1—N Roles`, `1—N OrganizationInvites`, `1—N OrganizationLifecycleEvents`, `1—N Workspaces` (OrganizationId FK + cascade delete on Organization removal — org removal = full cascade to children; org suspension = writes 403, no cascade)
+- `Organizations 1—N OrganizationMembers`, `1—N Roles`, `1—N OrganizationInvites`, `1—N OrganizationLifecycleEvents`, `1—N Workspaces` (OrganizationId FK, **ON DELETE NO ACTION** — SQL Server forbids cascading from Organizations to both Workspaces and Projects (multiple cascade paths, error 1785); org removal is app-managed: the spec-33 offboarding purge deletes children explicitly in dependency order inside one transaction; org suspension = writes 403, no delete)
 - `Users 1—N OrganizationMembers` (a user joins many companies), `1—N ProjectClients`, `1—N AccountDeletionRequests` (guide §9; at most one **open** per user — partial unique index enforces this; multiple historical cancelled/purged rows allowed per user). **Reverse FK:** `Users.DeletionRequestId? → AccountDeletionRequests.Id` (nullable; ON DELETE SET NULL when AccountDeletionRequests rows are pruned).
 - `Projects 1—N ProjectClients`, `1—1 ProjectHandoffs` (unique UX constraint), `1—N ClientFeedback`
 - `ProjectHandoffs 1—N HandoffDocuments`

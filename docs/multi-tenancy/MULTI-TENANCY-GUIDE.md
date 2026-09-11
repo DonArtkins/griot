@@ -227,7 +227,7 @@ The purge job runs as idempotent resumable background work (spec-33 pattern: chu
 | **`ProjectHandoffs`** WHERE InitiatedBy = requester | Re-home InitiatedBy → Project.OwnerId; if that's requester → Workspace → Org → Sentinel | FK integrity |
 | **`HandoffDocuments`** WHERE UploadedBy = requester | Re-home UploadedBy → Handoff.Project.OwnerId chain → Sentinel. Blob stays (it's a handoff deliverable owned by the project) | FK integrity |
 | **`Roles`** WHERE CreatedBy = requester (future column) OR roles the requester created | CreatedBy → Organization.OwnerId; role rows stay (other users may have CustomRoleId → deleting them would break OrganizationMembers) | FK integrity |
-| **`OrganizationMembers`** WHERE UserId = requester | DELETE (all orgs — requester removed from every company) | FK Cascade on Organization.User |
+| **`OrganizationMembers`** WHERE UserId = requester | DELETE (all orgs — requester removed from every company) | App-managed DELETE of membership rows (org FK is NO ACTION) |
 | **`OrganizationInvites`** WHERE InvitedBy = requester OR Email = requester | DELETE | Standalone FK |
 | **`OrganizationLifecycleEvents`** WHERE ActorUserId = requester | Keep rows; ActorUserId → Sentinel (audit trail survives; requester actor is anonymized) | FK integrity |
 | **`AccountDeletionRequests`** WHERE UserId = requester AND Status = PurgeScheduled | Set `Status = Purged`, `PurgedAt = now`; do NOT DELETE the row (audit trail for 365 days; spec-20 prune proc removes it after tail) | FK survival |

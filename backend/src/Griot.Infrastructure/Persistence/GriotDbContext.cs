@@ -114,7 +114,11 @@ public class GriotDbContext : DbContext
             b.HasOne(m => m.Organization)
                 .WithMany(o => o.Members)
                 .HasForeignKey(m => m.OrganizationId)
-                .OnDelete(DeleteBehavior.Cascade);
+                // Org FKs are NO ACTION (Restrict) — cascade from Organizations to both
+                // Workspaces and Projects creates multiple cascade paths (SQL error 1785).
+                // Org removal is app-managed: the spec-33 offboarding purge deletes
+                // children explicitly in dependency order inside one transaction.
+                .OnDelete(DeleteBehavior.Restrict);
 
             // NOTE (spec 29 / 33): User side is Restrict, not Cascade — a user row
             // must never vanish implicitly; the offboarding purge (spec 33)
@@ -141,7 +145,8 @@ public class GriotDbContext : DbContext
             b.HasOne(r => r.Organization)
                 .WithMany(o => o.Roles)
                 .HasForeignKey(r => r.OrganizationId)
-                .OnDelete(DeleteBehavior.Cascade);
+                // Org FKs are NO ACTION — see the OrganizationMember note (error 1785).
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // OrganizationInvites
@@ -157,7 +162,8 @@ public class GriotDbContext : DbContext
             b.HasOne(i => i.Organization)
                 .WithMany(o => o.Invites)
                 .HasForeignKey(i => i.OrganizationId)
-                .OnDelete(DeleteBehavior.Cascade);
+                // Org FKs are NO ACTION — see the OrganizationMember note (error 1785).
+                .OnDelete(DeleteBehavior.Restrict);
 
             b.HasOne(i => i.CustomRole)
                 .WithMany(r => r.Invites)
@@ -179,7 +185,8 @@ public class GriotDbContext : DbContext
             b.HasOne(e => e.Organization)
                 .WithMany(o => o.LifecycleEvents)
                 .HasForeignKey(e => e.OrganizationId)
-                .OnDelete(DeleteBehavior.Cascade);
+                // Org FKs are NO ACTION — see the OrganizationMember note (error 1785).
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         ApplyTenantConfiguration(modelBuilder);
@@ -199,15 +206,17 @@ public class GriotDbContext : DbContext
                 .HasForeignKey(w => w.OwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Spec 29: workspace -> organization (amendment v2 cascade — org removal
-            // is the spec-33 offboarding purge; suspension blocks writes instead).
+            // Spec 29: workspace -> organization. NO ACTION (Restrict), NOT cascade —
+            // cascading Organizations to both Workspaces and Projects yields multiple
+            // cascade paths (SQL Server error 1785: "may cause cycles or multiple
+            // cascade paths"). Org removal is app-managed: the spec-33 offboarding
+            // purge deletes tenant rows explicitly in dependency order; suspension
+            // blocks writes without deleting.
             b.HasIndex(w => w.OrganizationId);
             b.HasOne(w => w.Organization)
                 .WithMany(o => o.Workspaces)
                 .HasForeignKey(w => w.OrganizationId)
-                // Amendment v2: org removal = full cascade to children (spec 33 purges
-                // org rows via cascade; suspension blocks writes without deleting).
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // --- Tenant column/index configuration (spec 29, Pool model) ---
@@ -279,6 +288,16 @@ public class GriotDbContext : DbContext
                 .WithMany(w => w.Projects)
                 .HasForeignKey(p => p.WorkspaceId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Spec 29: project -> organization, explicit NO ACTION (Restrict). Without
+            // this EF's convention cascades from Organizations, which together with the
+            // Workspace->Organization path gives Projects two cascade sources
+            // (SQL Server error 1785). Project.OrganizationId is derived data owned by
+            // the workspace chain; it is removed with the workspace cascade.
+            b.HasOne(p => p.Organization)
+                .WithMany()
+                .HasForeignKey(p => p.OrganizationId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Boards

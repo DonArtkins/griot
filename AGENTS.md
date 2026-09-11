@@ -3,13 +3,14 @@
 ## Current working-tree checkpoint — 2026-09-11
 
 Backend 29 (multi-tenant foundation) is IMPLEMENTED on
-`feature/backend/29-multi-tenant-foundation-organizations` — commit `9447e15`
+`feature/backend/29-multi-tenant-foundation-organizations` — commits `9447e15`, `9f7400e`
 (fail-closed `ITenantContext` scoping, `OrganizationId` on tenant tables + observability
-stamps, migration `20260911151030`, ERD Amendment v2; build 0W/0E, 152 tests passed /
-8 SQL-skipped). Pushed after explicit user approval (2026-09-11). Outstanding gates
-before backend 30: tenancy ERD approval (`diagrams/erd/multi-tenant-amendment.md`) and
-migration apply (`dotnet ef database update --project src/Griot.Infrastructure
---startup-project src/Griot.Api`). Roadmap §P0.5 governs: 29 → 30 → 31 → 32 → 33 →
+stamps, migration `20260911190926` with all Organization FKs ON DELETE NO ACTION, ERD
+Amendment v2; build 0W/0E, 152 tests passed / 8 SQL-skipped; the database was rebuilt
+from all migrations and is verified up to date on the user's machine, 2026-09-11).
+Pushed after explicit user approval (2026-09-11). Outstanding gate before backend 30:
+tenancy ERD approval (`diagrams/erd/multi-tenant-amendment.md`) only — the
+migration-apply gate is CLOSED. Roadmap §P0.5 governs: 29 → 30 → 31 → 32 → 33 →
 34 → 35, then the hardening sequence. This checkpoint supersedes older
 next-feature statements below. Read the [preflight and completion plan](docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
 and the backend tracker before proceeding.

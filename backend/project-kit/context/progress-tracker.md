@@ -1,3 +1,21 @@
+**2026-09-11 evening correction (SQL error 1785):** the first migration apply on the
+user's machine failed — `FK_Workspaces_Organizations_OrganizationsId… ON DELETE CASCADE`
+collided with the `Users → Organizations` owner edge (multiple cascade paths). All six
+Organization FKs are now **ON DELETE NO ACTION (Restrict)** (including an explicit
+`Project.Organization` config — EF would otherwise convention-cascade it); org removal
+is app-managed (spec-33 offboarding purge). Migration regenerated as
+`20260911190926_AddMultiTenantColumns` (same idempotent backfill SQL). The corrupt
+half-applied Griot database (empty `Plans`, zero FKs on `Projects` despite migration
+history) was dropped and rebuilt from all migrations. Dev reset command:
+
+```bash
+docker exec infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P 'SababishaDev2026!' -C -Q \
+  "IF DB_ID('Griot') IS NOT NULL BEGIN ALTER DATABASE Griot SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE Griot; END"
+cd backend && dotnet ef database update --project src/Griot.Infrastructure --startup-project src/Griot.Api
+```
+
+
 # Progress Tracker — Backend / API
 
 ## Current State
@@ -36,7 +54,7 @@ Week 2. Spec 20 is implemented on `feature/backend/20-observability-logging-pipe
 | 26 | Conversations, preferences and curated memory | PLANNED |
 | 27 | Incident alerts and confirmed notices | PLANNED |
 | 28 | Project lifecycle report evidence | PLANNED (before 24) |
-| 29 | Multi-tenant foundation (Organizations + tenant isolation) | IMPLEMENTED 2026-09-11 — commit `9447e15` on `feature/backend/29-multi-tenant-foundation-organizations` (24 files, +390/−169): fail-closed `ITenantContext` scoping (403 without org scope; GraphQL writes inherit via `TenantGuard.RequireOrganization` + scoped re-load), `CreateWorkspace` org-stamped + POST owner-member user-data fix, all `ActivityLogs`/`AuditLogs` rows carry `OrganizationId`, `AssigneeDataLoader`/`CommentDataLoader` pooled-context scope copy, `DevObservabilitySeeder` migration-race try/catch, migration `20260911151030` (17 tenant-filtered entities, 30 org indexes, idempotent ownership-chain backfill + quarantine org), ERD Amendment v2; build 0W/0E; 152 tests passed / 8 SQL-skipped / 0 failed. Outstanding gates: tenancy ERD approval + migration apply on the user's machine → then mark COMPLETE and advance to 30 |
+| 29 | Multi-tenant foundation (Organizations + tenant isolation) | IMPLEMENTED 2026-09-11 — commit `9447e15` on `feature/backend/29-multi-tenant-foundation-organizations` (24 files, +390/−169): fail-closed `ITenantContext` scoping (403 without org scope; GraphQL writes inherit via `TenantGuard.RequireOrganization` + scoped re-load), `CreateWorkspace` org-stamped + POST owner-member user-data fix, all `ActivityLogs`/`AuditLogs` rows carry `OrganizationId`, `AssigneeDataLoader`/`CommentDataLoader` pooled-context scope copy, `DevObservabilitySeeder` migration-race try/catch, migration `20260911190926` (17 tenant-filtered entities, 30 org indexes, idempotent ownership-chain backfill + quarantine org), ERD Amendment v2; build 0W/0E; 152 tests passed / 8 SQL-skipped / 0 failed; follow-up commit `9f7400e` (SQL-1785 fix: org FKs ON DELETE NO ACTION, migration regenerated, DB rebuilt + verified up to date on the user's machine). Outstanding gate: tenancy ERD approval only → then mark COMPLETE and advance to 30 |
 | 30 | Auth & JWT v2 (role/tenant claims + org switch + SuperAdmin bootstrap) | PLANNED — multi-tenant wave (needs 29, 31) |
 | 31 | RBAC v2 (system + custom company roles) | PLANNED — multi-tenant wave (needs 29, 30) |
 | 32 | Company onboarding & platform management (SuperAdmin) | PLANNED — multi-tenant wave (needs 29–31) |
