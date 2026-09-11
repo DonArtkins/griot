@@ -31,6 +31,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var workspace = new Griot.Domain.Entities.Workspace
@@ -68,6 +69,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         var workspace = await dbContext.Workspaces
             .FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
 
@@ -102,6 +104,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         if (IsAiCall(claimsPrincipal))
             throw new UnauthorizedAccessException("Destructive operations are not allowed via AI service-token OBO.");
 
@@ -132,6 +135,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
 
         var project = new Griot.Domain.Entities.Project
@@ -171,6 +175,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         var project = await dbContext.Projects
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
@@ -205,6 +210,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         if (IsAiCall(claimsPrincipal))
             throw new UnauthorizedAccessException("Destructive operations are not allowed via AI service-token OBO.");
 
@@ -234,6 +240,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         var project = await dbContext.Projects
             .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
 
@@ -275,6 +282,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeCreateTask);
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         // Reject out-of-range priorities before the enum cast reaches persistence (CWE-20).
@@ -329,6 +337,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         var task = await dbContext.TaskItems
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
@@ -369,6 +378,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         if (IsAiCall(claimsPrincipal))
             throw new UnauthorizedAccessException("Destructive operations are not allowed via AI service-token OBO.");
 
@@ -398,6 +408,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeAddComment);
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var task = await dbContext.TaskItems
@@ -509,6 +520,7 @@ public class GriotMutation
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireWorkspace(claimsPrincipal, workspaceId);
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var workspace = await dbContext.Workspaces
@@ -540,6 +552,7 @@ public class GriotMutation
         if (IsAiCall(claimsPrincipal))
             throw new UnauthorizedAccessException("Admin-or-owner destructive operations are not allowed via AI service-token OBO.");
 
+        AiAccess.RequireWorkspace(claimsPrincipal, workspaceId);
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var workspace = await dbContext.Workspaces
@@ -570,6 +583,7 @@ public class GriotMutation
         if (IsAiCall(claimsPrincipal))
             throw new UnauthorizedAccessException("Owner-only destructive operations are not allowed via AI service-token OBO.");
 
+        AiAccess.RequireWorkspace(claimsPrincipal, workspaceId);
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var workspace = await dbContext.Workspaces

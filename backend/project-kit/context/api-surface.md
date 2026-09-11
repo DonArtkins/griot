@@ -40,7 +40,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET | `/api/logs/audit?entityType=&entityId=` | audit log — persisted by backend spec 20 (PLANNED; Owner) | Owner |
 | GET/POST/DELETE | `/api/workspaces/{id}/reports…` + `GET …/reports/{id}/download?format=pdf\|csv` — **spec 24 PLANNED** | AI/human reports + PDF/CSV artifacts | workspace member (delete Owner/Admin) |
 | GET | `/api/workspaces/{id}/audit-summary?window=&severity=` — **spec 24 PLANNED** | Owner-only log rollup feeding the ai 06 auditor | Owner |
-| POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) | HMAC only |
+| POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) — **body cap 64 KiB (413 over)**; replay protection (signed-timestamp freshness + bounded event-id cache) PLANNED | HMAC only |
 | GET | `/health` | liveness (health checks) | public |
 
 ## Attachment limits (Phase 1 — Cloudinary)
@@ -86,7 +86,7 @@ All CRUD orchestration (specs 13–17) lives in `IDomainService`/`DomainService`
 | AttachmentController | `/api/tasks/{id}/attachments` | DomainService |
 | NotificationController | `/api/notifications*` | DomainService |
 | DashboardController | `/api/dashboard/summary`, `/api/workspaces/{id}/activity`, `/api/logs/*` | DomainService |
-| WebhookController | `/api/webhooks/trigger` | thin relay — HMAC verified upstream by `WebhookHmacMiddleware` (401 mismatch/absent, 503 unconfigured) → 202 |
+| WebhookController | `/api/webhooks/trigger` | HMAC verified upstream by `WebhookHmacMiddleware` (401 mismatch/absent, 503 unconfigured; 413 oversized) → **503 retryable while durable replay-safe dispatch is absent** (no accepted work; 202 only after backend 20 ships the durable inbox/job-intent, per `docs/api/ai-service-token-contract.md`) |
 
 ## Conventions
 
@@ -105,7 +105,7 @@ Use the [auth contract](../../../docs/api/auth-contract.md) for current routes, 
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/auth/otp/request` (202; `email_verify` auto-sent on register) + `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; per-purpose branded Brevo template — `auth-contract.md` §Email. Registration returns 201 after SQL persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
-## Observability & protection contracts (specs 18–24 — PLANNED)
+## Observability & protection contracts (specs 18–27 — PLANNED)
 
 | Spec | Contract summary |
 |---|---|
@@ -115,7 +115,10 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 | **21** | `AFTER INS/UPD/DEL` triggers on TaskItems/WorkspaceMembers/Invites/Attachments → `AuditLogs` (`DB.`-prefixed actions; app rows unprefixed); FULL nightly + DIFF 15min + LOG 10min backups on `sababisha_mssql_backup` + restore drill runbook |
 | **22** | fan-out matrix (Assignment/Mention/DueDate/System → sender keys noreply/support/noreply/team+admin); new `NotificationPreferences` (1:1 Users) + `GET/PUT /api/notifications/preferences` + service-token-only `POST /api/notifications/fanout`; email best-effort (failure → `ErrorLogs`, request still succeeds) |
 | **23** | critical-action OTP & step-up: login 202-challenge (EmailOtp), purposes `delete_account`/`step_up`, forgot/reset-password, `DELETE /api/auth/account`, `RequireStepUp(action)` guards on the curated risk list — human-only, AI OBO 403 |
-| **24** | report surface `GET/POST/DELETE /api/workspaces/{id}/reports…` + `download?format=pdf\|csv`; `GET /api/workspaces/{id}/audit-summary` (Owner); FIFTH OBO scope `CreateReport` |
+| **24** | report surface `GET/POST/DELETE /api/workspaces/{id}/reports…` + `download?format=pdf\|csv` + export/embed artifact links; `GET /api/workspaces/{id}/audit-summary` (Owner); FIFTH OBO scope `CreateReport` (AI create OK, AI delete 403) |
+| **25** | role-tiered log access (`/api/logs/*` SuperAdmin/Dev only; `/api/logs/summary` Admin+ redacted) + `GET /api/me/capabilities` (per-role AI tool manifest) |
+| **26** | AI memory: `GET/POST /api/ai/conversations…` + `context?q=` + `GET/PUT /api/me/preferences` |
+| **27** | SuperAdmin alert/broadcast routes (`/api/admin/alerts/event`, `/api/admin/broadcasts…confirm|cancel`) — confirm gate before any send |
 
 Audit + incident runbook: `docs/observability/LOGGING-AUDIT-REPORT.md` (what/where/why/when/trigger/spillover/user-count query recipes); decision: `docs/decisions/ADR-004-observability-pipeline-and-db-resilience.md`.
 

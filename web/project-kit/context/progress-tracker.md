@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 24 → 10). Kit written (11 specs). **Not started.** 9 of 10 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Specs 10–11 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
+**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 10). Kit written (12 specs). **Not started.** 9 of 12 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Specs 10–12 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|
@@ -18,6 +18,8 @@
 | 10 | Copilot panel integration | Pending (**P2**) | w 05+07, **ai 01–02** |
 | 11 | AI Reports & Audit Center (award-grade UX) | Pending (**P2**) | w 10, **ai 06–07 + backend 24** |
 
+| 12 | Persistent AI workspace, charts, review cards | Pending | ai 09, backend 25/26/27; ai 10–12 integrate later |
+
 ## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P1–P2)
 
 `web 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09` → *(AI hop: ai 01 → ai 02)* → `web 10` → *(ai 06 → ai 07, after backend 24)* → `web 11`
@@ -32,6 +34,10 @@
 - **2026-09-03** — Web kit created (AGENTS, skills, contexts, 10 specs).
 - **2026-09-07** — Design system landed: `src/theme.ts` implemented from the inspo-synthesized master tokens (`docs/design/MASTER-DESIGN-SYSTEM.md` → root `ui-tokens.md`); design-system.md + MUI skill 0.2.0 + spec 02 synced (light canvas, chrome-ink CTA, severity maps incl. Todo/Backlog). Theme is implementation-ready ahead of spec 01 scaffold; zero hardcoded colors outside the token module is now enforced by `theme.griot`.
 
+
+## Audit synchronization — 2026-09-11
+
+Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

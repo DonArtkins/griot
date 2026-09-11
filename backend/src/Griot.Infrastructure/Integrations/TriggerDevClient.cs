@@ -24,8 +24,11 @@ public sealed class TriggerDevClient
     private readonly IConfiguration  _config;
     private readonly ILogger<TriggerDevClient> _logger;
 
-    // Default Trigger.dev REST API base.  Override via Configuration["Trigger:ApiUrl"] for self-hosted.
+    // Default Trigger.dev REST API base.  Overrides must be an operator-controlled HTTPS API endpoint.
     private const string DefaultApiUrl = "https://api.trigger.dev";
+
+    private static string? NonBlank(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value;
 
     public TriggerDevClient(HttpClient http, IConfiguration config, ILogger<TriggerDevClient> logger)
     {
@@ -43,28 +46,39 @@ public sealed class TriggerDevClient
     /// <param name="payload">Optional payload serialized as the task input.</param>
     public async Task<bool> EnqueueAsync(string taskId, object? payload = null)
     {
-        var secretKey = _config["Trigger:SecretKey"] ?? _config["TRIGGER_SECRET_KEY"];
+        var secretKey = NonBlank(_config["Trigger:SecretKey"]) ?? NonBlank(_config["TRIGGER_SECRET_KEY"]);
         if (string.IsNullOrWhiteSpace(secretKey))
         {
             _logger.LogWarning("Trigger.dev secret key not configured; task '{TaskId}' not enqueued.", taskId);
             return false;
         }
 
-        var baseUrl = _config["Trigger:ApiUrl"]?.TrimEnd('/') ?? DefaultApiUrl;
-        var url     = $"{baseUrl}/api/v1/tasks/{Uri.EscapeDataString(taskId)}/trigger";
+        // Never attach TRIGGER_SECRET_KEY to a non-HTTPS host (credential-leak guard).
+        var configuredBase = NonBlank(_config["Trigger:ApiUrl"]);
+        var baseUrl = configuredBase is not null ? configuredBase.TrimEnd('/') : DefaultApiUrl;
+
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var endpoint)
+            || endpoint.Scheme != Uri.UriSchemeHttps || string.IsNullOrEmpty(endpoint.Host)
+            || !string.IsNullOrEmpty(endpoint.UserInfo) || !string.IsNullOrEmpty(endpoint.Query)
+            || !string.IsNullOrEmpty(endpoint.Fragment))
+        {
+            _logger.LogError(
+                "Trigger:ApiUrl must be an absolute HTTPS URL without user-info, query or fragment.");
+            return false;
+        }
+
+        var url = $"{baseUrl}/api/v1/tasks/{Uri.EscapeDataString(taskId)}/trigger";
 
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, url)
             {
-                Content = payload is not null
-                    ? JsonContent.Create(payload)
-                    : new StringContent("{}", System.Text.Encoding.UTF8, "application/json")
+                Content = JsonContent.Create(new { payload = payload ?? new { } })
             };
             request.Headers.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secretKey);
 
-            var response = await _http.SendAsync(request);
+            using var response = await _http.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
             {

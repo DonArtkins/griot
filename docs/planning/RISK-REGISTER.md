@@ -10,7 +10,7 @@
 | 4 | **N+1 query under load** | Board/dashboard slow at scale | DataLoader for assignee/comments; indexes on FKs; k6 baseline | k6 in CI + dashboard p95 check |
 | 5 | **SQL Server fills disk / connection pool** | API errors | Pool limits; retention pruning (90-day log); volume monitoring | Railway volume alert |
 | 6 | **LLM budget exceeded** | Cost spike on Copilot | Per-workspace Redis token budget + alarms; propose-before-write limits usage | budget metrics |
-| 7 | **Prompt injection via user text** | Agent manipulated into unrelated writes | User text = data; tools scope per workspace; OBO role `ai-on-behalf-of` (4 scopes, no deletes/invites) | audit logs review |
+| 7 | **Prompt injection via user text** | Agent manipulated into unrelated writes | User text = data; tools scope per workspace; OBO role `ai-on-behalf-of` (4 scopes, no deletes/invites). **Write gate:** Copilot mutations are proposed → approved → executed by the app (never the agent); deterministic scheduled notifications intentionally bypass approval BY DESIGN but require an authorized OBO identity + idempotency; MCP write tools define confirmation/provenance controls before implementation | audit logs review |
 | 8 | **MCP tool abuse (external client)** | Data exfiltration / load | Service token + OBO scope (4 claims, 403 on deletes/invites/bulk); per-workspace scoping; rate limit on MCP HTTP | MCP access logs |
 | 9 | **Deploy broke production** | Site down | Vercel instant rollback; Railway rollback previous deploy; runbook | uptime ping + `/health` |
 | 10 | **Attachments blob fills disk** | Storage exhaustion | Metadata in DB; blob store (v2), size limits; prune | storage metrics |
@@ -19,6 +19,9 @@
 | 13 | **Overdue data retention** | Compliance / storage | 90-day prune + append-only audit | nightly prune job logs |
 | 14 | **User ran out of local disk (dev)** | Dev env break | docs note; compose volumes on external disk | — |
 | 15 | **GraphQL depth/bomb** | Memory outage | query-cost guard + depth limit + timeouts | 400s/429s logged to ErrorLogs |
+| 16 | **AI privilege escalation via blanket tool access** | AI agent sees data its invoking user's role could not view | Per-role capability manifest resolved server-side (backend 25) — raw-log/forensic tools are ABSENT from non-SuperAdmin/Dev sessions; 403 before domain lookup | capability-gateway contract test |
+| 17 | **AI-initiated mass email** | Irreversible external blast radius | Broadcasts require preview + recipient-count + explicit SuperAdmin confirm (backend 27 / ai 10); cancellation before fire; AuditLogs row records direction + count | broadcast status list + audit query |
+| 18 | **SuperAdmin alert fatigue** | Desensitized operators miss real incidents | Severity thresholds + auth-path immediate alert; alert audit rows; plain-language summaries (ai 10) | alert metrics |
 
 ## Top-3 risks to watch day 1
 1. Redis single point — **fail-closed policy in effect**: login + refresh return 503 when Redis is unreachable; rate-limit window is never bypassed (see risk #1 above and MONITORING.md §1).

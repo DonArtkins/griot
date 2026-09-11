@@ -17,7 +17,7 @@ Turn the existing email-OTP (`email_verify` / `login_2fa` / `password_reset`) in
 - 6-digit codes from a crypto-secure RNG (`RandomNumberGenerator`); stored as HMAC-SHA256 with `Otp:Pepper`; never logged or returned; constant-time compare; 10-minute expiry; 5-attempt lockout per challenge (`OtpChallenges.AttemptCount`).
 - Redis `ratelimit:otp:request:{email}` 3/15 min + API global limiter 100/min/caller; lockout returns 429 with `Retry-After`.
 - Every request/verify/attempt writes an `AuditLogs` row (`Action ∈ {Auth.Otp.Request, Auth.Otp.Verify, Auth.Otp.Failed, Auth.StepUp.Issued, Auth.StepUp.Used}` — with backend spec 20).
-- **AI is permanently 403 on this whole surface.** Service-token OBO callers (spec 09) never request/verify OTP and never change MFA settings (research §3.6: auth stays human-gated, full stop).
+- **AI is permanently 403 on this whole surface.** Service-token OBO callers (spec 09) never request/verify OTP and never change MFA settings (research §3.6: auth stays human-gated, full stop). **Implementation (review fix):** one shared `RejectAiOnAuthSurface()` guard in `AuthController` runs BEFORE the rate limiter and any service call on `login`, `otp/request`, `otp/verify`, `forgot-password`, `reset-password` and `account` routes — 403 for AI OBO callers, normal human behavior untouched; xUnit asserts 403 per route.
 
 ## Dependencies
 

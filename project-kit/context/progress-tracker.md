@@ -6,9 +6,9 @@ Bootcamp **implementation phase** — Week 2 backend nearly closed; canonical cr
 
 | System | Kit | Status | Roadmap phase |
 |---|---|---|---|
-| backend | backend/project-kit | Specs 01–09, 12 (Email-only), 13–17 ✅; **20 next** (observability pipeline, CWE-778 gap), then 18 → 19 → 22 → 21 → 23 → 11 → 24 → 10 — then P0 closes | P0 (current) |
-| web | web/project-kit | 11 specs pending (web 11 = AI Reports & Audit Center after ai 06/07 + backend 24); deps = backend ✅ — starts right after P0 | P1 (next layer) |
-| ai | ai/project-kit | 8 specs pending (01–05 + 06–08 superpowers: knowledge/auditor · reports PDF+CSV · advanced executor); backend 09 ✅; starts after P1 | P2 |
+| backend | backend/project-kit | Specs 01–09, 12 (Email-only), 13–17 ✅; **20 next** (observability pipeline, CWE-778 gap), then 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10 — then P0 closes | P0 (current) |
+| web | web/project-kit | 12 specs pending (web 11 = Reports & Audit Center; web 12 = AI Workspace sidebar); deps = backend ✅ — starts right after P0 | P1 (next layer) |
+| ai | ai/project-kit | 10 specs pending (01–05 + 06–10 superpowers: knowledge/auditor · reports PDF+CSV · Level-4 executor · BI copilot+memory · ops agent); backend 09 ✅; starts after P1 | P2 |
 | mobile | mobile/project-kit | 7 specs pending; deps = backend ✅ only | P3 |
 | infra | infra/project-kit | 7 specs pending; 07-Netdata is a Phase-1 launch gate | P4 |
 | mcp | mcp/project-kit | 6 specs pending (06 = v2 report/audit tools, needs backend 20/24); 04 needs infra; 03 needs backend 09 | P5 |
@@ -18,8 +18,8 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 
 ## Next Steps
 
-1. **P0 (now):** backend **09** is delivered on `feature/backend/09-ai-service-token-and-webhooks`; await user review before starting **20**. Remaining order is the **2026-09-10 hardening wave 20 → 18 → 19 → 22 → 21** (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **23** (critical-action OTP/step-up — login 2FA, forgot/reset, delete account, guarded ops), then **11** (blob storage — unblocks attachment UI), then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
-2. **P1–P6:** follow `docs/planning/IMPLEMENTATION-ROADMAP.md` — Web 01–09 → ai 01–02 → web 10 → ai 03–05 → mobile 01–07 → infra 01–07 → mcp 01–05 → qa 01–13. Each phase's entry condition and rationale are in the roadmap; do not reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
+1. **P0 (now):** backend **09** is delivered on `feature/backend/09-ai-service-token-and-webhooks`; await user review before starting **20**. Remaining order is the **2026-09-10 hardening wave 20 → 18 → 19 → 22 → 21** (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **23** (critical-action OTP/step-up — login 2FA, forgot/reset, delete account, guarded ops), then **11** (blob storage — unblocks attachment UI), then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary), then **25** (role-tiered log access + AI capability gateway), **26** (AI memory & conversations), **27** (incident alerting + confirmed broadcasts), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
+2. **P1–P6:** follow `docs/planning/IMPLEMENTATION-ROADMAP.md` — Web 01–09 → ai 01–02 → web 10 → ai 03–10 (web 11/12 at their dependency points) → mobile 01–07 → infra 01–07 → mcp 01–06 → qa 01–13. Each phase's entry condition and rationale are in the roadmap; do not reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
 
 ## Session Notes
 
@@ -49,6 +49,10 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 - **2026-09-07** — **Master design system synthesized from `inspo/` (all 12)**. Deliverables: `docs/design/MASTER-DESIGN-SYSTEM.md` (catalog, ranking, tokens + provenance, component rules, rejections); `project-kit/context/ui-tokens.md` rewritten as a concrete token contract (v2 — **light canvas `#F7F8FA` + white cards supersedes the dark-workspace placeholder**, 12/12 inspos are light; dark is now a derived variant); theme files created at the spec-owned paths `web/src/theme.ts` (MUI v6 `createTheme`, chrome-ink CTA, severity maps exported) and `mobile/lib/core/theme/theme.dart` (ThemeData + `GriotColors`/`GriotRadii` extensions, header tint, radius-24 cards); contract-synced web design-system.md, web skill 0.2.0, web specs 02, web architecture/diagrams README, both public-shell prompts (dark→light), created the missing `mobile/project-kit/context/design-system.md`, cataloged `inspo/README.md`. Next: MUI/Flutter font bundling in scaffold specs (feature 01s); `StatusChip`/`PriorityChip` etc. build on these primitives.
 
 - **2026-09-10** — CodeRabbit review fixes + storage contract swap: backend attachment validation (25 MB inclusive / MIME allowlist) implemented and pinned by 12 unit tests; blob storage contract changed **Vercel Blob → Cloudinary (`CloudinaryDotNet`, `CLOUDINARY_URL`)** across backend spec 11 + all synced docs (`BLOB_READ_WRITE_TOKEN` removed repo-wide); Trigger-ownership model (backend-only triggering, scheduled agents as the sole cron exception, web read-only Copilot stream) synced; Brevo best-effort scoped to registration with OTP 502 path documented; `TRIGGER_WEBHOOK_SECRET` renamed `WEBHOOK_SECRET` everywhere.
+
+## Audit synchronization — 2026-09-11
+
+Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

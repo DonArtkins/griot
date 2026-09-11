@@ -33,7 +33,7 @@ builder.Configuration.AddEnvironmentVariables().AddCommandLine(args);
 // Controllers (thin wrappers only; business logic lives in Griot.Application services).
 // Enums serialize/deserialize as their string names (matches api-surface.md contract:
 // "Backlog"/"Todo"/"InProgress"/"InReview"/"Done", "Low/Medium/High/Urgent", etc).
-builder.Services.AddControllers()
+builder.Services.AddControllers(options => options.Filters.Add<AiAccessFilter>())
     .AddJsonOptions(o =>
     {
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -116,7 +116,9 @@ builder.Services.AddScoped<IRedisRateLimiter, RedisRateLimiter>();
 
 // Spec 09: Trigger.dev enqueue client (server-to-server; enqueue-after-persist pattern).
 // Typed HttpClient — never exposed to web/mobile; failures never roll back domain writes.
-builder.Services.AddHttpClient<TriggerDevClient>();
+builder.Services.AddHttpClient<TriggerDevClient>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+builder.Services.AddHttpContextAccessor();
 
 // GraphQL server (HotChocolate 14+) — code-first schema, DataLoaders, filtering, sorting, auth,
 // query-cost guard (parser field/node caps + max execution depth + execution timeout).
@@ -124,6 +126,7 @@ builder.Services
     .AddGraphQLServer()
     .AddQueryType<GriotQuery>()
     .AddMutationType<GriotMutation>()
+    .UseField<AiFieldMiddleware>()
     .AddAuthorization()
     .AddDataLoader<AssigneeDataLoader>()
     .AddDataLoader<CommentDataLoader>()
@@ -185,7 +188,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(jwtKeyBytes)
         };
     })
-    // Spec 09: AI service token scheme — GRIOT_SERVICE_TOKEN bearer → restricted ai-agent principal.
+    // Spec 09: AI service token scheme — GRIOT_SERVICE_TOKEN bearer → restricted ai-on-behalf-of
+    // OBO principal (documented in docs/api/ai-service-token-contract.md).
     .AddScheme<AuthenticationSchemeOptions, ServiceTokenHandler>(
         ServiceTokenHandler.SchemeName, _ => { })
     // Spec 09 fix: With JwtBearer as the DEFAULT scheme, app.UseAuthentication() only runs
@@ -200,7 +204,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddPolicyScheme("MultiAuth", "MultiAuth (JWT or Griot service token)", options =>
     {
         options.ForwardDefaultSelector = ctx =>
-            ServiceTokenHandler.SelectScheme(ctx.Request.Headers.Authorization.ToString());
+            ServiceTokenHandler.SelectScheme(
+                ServiceTokenHandler.ResolveServiceToken(builder.Configuration),
+                ctx.Request.Headers.Authorization.ToString());
     });
 
 // The default scheme becomes the policy scheme, so UseAuthentication runs the selector

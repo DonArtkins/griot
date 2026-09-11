@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Phase P5** in `docs/planning/IMPLEMENTATION-ROADMAP.md`. Kit written (5 specs). **Not started.** Specs 01–02 are technically unblocked (Node 20 only) but the phase is scheduled after **P4 (infra)** because spec 04 needs a Railway/Docker topology and spec 03 needs backend 09's service token — running the whole roster against a deployed, stable API avoids re-work.
+**Phase P5** in `docs/planning/IMPLEMENTATION-ROADMAP.md`. Kit written (6 specs). **Not started.** Specs 01–02 are technically unblocked (Node 20 only) but the phase is scheduled after **P4 (infra)** because spec 04 needs a Railway/Docker topology and spec 03 needs backend 09's service token — running the whole roster against a deployed, stable API avoids re-work.
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|
@@ -34,6 +34,10 @@
 - **2026-09-03** — MCP kit created (AGENTS, skills, contexts, 5 specs; 9-tool roster fixed as a contract).
 - **2026-09-10** — Orchestration boundary ratified: MCP is a data/tool surface, never an orchestration trigger — external MCP clients reach data through backend GraphQL only and never receive Trigger.dev credentials (`research/ai-integration.md` §2a).
 - **2026-09-10 (2)** — Tracker created during the cross-system audit (this system previously had none). Phase P5 position + rationale recorded above.
+
+## Audit synchronization — 2026-09-11
+
+Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

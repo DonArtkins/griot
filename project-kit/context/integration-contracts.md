@@ -31,8 +31,10 @@ These contracts are owned cross-system. Change one and the contract-sync gate (`
 | ai/mcp | `GRIOT_API_URL` `GRIOT_SERVICE_TOKEN` | API access |
 | ai | `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` | LLM keys ONLY in `ai/.env` |
 | backend | `TRIGGER_SECRET_KEY` | Backend → Trigger.dev REST enqueue (server-to-server; never exposed to web/mobile) |
-| backend | `WEBHOOK_SECRET` | Trigger.dev → backend HMAC callbacks (`X-Trigger-Signature`; read by `WebhookHmacMiddleware` as `Webhook:Secret` ?? `WEBHOOK_SECRET`) |
+| backend | `WEBHOOK_SECRET` | Trigger.dev → backend HMAC callbacks (`X-Trigger-Signature`; read by `WebhookHmacMiddleware` as `Webhook:Secret` ?? `WEBHOOK_SECRET`; blank values treated as missing) |
+| backend | `Webhook:MaxBodyBytes` | Webhook payload cap (default 64 KiB → 413 over); replay protection PLANNED (signed freshness + event-id cache) |
 | backend | `Security:StepUpTtlSeconds` / `Security:StepUpActions` | Critical-action step-up TTL + action allow-list (spec 23, PLANNED) |
+| backend | `Security:LogRawTier` / `Alerts:Thresholds` | Raw-log tier allow-list (default SuperAdmin,Dev) + alert severity thresholds (specs 25/27, PLANNED) |
 | backend | `SITE_URL` | Deployed origin (e.g. https://griot.vercel.app) used in brand email footers — NOT the sender domain (verify a domain you own; §7b) |
 | web | `VITE_TRIGGER_ACCESS_TOKEN` | Realtime WS access token — read-only Copilot stream delivery only |
 | infra | `SABABISHA_SA_PASSWORD` `SABABISHA_PG_PASSWORD` | local compose dev DB passwords |
@@ -82,7 +84,7 @@ Canonical: `docs/api/ai-service-token-contract.md`; owner spec `backend/project-
 
 ## AI/MCP tool contract
 
-Tools (ids): `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`. Agent operates as a Level 4 planning loop requiring human approval gates for multi-step execution. All write via backend GraphQL/REST with `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO principal — four scopes, no deletes/invites; spec 09).
+Tools (ids): `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `add_comment`, `get_activity_feed`, `summarize_project`. Agent operates as a Level 4 planning loop requiring human approval gates for multi-step execution. All write via backend GraphQL/REST with `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO principal — four scopes, no deletes/invites; spec 09).
 
 ## CI/CD contract
 

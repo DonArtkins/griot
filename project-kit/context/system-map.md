@@ -39,8 +39,8 @@
 |---|---|---|---|
 | web | backend | REST `/api/*` + GraphQL `/graphql` | JWT access token (Bearer) |
 | mobile | backend | REST + GraphQL (same endpoints) | JWT access token |
-| ai | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO principal — 4 scopes today; +`CreateReport` PLANNED spec 24; no deletes/invites) |
-| mcp | backend | GraphQL only | `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO) |
+| ai | backend | REST + GraphQL (service-token OBO; GraphQL is the primary read path) | `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO principal — 4 scopes today; +`CreateReport` PLANNED spec 24; role-tiered capability filtering PLANNED spec 25; no deletes/invites) |
+| mcp | backend | REST + GraphQL (service-token OBO) | `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` (real-user OBO; role-aware capability gate per spec 25) |
 | ai | backend | `POST /api/webhooks/trigger` (HMAC) | `X-Trigger-Signature` |
 | backend | ai | Trigger.dev REST (enqueue task by ID) | `TRIGGER_SECRET_KEY` (server-to-server only) |
 | web | ai | Trigger realtime (WS) — read-only stream delivery | Trigger access token |
@@ -52,7 +52,7 @@
 
 ## Non-negotiable boundary
 
-AI (`ai/` + `mcp/`) never connects to SQL Server/Redis directly and never holds DB credentials. All data access is through the backend API. `web/` and `mobile/` never touch a database. `backend/` never contains UI or agent code. **AI never touches the auth/OTP surface** (spec 23 — 403 for AI OBO callers, permanently); AI reports/audits ride the scoped `CreateReport` capability (spec 24) and the read-only log surface (spec 20).
+AI (`ai/` + `mcp/`) never connects to SQL Server/Redis directly and never holds DB credentials. All data access is through the backend API. `web/` and `mobile/` never touch a database. `backend/` never contains UI or agent code. **AI never touches the auth/OTP surface** (spec 23 — 403 for AI OBO callers, permanently; enforced by a shared auth-route guard once 23 ships); AI reports/audits ride the scoped `CreateReport` capability (spec 24) and the read-only log surface (spec 20), filtered per OBO role by the spec-25 capability gateway.
 
 **AI orchestration contract** (`research/ai-integration.md` §2a — authoritative): Trigger.dev (`ai/`) is a standalone compute/orchestration adapter deployed independently; the .NET backend is the only component that triggers tasks (REST/SDK, server-to-server `TRIGGER_SECRET_KEY`) and the only writer of source-of-truth data — task results are written back through the API (`POST /api/webhooks/trigger` HMAC, or `GRIOT_SERVICE_TOKEN` REST). Web/mobile never trigger or poll Trigger.dev — they call the .NET API; the sole direct frontend↔Trigger channel is the web Copilot realtime stream (scoped access token, read-only).
 

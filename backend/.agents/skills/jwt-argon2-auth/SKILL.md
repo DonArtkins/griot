@@ -23,7 +23,7 @@ Redis sliding window on `/api/auth/login`; query-cost guard on `/graphql`. CORS 
 
 ## Service token
 
-`GRIOT_SERVICE_TOKEN` → restricted `ai-agent` principal (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes/invites). `/api/webhooks/trigger` verifies HMAC `X-Trigger-Signature`.
+`GRIOT_SERVICE_TOKEN` plus trusted `X-On-Behalf-Of` and an unexpired backend-configured delegation → restricted `ai-on-behalf-of` principal (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes/invites). `/api/webhooks/trigger` verifies HMAC `X-Trigger-Signature`.
 
 ## Verify
 

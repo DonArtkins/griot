@@ -191,3 +191,7 @@ Component-by-component decision list (binary, testable):
 11. OWASP CSRF Prevention Cheat Sheet (Bearer vs Cookie rationale): https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 12. StackExchange.Redis best practices (singleton multiplexer, `host:port` format NOT `redis://`): https://stackexchange.github.io/StackExchange.Redis/Basics
 13. RFC 7231 §6.6.2 (501 Not Implemented for scaffold routes): https://www.rfc-editor.org/rfc/rfc7231#section-6.6.2
+
+## Feature 09 review hardening — 2026-09-11
+
+REST AiAccessFilter and GraphQL AiFieldMiddleware default-deny every unmapped operation. Reads require ReadWorkspace; createTask/CreateTask, addComment/AddComment are the current writes. CreateNotification is reserved until its backend route ships. Configured delegations bind the service to a real user, allowed workspaces, a subset of the four scopes and UTC expiry; membership is checked independently. Auth/OTP, updates, deletes, invites, member management and raw-log AI access are denied. GraphQL execution denials return errors (FORBIDDEN for the field gate) with HTTP 200 for application/json; REST returns 403. No fifth scope exists until backend 24.

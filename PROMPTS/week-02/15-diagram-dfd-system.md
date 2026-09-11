@@ -51,7 +51,7 @@
 | F4 | P3 → P1/P2 | 200/201 responses + `Set-Cookie refreshToken` (web) / JSON body (mobile) |
 | F5 | P3 → Clients | 401/404/403 rejection semantics (404 never discloses existence) |
 | F6 | P1 → P5 | Trigger realtime WebSocket (Copilot stream + notification fan-out) |
-| F7 | P5 / P4 → P3 | GraphQL only, `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ai-on-behalf-of` principal (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites) |
+| F7 | P5 / P4 → P3 | REST + GraphQL, `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ai-on-behalf-of` principal (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites) |
 | F8 | P4 → External AI clients | MCP tool results (stdio local / Streamable HTTP with `Authorization: Bearer GRIOT_MCP_TOKEN`) |
 | F9 | External AI clients → P4 | MCP tool calls (get_board, create_task, update_task_status, add_comment, summarize_project, …) |
 | F10 | P3 → Email provider | SMTP invites/reminders/digests (digest payload authored by P5 scheduled jobs) |

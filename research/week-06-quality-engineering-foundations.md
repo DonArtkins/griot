@@ -90,7 +90,7 @@ axe-core (through RTL or Lighthouse). An Awwwards-calibre Public Shell that fail
 - [ ] OWASP review logged (findings or "no issue found" per item)
 - [ ] Accessibility (axe) pass on the deployed Public Shell
 - [ ] Coverage gate ≥80% on service-layer/auth specifically (vet on aggregate flat rate)
-- [ ] AI layer: golden-transcript + MCP tool tests green; Cypress uses the stubbed copilot; `ai-agent` role scoped
+- [ ] AI layer: golden-transcript + MCP tool tests green; Cypress uses the stubbed copilot; `ai-on-behalf-of` role scoped (4 scopes; + `CreateReport` in backend 24)
 
 ---
 **Engineering Excellence. Production Mindset. Professional Impact.**

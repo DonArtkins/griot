@@ -136,7 +136,7 @@ Frontend (Vercel): the **web app never calls Brevo** -- it only calls the .NET A
 
 The From-domain (`griot.app`) is **not verified in Brevo**, so Brevo rejects the send at the API. Hosting the frontend on **`griot.vercel.app` does NOT fix it**: Vercel owns `*.vercel.app` (shared wildcard) — you cannot add Brevo's DKIM/SPF TXT records there, and it is not a domain you control.
 
-**The fix that works:** verify a domain **you own** (e.g. `griot.app` or `mail.griot.app`): Brevo dashboard → Senders → authenticate your domain → add the `brevo-code` TXT (`v=spf1` + DKIM selector records as Brevo shows) → verify. Once verified, every sender on that domain (`noreply@...`, `security@...`, `support@...`, `team@...`, `info@...`) is valid and delivers as your brand (no more `brevosend.com` rewrite). Sending domains need **no MX records** — SPF/DKIM alignment is what mailboxes check.
+**The fix that works:** verify a domain **you own** (e.g. `griot.app` or `mail.griot.app`): Brevo dashboard → Senders → authenticate your domain → add the Brevo verification TXT plus the required DKIM and DMARC records shown for the domain → verify. Once verified, every sender on that domain (`noreply@...`, `security@...`, `support@...`, `team@...`, `info@...`) is valid and delivers as your brand (no more `brevosend.com` rewrite). Outbound-only sending needs no MX records; reply-to mailboxes such as support@... require inbound mail hosting and MX records. SPF is added only when Brevo requires it for this account setup. Confirm the domain shows authenticated before enabling production senders.
 
 **Best format for all Griot email** — one authenticated domain + the six identities (`Security`, `NoReply`, `Admin`, `Support`, `Info`, `Team`): `security` for OTP/2FA (reply-to none), `noreply` for system notices, `admin` for ops (reply-to support), plus the audience profiles. Keep `SITE_URL=https://griot.vercel.app` for email-footer links (separate concept; correct as-is). Interim until DNS is ready: Brevo's default sender (`<account-id>@<account-id>.brevosend.com`) still delivers — it just isn't your brand.
 
@@ -152,3 +152,7 @@ The From-domain (`griot.app`) is **not verified in Brevo**, so Brevo rejects the
 
 ---
 **Engineering Excellence. Production Mindset. Professional Impact.**
+
+## Domain verification source
+
+Follow [Brevo’s domain-authentication guide](https://help.brevo.com/hc/en-us/articles/12163873383186-Authenticate-your-domain-with-Brevo-Brevo-code-DKIM-DMARC) for the exact account-provided verification, DKIM and DMARC records. An example domain or sender in this repository is not proof that this account owns or has verified it.

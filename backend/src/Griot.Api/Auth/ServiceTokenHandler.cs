@@ -32,7 +32,8 @@ namespace Griot.Api.Auth;
 ///
 /// The comparison is constant-time to prevent timing-oracle attacks.
 /// User lookup is performed against the Users table via IGenericRepository{User}
-/// using a per-call IServiceScope (authentication handlers are singleton-scoped).
+/// using a per-call IServiceScope. A non-expired backend-configured delegation must
+/// bind the service identity to this user, allowed workspaces and permitted scopes.
 /// </summary>
 public sealed class ServiceTokenHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
@@ -63,8 +64,7 @@ public sealed class ServiceTokenHandler : AuthenticationHandler<AuthenticationSc
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var configuredToken = _config["ServiceToken:Key"]
-                           ?? _config["GRIOT_SERVICE_TOKEN"];
+        var configuredToken = ResolveServiceToken(_config);
 
         if (string.IsNullOrWhiteSpace(configuredToken))
         {
@@ -95,6 +95,21 @@ public sealed class ServiceTokenHandler : AuthenticationHandler<AuthenticationSc
         if (!Guid.TryParse(oboValue, out var oboUserId))
             return AuthenticateResult.Fail($"{OnBehalfOfHeaderName} must be a valid GUID.");
 
+        // Only the backend operator can bind this service identity to a user/workspace.
+        // Client headers and Users-table existence alone never authorize delegation.
+        var grant = _config.GetSection($"ServiceToken:Delegations:{oboUserId:D}");
+        var expiryText = grant["ExpiresAtUtc"];
+        var workspaceValues = grant.GetSection("WorkspaceIds").Get<string[]>() ?? Array.Empty<string>();
+        var scopes = grant.GetSection("Scopes").Get<string[]>() ?? Array.Empty<string>();
+        if (!DateTimeOffset.TryParse(expiryText, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var expiry)
+            || expiry.Offset != TimeSpan.Zero || expiry <= DateTimeOffset.UtcNow
+            || workspaceValues.Length == 0
+            || workspaceValues.Any(w => !Guid.TryParse(w, out var id) || id == Guid.Empty)
+            || scopes.Length == 0 || scopes.Distinct(StringComparer.Ordinal).Count() != scopes.Length
+            || scopes.Any(s => !AiAccess.Scopes.Contains(s)))
+            return AuthenticateResult.Fail("Missing, expired, or invalid AI delegation.");
+
         User? user;
         using (var scope = _scopeFactory.CreateScope())
         {
@@ -105,7 +120,7 @@ public sealed class ServiceTokenHandler : AuthenticationHandler<AuthenticationSc
         if (user is null)
             return AuthenticateResult.Fail($"On-Behalf-Of user not found: {oboUserId}");
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.DisplayName),
@@ -113,11 +128,9 @@ public sealed class ServiceTokenHandler : AuthenticationHandler<AuthenticationSc
             new Claim(ClaimTypes.Role, AiOnBehalfOfRole),
             new Claim("obo", user.Id.ToString()),
             new Claim("auth_method", "service_token_obo"),
-            new Claim("scope", ScopeReadWorkspace),
-            new Claim("scope", ScopeCreateTask),
-            new Claim("scope", ScopeAddComment),
-            new Claim("scope", ScopeCreateNotification),
         };
+        claims.AddRange(scopes.Select(scope => new Claim("scope", scope)));
+        claims.AddRange(workspaceValues.Select(w => new Claim(AiAccess.WorkspaceClaim, Guid.Parse(w).ToString("D"))));
 
         var identity  = new ClaimsIdentity(claims, SchemeName);
         var principal = new ClaimsPrincipal(identity);
@@ -130,18 +143,46 @@ public sealed class ServiceTokenHandler : AuthenticationHandler<AuthenticationSc
     }
 
     /// <summary>
-    /// Forward selector for the "MultiAuth" policy scheme (spec 09): routes each bearer token
-    /// to the correct concrete handler. A JWT-shaped token (exactly two dots —
-    /// header.payload.signature) goes to JwtBearer; any other bearer goes to the service-token
-    /// scheme; a missing/empty header falls back to JwtBearer so 401 challenges keep their
-    /// original shape. Kept as a pure static method so the routing rule is unit-testable.
+    /// Resolves the configured service token, treating blank/whitespace values as
+    /// missing so the environment fallback actually applies (review fix 2026-09-10):
+    ///   1. Configuration["ServiceToken:Key"]
+    ///   2. env: GRIOT_SERVICE_TOKEN
     /// </summary>
-    public static string SelectScheme(string authorizationHeader)
+    public static string? ResolveServiceToken(IConfiguration config)
+        => NonBlank(config["ServiceToken:Key"])
+        ?? NonBlank(config["GRIOT_SERVICE_TOKEN"]);
+
+    private static string? NonBlank(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    /// <summary>
+    /// Forward selector for the "MultiAuth" policy scheme (spec 09): routes each bearer token
+    /// to the correct concrete handler. The configured service token is compared FIRST
+    /// (constant-time) — a service token that happens to contain dots (e.g. "segment.segment.segment")
+    /// must still route to the ServiceToken scheme instead of being misclassified as a JWT.
+    /// Only non-matching bearer values with a JWT shape (exactly two dots — header.payload.signature)
+    /// go to JwtBearer; any other bearer goes to the service-token scheme; a missing/empty header
+    /// falls back to JwtBearer so 401 challenges keep their original shape.
+    /// Kept as a pure static method so the routing rule is unit-testable.
+    /// </summary>
+    public static string SelectScheme(string? configuredServiceToken, string? authorizationHeader)
     {
         if (!string.IsNullOrWhiteSpace(authorizationHeader)
             && authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
             var token = authorizationHeader["Bearer ".Length..].Trim();
+
+            if (!string.IsNullOrWhiteSpace(configuredServiceToken))
+            {
+                var configured = Encoding.UTF8.GetBytes(configuredServiceToken);
+                var supplied   = Encoding.UTF8.GetBytes(token);
+                if (configured.Length == supplied.Length
+                    && CryptographicOperations.FixedTimeEquals(configured, supplied))
+                {
+                    return SchemeName;
+                }
+            }
+
             return token.Count(c => c == '.') == 2
                 ? Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme
                 : SchemeName;

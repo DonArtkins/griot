@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Griot.Api.Auth;
 using Griot.Api.GraphQL.Types;
 using Griot.Application.Interfaces.Services;
 using Griot.Infrastructure.Persistence;
@@ -18,6 +19,7 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         var userId = claimsPrincipal.FindFirst("sub")?.Value
                   ?? claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
@@ -51,6 +53,7 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeReadWorkspace);
         var workspace = await dbContext.Workspaces
             .FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
         
@@ -83,8 +86,9 @@ public class GriotQuery
         [Service] GriotDbContext dbContext,
         ClaimsPrincipal claimsPrincipal)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeReadWorkspace);
         // Caller must be owner or member of the target workspace (CWE-862).
-        RequireWorkspaceAccessSync(dbContext, workspaceId, AuthenticatedUserId(claimsPrincipal));
+        RequireWorkspaceAccessSync(dbContext, workspaceId, claimsPrincipal);
 
         return dbContext.Projects
             .Where(p => p.WorkspaceId == workspaceId)
@@ -110,6 +114,7 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeReadWorkspace);
         var board = await dbContext.Boards
             .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
@@ -147,9 +152,10 @@ public class GriotQuery
         [Service] GriotDbContext dbContext,
         ClaimsPrincipal claimsPrincipal)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeReadWorkspace);
         // boardId is required: an unscoped task query would expose tasks across
         // every workspace. Access is enforced per board workspace (owner/member).
-        RequireBoardAccessSync(dbContext, boardId, AuthenticatedUserId(claimsPrincipal));
+        RequireBoardAccessSync(dbContext, boardId, claimsPrincipal);
 
         var columnIds = dbContext.Columns
             .Where(c => c.BoardId == boardId)
@@ -185,6 +191,7 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeReadWorkspace);
         var task = await dbContext.TaskItems
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
@@ -221,6 +228,7 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeReadWorkspace);
         var task = await dbContext.TaskItems
             .FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
 
@@ -257,6 +265,7 @@ public class GriotQuery
         [Service] GriotDbContext dbContext,
         ClaimsPrincipal claimsPrincipal)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         var userId = claimsPrincipal.FindFirst("sub")?.Value
                   ?? claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
@@ -287,6 +296,7 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, null);
         var userId = claimsPrincipal.FindFirst("sub")?.Value
                   ?? claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null || !Guid.TryParse(userId, out var userGuid))
@@ -309,7 +319,8 @@ public class GriotQuery
         [Service] GriotDbContext dbContext,
         ClaimsPrincipal claimsPrincipal)
     {
-        RequireWorkspaceAccessSync(dbContext, workspaceId, AuthenticatedUserId(claimsPrincipal));
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeReadWorkspace);
+        RequireWorkspaceAccessSync(dbContext, workspaceId, claimsPrincipal);
 
         return dbContext.ActivityLogs
             .Where(a => a.WorkspaceId == workspaceId)
@@ -337,6 +348,7 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireScope(claimsPrincipal, ServiceTokenHandler.ScopeReadWorkspace);
         await RequireWorkspaceAccessAsync(dbContext, workspaceId, claimsPrincipal, cancellationToken);
 
         // This will be enhanced with the stored procedure in a later phase
@@ -454,6 +466,7 @@ public class GriotQuery
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
+        AiAccess.RequireWorkspace(claimsPrincipal, workspaceId);
         var userGuid = AuthenticatedUserId(claimsPrincipal);
 
         var workspace = await dbContext.Workspaces
@@ -480,8 +493,10 @@ public class GriotQuery
     private static void RequireWorkspaceAccessSync(
         GriotDbContext dbContext,
         Guid workspaceId,
-        Guid userGuid)
+        ClaimsPrincipal claimsPrincipal)
     {
+        AiAccess.RequireWorkspace(claimsPrincipal, workspaceId);
+        var userGuid = AuthenticatedUserId(claimsPrincipal);
         var isOwner = dbContext.Workspaces
             .Where(w => w.Id == workspaceId && w.OwnerId == userGuid)
             .Any();
@@ -504,7 +519,7 @@ public class GriotQuery
     private static void RequireBoardAccessSync(
         GriotDbContext dbContext,
         Guid boardId,
-        Guid userGuid)
+        ClaimsPrincipal claimsPrincipal)
     {
         var workspaceId = dbContext.Boards
             .Join(dbContext.Projects, b => b.ProjectId, p => p.Id, (b, p) => new { Board = b, Project = p })
@@ -515,6 +530,6 @@ public class GriotQuery
         if (workspaceId == Guid.Empty)
             throw new UnauthorizedAccessException();
 
-        RequireWorkspaceAccessSync(dbContext, workspaceId, userGuid);
+        RequireWorkspaceAccessSync(dbContext, workspaceId, claimsPrincipal);
     }
 }

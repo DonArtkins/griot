@@ -10,7 +10,7 @@
 
 - **Web Copilot panel** (app shell right rail) — streams answers + renders approval cards; mutations approved → app calls REST itself.
 - **AI Agents (Trigger.dev v3)** — `griotCopilot` agent + scheduled tasks (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`); streaming to web via realtime WS.
-- **MCP Server** (`mcp/`) — tools `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `update_task_status`, `add_comment`, `get_activity_feed`, `summarize_project`; stdio + Streamable HTTP.
+- **MCP Server** (`mcp/`) — tools `list_projects`, `list_boards`, `get_board`, `get_task`, `create_task`, `add_comment`, `get_activity_feed`, `summarize_project`; stdio + Streamable HTTP.
 - **Backend API** — GraphQL with Bearer `GRIOT_SERVICE_TOKEN` plus `X-On-Behalf-Of: {real User.Id}` resolves a real-user OBO principal (`ai-on-behalf-of`). Exactly four scopes are issued: ReadWorkspace, CreateTask, AddComment, CreateNotification; there is no `UpdateTaskStatus` scope. Status updates use existing task APIs and real-user RBAC; bulk status, deletes, invites and member management are denied to AI OBO callers. In-app Copilot writes remain propose-only and execute as the user after approval. HMAC protects `/api/webhooks/trigger`.
 - **SQL Server** — source of truth; **AI never touches directly**.
 - **External AI clients** — Claude Desktop / Cursor / Cline / any MCP client.

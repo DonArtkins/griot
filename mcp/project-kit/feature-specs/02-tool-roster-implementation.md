@@ -6,7 +6,7 @@ NEW FEATURE ([own-stack])
 
 ## What This Delivers
 
-The full v1 tool roster from `mcp/project-kit/context/tool-roster.md`: all nine tools as pure, zod-validated functions.
+The full v1 tool roster from `mcp/project-kit/context/tool-roster.md`: all eight tools as pure, zod-validated functions.
 
 ## Dependencies
 
@@ -30,7 +30,7 @@ CREATE: `tools/projects.ts`, `boards.ts`, `tasks.ts`, `comments.ts`, `activity.t
 
 ## Implementation Notes
 
-- `summarize_project` calls the ai agent/LLM endpoint (or the backend summarize) - keep as a separate dependency to avoid blocking tool tests.
+- `summarize_project` produces a deterministic summary of permitted backend data. Model-generated formal reports use backend 24 through mcp 06; no direct agent/LLM endpoint is callable from MCP.
 - Output shapes mirror the backend GraphQL types exactly.
 
 ## Separation of Concerns
@@ -43,7 +43,7 @@ CREATE: `tools/projects.ts`, `boards.ts`, `tasks.ts`, `comments.ts`, `activity.t
 
 ## Acceptance Criteria
 
-- [ ] All nine tools registered; zod input validation rejects malformed calls
+- [ ] Read tools registered; create_task/add_comment register only when mcp 03 supplies verified human approval provenance. All eight tool schemas contract-tested; zod input validation rejects malformed calls
 
 
 ---

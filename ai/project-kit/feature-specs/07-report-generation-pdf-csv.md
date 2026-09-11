@@ -1,59 +1,62 @@
-# AI Feature Spec 07 — Report Generation Agent (PDF + CSV) [own-stack]
+# AI Feature 07 — Evidence-Based Template Reports (PDF and CSV) [own-stack]
 
-**Status:** PLANNED — the "generate extensive reports from database data (PDF + CSV)" superpower (research: `research/ai-features-research.md` §2). Backend data/artifact side: backend spec 24; UI: web 11; external clients: mcp 06.
+**Status:** PLANNED. Templates are grounded in the four local DOCX samples; backend 24 owns eligibility, jobs and storage.
+
+## Type
+
+New rendering/aggregation pipeline; not a freeform document-writing agent.
 
 ## What This Delivers
 
-The Copilot produces **typed, brand-styled reports from live database data** in two forms:
-
-- **CSV** — always (RFC 4180, UTF-8) for spreadsheets and follow-up analysis.
-- **PDF** — A4, brand design tokens, accessible selectable-text layer, executives/share-ready.
-
-Report types (`Report.Type`): `sprint_digest` · `task_summary` · `velocity` · `workload` · `ai_action_summary` · `custom`. Runs ad-hoc (copilot request) AND scheduled (ai 03 schedules — `sprintDigest`/`dueReminders` persist as reports, not only notifications).
-
-## The pipeline (numbers never come from the LLM)
-
-```
-User asks, or schedule fires
-  → plan data fetches through the OBO read scope (existing REST/GraphQL)
-  → deterministic aggregation in Node (sum/group/count/trend — typed, unit-tested)
-  → optional LLM narrative section (template prompts, per-report tone)
-  → CSV writer (RFC 4180) + PDF builder (A4, brand tokens, text layer)
-  → upload artifact to blob (backend 11, server-to-server)
-  → create Report row via backend 24 (OBO CreateReport once shipped; otherwise
-    propose-before-write: web 11 shows the draft, user approves, web creates the row)
-  → notify requester (spec 22) with a deep link to /download
-```
-
-## Guardrails
-
-- **RBAC:** report data = exactly what the OBO user can read; "excluded X rows due to permissions" is stated explicitly, never silent.
-- **Prompt-injection:** board/task text is data; the narrative section summarizes only the typed aggregates (research §3.3.5).
-- **Cost:** Redis token budget per ai 05; long aggregations stream to disk and only the digest is tokenized (never the whole dataset in LLM context).
-- **No expansion of the write grant:** report-row creation rides `CreateReport` (spec 24) — a new scoped capability, not a loosened grant.
+CAB deployment requests, QA/test, post-deployment, regression and sprint/status reports using the registry in backend 24. Preserve the sample metadata, numbered sections, findings/results tables, summary badges, limitations and human sign-off area. See `research/reports/README.md` for exact sample-to-template mappings. Role/access reminders use backend 27 notices, not this renderer.
 
 ## Dependencies
 
-- ai 02 (copilot surface) · ai 03 (schedules) · ai 05 (budgets/transcripts) · backend 11 (blob) · backend 16 (reads) · backend 24 (Report rows/artifacts/download) · backend 22 (notification) · web 11.
+Ai 01/02/03/05; backend 09/11/18/20/22/24/25/28. Web 11 consumes the outputs after this spec; mcp 06 calls backend generation later. Neither is an implementation prerequisite.
 
-## Implementation notes (PLANNED)
+## Context To Read First
 
-- `ai/src/reports/` library: `aggregate.ts` (typed per type), `csv.ts`, `pdf.ts` (brand tokens; text layer; page numbers), `pipeline.ts` (registry keyed by `Report.Type`).
-- Golden transcripts: frozen inputs → expected CSV bytes + PDF metadata + Report payload; LLM narrative mocked (no network in CI).
-- MCP exposure: `generate_report` (mcp 06) reuses the same `pipeline.ts` — one implementation, two surfaces.
+`research/reports/README.md`, backend 24/28, ai architecture/security skill, Context7 and contract-sync.
 
-## Acceptance Criteria (all PENDING)
+## Files Owned
 
-- [ ] Each report type produces byte-identical CSV for identical inputs (golden fixtures)
-- [ ] PDF renders A4 with brand tokens + selectable text; artifact ≤ 20 MB (spec 11 Phase-1 limit)
-- [ ] RBAC exclusion line present when scope-limited; cross-workspace fetch returns 404
-- [ ] Row creation goes through backend 24 (OBO `CreateReport`) or an approval card pre-24
-- [ ] Scheduled digests persist Report rows (not only notifications)
-- [ ] No OTP/auth/delete tool in the whole pipeline (roster contract test)
+`ai/src/reports/` template registry, `aggregate.ts`, `csv.ts`, `pdf.ts`, pipeline and golden fixtures. No backend/web/MCP code in this implementation branch.
+
+## Setup / Initialization
+
+Use exact versions through ai 01's lockfile. Review and pin the PDF/CSV libraries when this spec starts; prefer existing dependencies, selectable text and deterministic layouts. Build anonymized fixtures from sample section structures and counts. Do not upload the source DOCX documents or copy real sample reviewers into generated reports.
+
+## Pipeline
+
+1. Consume the backend's persisted generation job with user/workspace, requested type/formats, evidence IDs, source snapshot and output binding. Check the live manifest/eligibility again.
+2. Exhaust all REST/GraphQL pages beyond the 1,000-item cap using stable ordering and the snapshot/cutoff policy in backend 24. Frozen test-run case IDs and baseline mappings are required for regression. Source changes invalidate/restart the job or mark it incomplete; budget exhaustion is not a successful partial report.
+3. Deterministic typed code computes totals/severity/trends. ESS fixture = 5 checks, 4 pass, 1 critical; Finsights = 5 findings, 3 critical, 1 high, 1 medium; regression fixture = 3 cases, 3 pass. Unknown/unclassified and not-run are preserved. Raw telemetry is optional corroboration with its retention/drop limits disclosed, never the sole proof of successful QA.
+4. Optional model prose receives only permitted facts/aggregates and citations. Separate observations from hypotheses. Approval, signature, rollback success and test execution cannot be invented by the model.
+5. Render A4 PDF with brand tokens, accessible selectable text, page numbers and source/window/coverage notes. CSV is RFC 4180 UTF-8 with deterministic column order/escaping. Prefix untrusted text with a single quote when its first significant character is =, +, -, @ after whitespace/control normalization. Preserve typed numeric values, including legitimate negative numbers. Test commas, quotes, newlines and each dangerous prefix.
+6. Upload requested PDF/CSV through the bound backend report-artifact route (CreateReport), never direct blob credentials or arbitrary URLs. Each file ≤20 MB. Send only bounded metadata/summary in the 64 KiB completion callback; large datasets remain artifacts/evidence pages.
+7. Backend validates completion, persists once and notifies the requester. Read/list/download/delete actions do not send completion notifications. Scheduled reports use a stored authorized schedule identity, current membership and idempotency key.
+
+## Separation of Concerns
+
+Backend owns data, authorization, eligibility and job/result binding; AI owns template rendering and narrative; web owns human evidence and previews; MCP calls backend POST reports and never imports this renderer or bypasses orchestration.
+
+## Docker & Deploy
+
+Existing Trigger cloud project and provider; artifacts go through backend 11/24. No public share links, DOCX export, custom template designer, new chart service or additional vector store.
+
+## Acceptance Criteria
+
+- [ ] Each requested template matches its sections and required metadata; AI cannot fabricate CAB/QE sign-off.
+- [ ] 1,205-row fixture totals include every page; changing sources and incomplete runs cannot silently produce a complete report.
+- [ ] CSV is deterministic and safe for all formula prefixes/whitespace variants while numeric fields remain numeric.
+- [ ] PDF preserves tables, page breaks and selectable text; both artifacts stay under the cap.
+- [ ] Missing deployment/baseline/test evidence blocks the relevant report type server-side.
+- [ ] Low-tier jobs never receive raw logs or counts of inaccessible records; saved artifacts retain the source data tier.
+- [ ] Retry/partial upload creates one report and one completion notification; unknown counts remain explicitly unknown.
 
 ## Verification
 
-`npm run lint && npm run typecheck && npm test` (mocked LLM); golden transcripts; MCP contract tests; Newman download-route run (post-24).
+`npm run lint && npm run typecheck && npm test`; mocked model/vector calls, deterministic CSV fixtures, PDF text/metadata checks and visual sample review. Backend download/eligibility tests remain owned by backend 24.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

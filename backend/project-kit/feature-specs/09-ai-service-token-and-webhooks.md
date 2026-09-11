@@ -10,7 +10,7 @@ The trusted AI-onboarding surface, in **both directions** (orchestration contrac
 
 - **Trigger direction (.NET → Trigger.dev):** the backend enqueues AI tasks via Trigger.dev's REST API (server-to-server `TRIGGER_SECRET_KEY`) whenever something async or AI-related is needed — after validating/persisting the request. The backend is the only trigger source for request-originated work; the one exception is Trigger.dev's own cron scheduler, which starts the scheduled agents (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`) with no backend involvement (orchestration contract §2a).
 - **Callback direction (Trigger.dev → .NET):** `POST /api/webhooks/trigger` verifies Trigger.dev webhooks via HMAC (`X-Trigger-Signature`) so background runs write results back through the API.
-- **Service token (AI → .NET data plane):** `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {real User.Id}` resolves to a **real-user On-Behalf-Of (OBO) principal** with four restricted scope claims (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites, no member management). Implemented model: NOT a virtual `ai-agent` workspace member.
+- **Service token (AI → .NET data plane):** `GRIOT_SERVICE_TOKEN` + trusted `X-On-Behalf-Of: {real User.Id}` + an unexpired backend-configured user/workspace/scope delegation resolves to a **real-user On-Behalf-Of (OBO) principal** with a subset of the four permitted scope names (ReadWorkspace, CreateTask, AddComment, CreateNotification — no deletes, no invites, no member management). Implemented model: NOT a virtual `ai-agent` workspace member.
 
 .NET remains the **only writer of source-of-truth data**; Trigger.dev is a compute/orchestration adapter, never a data owner. Web/mobile never trigger or poll Trigger.dev for task triggering or status — they call this API. Sole exception: the web Copilot panel consumes Trigger.dev's realtime WS as a scoped, read-only streaming delivery channel (no triggering, no status polling); mobile has no such exception.
 
@@ -37,9 +37,9 @@ The trusted AI-onboarding surface, in **both directions** (orchestration contrac
 
 ## Files
 
-CREATE: service-token auth handler (constant-time compare of `GRIOT_SERVICE_TOKEN`; requires `X-On-Behalf-Of`, resolves a real user, and issues role `ai-on-behalf-of` with exactly four scope claims; no `wid` claim).
+CREATE: service-token auth handler (constant-time compare of `GRIOT_SERVICE_TOKEN`; requires `X-On-Behalf-Of` plus an active server-side delegation, resolves a real user, and issues role `ai-on-behalf-of` with only delegated claims from the four permitted scopes; no `wid` claim).
 CREATE: HMAC middleware verifying `X-Trigger-Signature` against the Trigger webhook secret.
-CREATE: `WebhookController` — `POST /api/webhooks/trigger` (relay to the job/routing logic).
+CREATE: `WebhookController` — `POST /api/webhooks/trigger` returns retryable 503 until backend 20 implements durable replay-safe dispatch; do not acknowledge dropped payloads.
 MODIFY: `Program.cs` — register both.
 RUN: `dotnet build`; test with a signed webhook fixture.
 
@@ -57,9 +57,9 @@ RUN: `dotnet build`; test with a signed webhook fixture.
 
 - The `ai-on-behalf-of` principal uses the real user's workspace memberships and the four scope claims; no synthetic workspace member is created.
 - HMAC verified in middleware before any handler runs; failures return 401.
-- The activity feed is the AI layer's audit + `summarize_project` source (no new tables).
+- The activity feed is a future source; its writers and durable delivery arrive in backend 20. Schema amendments for that feature need ERD approval.
 - Enqueue-after-persist: a request that needs AI work is validated/persisted first, then `TriggerDevClient` enqueues the task by ID. If the enqueue fails, the domain write stands (AI is a post-processing adapter, not part of the transaction).
-- Task results come back as HMAC-verified webhook calls or service-token REST writes — the backend stays the single writer of source-of-truth data.
+- Future task results come back through durable, job-bound HMAC callbacks (backend 20) or supported scoped REST writes — the backend stays the single writer of source-of-truth data.
 
 ## Separation of Concerns
 
@@ -80,7 +80,7 @@ AI scheduling, tool execution, LLM calls (all in `ai/`/`mcp/` systems).
 ## Acceptance Criteria
 
 - [x] Service token resolves to the restricted real-user OBO principal; deletes/invites rejected
-  - `backend/src/Griot.Api/Auth/ServiceTokenHandler.cs` — constant-time token comparison, builds ClaimsPrincipal with role=`ai-on-behalf-of` + 4 scope claims (ReadWorkspace/CreateTask/AddComment/CreateNotification). Registered as `ServiceToken` auth scheme alongside JWT.
+  - `backend/src/Griot.Api/Auth/ServiceTokenHandler.cs` — constant-time token comparison, builds ClaimsPrincipal with role=`ai-on-behalf-of` + 4 scope claims (ReadWorkspace/CreateTask/AddComment/CreateNotification vocabulary; a grant may narrow it). Registered as `ServiceToken` auth scheme alongside JWT.
 - [x] Webhook HMAC verified; bad signatures 401
   - `backend/src/Griot.Api/Middleware/WebhookHmacMiddleware.cs` — runs before UseAuthentication on POST /api/webhooks/trigger; constant-time HMAC-SHA256 comparison; 401 on mismatch, 503 if secret unconfigured.
   - `backend/src/Griot.Api/Controllers/WebhookController.cs` — refactored to clean thin handler (HMAC now in middleware).
@@ -90,6 +90,16 @@ AI scheduling, tool execution, LLM calls (all in `ai/`/`mcp/` systems).
   - Deployment configuration verification: secret strictly bound to backend service env; no client-side exposure.
 - [ ] All AI tool calls are traceable to an ActivityLog row
   - **PLANNED** — ActivityLog writers arrive in backend spec 20 (observability pipeline). The surface is open (no new tables needed per spec); controllers log via `ILogger<T>` which correlates to `X-Request-Id`. Full ActivityLog persistence comes in spec 20.
+
+## Review hardening — 2026-09-11
+
+Implemented within this feature: expiring server-side grants (`ServiceToken:Delegations:{userId}` WorkspaceIds/Scopes/ExpiresAtUtc), default-deny MVC and GraphQL field gates, human-only auth/OTP before model binding, workspace grant enforcement, exact configured-token routing, nonblank fallback, 64 KiB byte limits including unknown-length bodies, retryable callback 503, validated HTTPS/no-redirect enqueue and the required `{payload: ...}` REST envelope. The GitGuardian test JWT was synthetic (literal `signature` bytes); random runtime fixture segments replace it.
+
+New files owned here: Api/Auth/AiAccess.cs, AiAccessFilter.cs and GraphQL/AiFieldMiddleware.cs; corresponding boundary/adapter tests. No production schema or later-spec implementation was added. GraphQL delete denial uses errors with HTTP 200 application/json; REST uses 403. CreateNotification has no current public creation route. Raw-log reads are closed to AI until backend 25 explicitly grants a data-tier tool.
+
+Validation: 108 SQL-enabled tests passed, 0 failed/skipped; build 0 warnings/errors. An initial compile failure from placing a workspace guard in workspace creation was corrected (creation is denied outright); the full suite verifies the resulting guard placement. Future outbox/inbox/replay and audit-writer acceptance remain unchecked in backend 20. Context7 ctx7 0.5.9 verified MVC/global field middleware and the Trigger payload envelope; installed HotChocolate is 16.6.4, within the bootcamp 14+ range.
+
+Full wire/config/verification details: `docs/api/ai-service-token-contract.md`. Backend 20 remains next after user review; future AI/report/memory planning is not shipped functionality.
 
 ## Pre-push SQL fixture repair (2026-09-10)
 

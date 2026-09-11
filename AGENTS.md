@@ -34,7 +34,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Where We Are — Implementation Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 24 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–05 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–05 → P6 qa 01–13**. Right now: backend specs 01–09, 12 (Email-only), 13–17 are ✅ (09 = AI service token + webhooks, implemented OBO) — **the next spec is backend 20 (observability/logging pipeline)**, the first of the 2026-09-10 observability/hardening wave (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups → **23** critical-action OTP/step-up → **11** blob storage → **24** AI reports & export surface (`CreateReport` scope); rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
+The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–05 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–05 → P6 qa 01–13**. Right now: backend specs 01–09, 12 (Email-only), 13–17 are ✅ (09 = AI service token + webhooks, implemented OBO) — **the next spec is backend 20 (observability/logging pipeline)**, the first of the 2026-09-10 observability/hardening wave (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups → **23** critical-action OTP/step-up → **11** blob storage → **24** AI reports & export surface (`CreateReport` scope) → **25** role-tiered log access + AI capability gateway → **26** AI memory & conversations → **27** incident alerting + confirmed SuperAdmin broadcasts; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
 
 ## Required Skills
 
@@ -96,21 +96,25 @@ Full contract: `docs/communication/COMMUNICATION-GUIDE.md`; owner spec:
 
 ## Implemented AI boundary contract (Feature 09 — own-stack)
 
-AI callers authenticate with `Authorization: Bearer {GRIOT_SERVICE_TOKEN}` **plus**
-`X-On-Behalf-Of: {real User.Id}` — the `ServiceToken` auth scheme (routed via the `MultiAuth`
-policy forward-selector) issues a real-user **On-Behalf-Of (OBO)** principal (role
-`ai-on-behalf-of`, scope claims `ReadWorkspace`/`CreateTask`/`AddComment`/`CreateNotification`),
-NOT a virtual `ai-agent` member. Deletes/invites/member management and `PATCH /api/tasks/bulk-status`
-return **403** to AI OBO callers (`DomainControllerBase.ForbidIfAiCall()`; GraphQL equivalents).
-`POST /api/webhooks/trigger` is HMAC-verified by `WebhookHmacMiddleware` **before** auth
-(`X-Trigger-Signature: sha256=<hex>`, 401 mismatch, 503 unconfigured, 202 on success).
-`TriggerDevClient` enqueues tasks by ID to Trigger.dev (`TRIGGER_SECRET_KEY`, enqueue-after-persist,
-failure never rolls back). Full contract: `docs/api/ai-service-token-contract.md`; owner spec:
-`backend/project-kit/feature-specs/09-ai-service-token-and-webhooks.md`.
+AI authenticates with Bearer GRIOT_SERVICE_TOKEN, trusted X-On-Behalf-Of and an
+unexpired backend-configured delegation under ServiceToken:Delegations:{userId}
+(WorkspaceIds, Scopes, ExpiresAtUtc). Grants use only ReadWorkspace/CreateTask/
+AddComment/CreateNotification and may narrow that set; membership is checked again.
+MVC AiAccessFilter and GraphQL AiFieldMiddleware default-deny unmapped operations.
+Auth/OTP, updates, deletes, invites, member management and raw-log reads are closed
+to AI. CreateNotification has no generic public creation route yet. GraphQL denials
+are errors with HTTP 200 for application/json; REST denials are 403.
+
+MultiAuth compares the configured token first, then selects the appropriate validator;
+blank primary secrets allow environment fallback. HMAC callbacks have a fixed 64 KiB
+byte cap and return 503 until durable job-bound replay-safe dispatch ships in backend 20
+(401 bad HMAC, 413 oversized). TriggerDevClient validates HTTPS and disables redirects;
+it sends the Trigger payload envelope but has no production callers or durable recovery.
+Do not wire it before spec 20's outbox. Contract: docs/api/ai-service-token-contract.md.
 
 ## AI superpowers & critical-action OTP — 2026-09-11 planning wave [own-stack]
 
-User-approved planning (no production code yet — all PLANNED) creating backend specs **23** (critical-action OTP/step-up: login 2FA enforcement, forgot/reset password, delete account, guarded-op step-up) and **24** (AI reports & export surface: `Report` rows, PDF/CSV artifacts via blob, `audit-summary`, 5th OBO scope `CreateReport`); AI specs **06** (knowledge agent + system auditor), **07** (report generation), **08** (advanced Level-4 executor); web spec **11** (Reports & Audit Center — award-grade UX); mcp spec **06** (v2 report/audit tools). Research: `research/ai-features-research.md` / `research/ai-integration.md`. Brevo: senders fail until a domain YOU own is verified — `griot.vercel.app` cannot be authenticated (Vercel-owned), see `docs/communication/COMMUNICATION-GUIDE.md` §7b. Logging runtime: `docs/observability/HOW-LOGGING-WORKS.md` (owner: spec 20).
+User-approved planning (no production code yet — all PLANNED) creating backend specs **23** (critical-action OTP/step-up: login 2FA enforcement, forgot/reset password, delete account, guarded-op step-up), **24** (AI reports & export surface: `Report` rows, PDF/CSV artifacts via blob, `audit-summary`, 5th OBO scope `CreateReport`), **25** (role-tiered log access + AI capability gateway — per-OBO-role tool manifest, raw logs SuperAdmin/Dev only), **26** (AI memory & conversation surface), **27** (incident alerting + confirmed SuperAdmin broadcasts); AI specs **06–10** (knowledge+system auditor · reports PDF+CSV · Level-4 executor · agentic BI copilot + memory + capabilities manifest · SuperAdmin ops agent); web specs **11** (Reports & Audit Center) and **12** (dedicated AI Workspace sidebar); mcp spec **06** (v2 report/audit tools, role-aware). Research: `research/ai-features-research.md` / `research/ai-integration.md`. Brevo: senders fail until a domain YOU own is verified — `griot.vercel.app` cannot be authenticated (Vercel-owned), see `docs/communication/COMMUNICATION-GUIDE.md` §7b. Logging runtime: `docs/observability/HOW-LOGGING-WORKS.md` (owner: spec 20).
 
 ## Database rollback / recovery contract
 
@@ -129,6 +133,10 @@ the repository root. Synchronize the owning spec, dependent specs, planning,
 research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
+
+## Audit synchronization — 2026-09-11
+
+Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

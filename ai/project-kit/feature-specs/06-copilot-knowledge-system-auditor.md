@@ -1,53 +1,61 @@
-# AI Feature Spec 06 — Copilot Knowledge Agent & System Auditor [own-stack]
+# AI Feature 06 — Knowledge Agent and Scoped System Auditor [own-stack]
 
-**Status:** PLANNED — the first of the AI superpowers wave (research: `research/ai-integration.md` §1–§2, `research/ai-features-research.md` §2–§3). Consumes backend specs 16 (reads), 20 (logs), 24 (reports/audit-summary); surfaces in web 10/11.
+**Status:** PLANNED. Read-only analysis plus explicitly requested report generation; no auth/OTP inspection.
+
+## Type
+
+New AI capability over existing authorized backend data.
 
 ## What This Delivers
 
-Two superpowers on top of the Copilot:
+Answer project/workspace questions with source citations. Summarize stale work, incomplete evidence, operational symptoms and permitted audit activity. Missing evidence is unknown, not a successful audit.
 
-1. **Knowledge QA — "ask anything about my system".** Answers are grounded in real API responses (never model memory), cite their sources, and render as cards/tables in web 10/11: "what's blocked this week?", "velocity for the last 3 sprints?", "who is overloaded?", "summarize the audit trail for project X".
-2. **System auditor — "audit the entire system".** Periodic or on-demand audits: 2FA coverage, stale invites, orphaned tasks, error-flooded stacks (`ErrorLogs`), unusual bulk actions (`AuditLogs`), data hygiene. Output is a typed audit report (backend 24 `Report` row) or a chat summary with severity chips.
+## Capability map
 
-## Boundaries (non-negotiable)
-
-- **Read-only data plane.** The auditor uses ONLY read scopes; it never mutates, deletes, invites, or manages members.
-- **Never touches auth/OTP.** No tool reads or acts on OTP challenges, MFA settings, password resets, or account deletion (research §3.6 — the same human-only boundary as backend spec 23). The AI OBO principal is 403 on all of it.
-- **RBAC respected.** A member auditor sees exactly what that member can read; Owner-only checks return "insufficient permissions" instead of bypassing. No cross-workspace leakage.
-- Every call: `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of: {real User.Id}` (spec 09).
-
-## Capability → data-source map (candidate v1)
-
-| "Ask anything" class | Data source (backend) |
+| Question | Permitted source |
 |---|---|
-| Board/task state, blocks, overdue | `GET /api/boards/{id}/tasks`, `GET /api/tasks/{id}` |
-| Velocity / workload / cycle time | dashboard + task history (spec 16) |
-| Who changed what / trace | `GET /api/logs/audit` (Owner) |
-| Error health | `GET /api/logs/errors` (Owner/Admin — spec 20) |
-| Security posture (2FA coverage, stale invites) | workspaces/members/invites reads (spec 13) — aggregate counts only |
+| Work progress, blockers, workload | scoped tasks, boards, dashboard and activity |
+| Workspace audit/health | backend 24/25 sanitized audit-summary and health projection for Owner/Admin |
+| Technical incident investigation | backend 25 raw-log tool only for SuperAdmin/Dev with matching workspace delegation |
+| Deployment/test readiness | backend 28 structured evidence |
+
+No 2FA coverage, OTP state, password data, raw Admin log access or invite-management tools. The capabilities manifest is the source of available tools. Do not count excluded/inaccessible rows for a lower-tier user.
 
 ## Dependencies
 
-- ai 01 (Trigger.dev setup) · ai 02 (Copilot streaming) · ai 05 (golden transcripts + budgets) · backend 16 (dashboard/log reads) · backend 20 (persisted logs) · backend 24 (audit-summary + Report rows) · web 10/11.
+Ai 01/02/05; backend 09/18/20/24/25/28. Web 10 is available for interaction; web 11 is a later consumer, not a dependency.
 
-## Implementation notes (PLANNED)
+## Context To Read First
 
-- New agent `systemAuditor` (Trigger.dev task) + a `knowledgeTool` in the `ai/` tool roster; typed zod schemas on every tool input/output; trust boundary — validate tool output before it feeds the next step (research §3.3.4).
-- Periodic audits run on the scheduler (ai 03 pattern); results persisted as Report rows via backend 24 (OBO `CreateReport` once shipped; otherwise propose-before-write through web).
-- Prompt-injection hardening: board/task text is data, never instructions (research §3.3.5).
-- Token budget + Redis cost caps per ai 05; observability: every audit run writes `runId` + outcome (backend 20).
+`research/ai-integration.md`, backend 25, ai security skill, Context7 and contract-sync.
 
-## Acceptance Criteria (all PENDING)
+## Files Owned
 
-- [ ] "Ask anything" answers cite the API rows they were computed from (golden transcripts)
-- [ ] Auditor flags seeded failures: unverified-2FA users, stale invites, error-flooded stacks, bulk-action spikes
-- [ ] Owner-only data → "insufficient permissions" for a member auditor; zero cross-workspace leakage
-- [ ] OTP/auth tools absent from the tool roster (roster contract test)
-- [ ] Audit run persists a Report row (backend 24) or an approval card (pre-24)
+`ai/src/agents/system-auditor.ts`, knowledge tools, typed schemas and golden fixtures.
+
+## Setup / Initialization
+
+Use the pinned AI toolchain and shared API client from ai 01. Fetch the live manifest for each user/workspace. Obtain identity from the backend job or approved schedule; never model text. Fixtures cover Member, Owner/Admin and platform SuperAdmin/Dev separately.
+
+## Separation of Concerns
+
+AI interprets authorized facts; backend enforces scope/data tier and persists requested reports through backend 24. Audits do not approve deployments or certify tests. Notification delivery stays in backend 22/27.
+
+## Docker & Deploy
+
+Existing Trigger cloud project and cost budget. No additional data store, webhook trigger source or direct SQL access.
+
+## Acceptance Criteria
+
+- [ ] Answers cite the rows/evidence and time window used; missing/retained-away data is disclosed.
+- [ ] Seeded stale tasks, incomplete deployment evidence and privileged incident spikes produce correct, scoped findings.
+- [ ] Member/Admin sessions never receive raw logs, OTP state or cross-workspace snippets.
+- [ ] Requested audit report uses backend 24 CreateReport; read-only answers do not create unsolicited reports or notices.
+- [ ] Forbidden tools are absent and direct invocation is denied server-side.
 
 ## Verification
 
-`npm run lint && npm run typecheck && npm test` (mocked LLM, no network in CI) — golden transcripts, roster contract tests, MCP contract tests.
+`npm run lint && npm run typecheck && npm test`; mocked LLM, manifest and authorization golden tests.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.
