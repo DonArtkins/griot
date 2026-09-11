@@ -62,11 +62,11 @@ docker compose -f ~/sababisha/infra/docker-compose.yml down -v      # ⚠️ sto
 | PostgreSQL 16 | `infra-sababisha-postgres-1` | `localhost:5433` |
 | Redis 7 | `infra-sababisha-redis-1` | `localhost:6380` |
 
-Run SQL inside the container (password: `SababishaDev2026!` or `$SABABISHA_SA_PASSWORD`):
+Run SQL inside the container (password: `$SABABISHA_SA_PASSWORD`):
 
 ```bash
 docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -d Griot \
   -Q "SELECT name FROM sys.tables ORDER BY name"
 ```
 
@@ -84,7 +84,7 @@ dotnet test                               # xUnit suite (when tests exist)
 - **Swagger/OpenAPI:** http://localhost:5064/swagger · **Health:** http://localhost:5064/health
 - Local dev secrets (DB connection string, JWT dev key) live in the **git-ignored** `backend/src/Griot.Api/appsettings.Local.json` — it is loaded automatically; for other environments set env vars instead:
   ```bash
-  export ConnectionStrings__Default='Server=localhost,14333;Database=Griot;User Id=sa;Password=SababishaDev2026!;TrustServerCertificate=True'
+  export ConnectionStrings__Default='Server=localhost,14333;Database=Griot;User Id=sa;Password=$SABABISHA_SA_PASSWORD;TrustServerCertificate=True'
   export JWT__Key='<dev key>' JWT__Issuer='Griot' JWT__Audience='GriotClients'
   ```
 
@@ -149,14 +149,14 @@ Stored procedures are versioned as files under `backend/src/Griot.Infrastructure
 ```bash
 cd backend
 docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -d Griot \
   < src/Griot.Infrastructure/Sql/usp_BulkUpdateTaskStatus.sql
 docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -d Griot \
   < src/Griot.Infrastructure/Sql/usp_GetDashboardSummary.sql
 ```
 
-**DBeaver:** new connection → SQL Server → host `localhost`, port `14333`, database `Griot`, user `sa`, password `SababishaDev2026!` (or `$SABABISHA_SA_PASSWORD`), enable **Trust server certificate**. Right-click database → Refresh to see new tables/procs. Stored procedures appear under **Stored Procedures** — not as tables.
+**DBeaver:** new connection → SQL Server → host `localhost`, port `14333`, database `Griot`, user `sa`, password `$SABABISHA_SA_PASSWORD`, enable **Trust server certificate**. Right-click database → Refresh to see new tables/procs. Stored procedures appear under **Stored Procedures** — not as tables.
 
 ### 5. Web app (React + Vite + MUI) — from `web/`
 

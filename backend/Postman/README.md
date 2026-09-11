@@ -115,7 +115,7 @@ other way around.
 
 | Symptom | Fix |
 |---|---|
-| Register returns `500` "ConnectionStrings:Default is not configured" | Create `backend/src/Griot.Api/appsettings.Local.json` with a dev `ConnectionStrings:Default` → `Server=localhost,14333;Database=Griot;User Id=sa;Password=SababishaDev2026!;TrustServerCertificate=True` (git-ignored). |
+| Register returns `500` "ConnectionStrings:Default is not configured" | Create `backend/src/Griot.Api/appsettings.Local.json` with a dev `ConnectionStrings:Default` → `Server=localhost,14333;Database=Griot;User Id=sa;Password=$SABABISHA_SA_PASSWORD;TrustServerCertificate=True` (git-ignored). |
 | Redis connection refused on Login | `docker compose -f ~/sababisha/infra/docker-compose.yml up -d sababisha-redis`. Default Redis host port is `6380`. |
 | Tokens not chaining to later requests | Top-right env dropdown must be the one you wrote to. Postman doesn't persist edits to the imported env unless you explicitly save. |
 | GraphQL returns `AUTH_NOT_AUTHENTICATED` | Run the Register or Login REST request first so `accessToken` is in the env. The GraphQL folder reuses the same Bearer `{{accessToken}}` header. |

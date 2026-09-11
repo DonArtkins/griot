@@ -10,7 +10,7 @@ history) was dropped and rebuilt from all migrations. Dev reset command:
 
 ```bash
 docker exec infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'SababishaDev2026!' -C -Q \
+  -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q \
   "IF DB_ID('Griot') IS NOT NULL BEGIN ALTER DATABASE Griot SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE Griot; END"
 cd backend && dotnet ef database update --project src/Griot.Infrastructure --startup-project src/Griot.Api
 ```
@@ -144,17 +144,19 @@ older sequence below resumes only after the roadmap's 29–35 wave.
 
 ## Audit synchronization — 2026-09-11
 
-Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+Implemented through backend 29 (multi-tenant foundation, 2026-09-11 — all gates closed); next is backend 30 (Auth & JWT v2) per roadmap §P0.5. Future planning is not completed implementation. P0.5 → P0 hardening: backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ## CodeRabbit follow-up — 2026-09-11
 
-Review corrections are documented in `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`: backend 24/28 schema proposals, backend 27 incident/delivery boundaries, notification availability and final documentation dependencies are synchronized. AI 01 pins the existing Trigger.dev v4 decision to 4.5.16. Future features remain PLANNED. The user authorized this one-time review-batch grouping and commit/push on 2026-09-11 ("COMMIT AND PUSH TO GITHUB" in response to the exception request). Build, 108 SQL-enabled tests, API health, clean npm install/imports and contract-sync passed; details are recorded in the ledger. Future features remain on separate branches/PRs; backend 20 starts only after backend 09 review approval.
+Review corrections are documented in `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`: backend 24/28 schema proposals, backend 27 incident/delivery boundaries, notification availability and final documentation dependencies are synchronized. AI 01 pins the existing Trigger.dev v4 decision to 4.5.16. Future features remain PLANNED. The user authorized this one-time review-batch grouping and commit/push on 2026-09-11 ("COMMIT AND PUSH TO GITHUB" in response to the exception request). Build, 108 SQL-enabled tests, API health, clean npm install/imports and contract-sync passed; details are recorded in the ledger. Future features remain on separate branches/PRs; backend 30 starts only after explicit user approval (spec 29 is ✅ COMPLETE).
+
+- **2026-09-12 (CodeRabbit review fixes, this branch)** — Verified each review finding against current code; fixed only still-valid items (docs-only, no schema/runtime change): (1) removed every tracked plaintext SA password — replaced with the `$SABABISHA_SA_PASSWORD` env var across `README.md`, backend progress tracker, seed README + `seed-test-data.sql` header comment, GRAPHQL-STATUS, Postman README, and research prep/user-manual docs; local `appsettings.Local.json` stays git-ignored and untouched; credential rotation on the live SQL Server remains a user step (see report). (2) ERD amendment + spec 33 + guide purge contract: each org-scoped chunk runs in its own transaction with a resumable `OrganizationLifecycleEvents` checkpoint (specs 33/41 semantics), leaves-first delete order for all six org dependents (workspace/project subtrees, members, roles, invites, lifecycle rows) before the organization row; ERD relationship list now names all six dependents incl. `Projects` with explicit NO ACTION. Verified: `dotnet build` clean, plaintext grep zero, `check-contract-sync.py` clean (see below).
 
 ---
 
 ### 2026-09-11 — Multi-Tenant Migration Wave (PLANNED, spec-writing only)
 
-User-directed wave per `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md`: Griot becomes multi-tenant (SuperAdmin onboards Companies → company Admin → PMs/Members/Clients + client portal/handoff/maintenance). Canonical contract `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; planned ERD amendment `diagrams/erd/multi-tenant-amendment.md` (Figma approval required before spec 29 ships — hard rule 4). Implemented backend specs are FROZEN — new revision specs 36–51 deliver tenant behavior; specs 10, 11, 18, 19, 21–28 carry appended "Multi-Tenant Update (2026-09-11 — PLANNED)" sections; JWT skills installed (`.agents/skills/jwt-{decode,encode,validate}`). This wave does not update implemented statuses. Spec 20 implementation continues in the other session; the wave lands after it (order 29 → … → 35, then the hardening order).
+User-directed wave per `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md`: Griot becomes multi-tenant (SuperAdmin onboards Companies → company Admin → PMs/Members/Clients + client portal/handoff/maintenance). Canonical contract `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; ERD amendment `diagrams/erd/multi-tenant-amendment.md` (Figma-approved + v2 PNGs exported 2026-09-11 — hard rule 4 satisfied; spec 29 ✅ COMPLETE). Implemented backend specs are FROZEN — new revision specs 36–51 deliver tenant behavior; specs 10, 11, 18, 19, 21–28 carry appended "Multi-Tenant Update (2026-09-11 — PLANNED)" sections; JWT skills installed (`.agents/skills/jwt-{decode,encode,validate}`). This wave does not update implemented statuses. Spec 20 implementation continues in the other session; the wave lands after it (order 29 → … → 35, then the hardening order).
 
 ---
 

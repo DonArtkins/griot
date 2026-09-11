@@ -10,7 +10,7 @@ This directory contains `seed-test-data.sql` which populates the Griot database 
 # From the backend directory
 cd backend
 docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -d Griot \
   < src/Griot.Infrastructure/Sql/seed-test-data.sql
 ```
 
@@ -166,7 +166,7 @@ To clear all data and re-run the seed script:
 # The seed script already includes DELETE statements at the beginning
 # Just re-run it:
 docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot \
+  -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -d Griot \
   < src/Griot.Infrastructure/Sql/seed-test-data.sql
 ```
 

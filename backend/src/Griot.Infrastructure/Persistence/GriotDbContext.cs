@@ -117,7 +117,9 @@ public class GriotDbContext : DbContext
                 // Org FKs are NO ACTION (Restrict) — cascade from Organizations to both
                 // Workspaces and Projects creates multiple cascade paths (SQL error 1785).
                 // Org removal is app-managed: the spec-33 offboarding purge deletes
-                // children explicitly in dependency order inside one transaction.
+                // children explicitly in leaves-first dependency order, one transaction
+                // per org-scoped chunk with a resumable OrganizationLifecycleEvents
+                // progress checkpoint (spec 33 + spec-41 revision).
                 .OnDelete(DeleteBehavior.Restrict);
 
             // NOTE (spec 29 / 33): User side is Restrict, not Cascade — a user row

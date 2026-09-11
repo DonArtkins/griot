@@ -1,7 +1,7 @@
 # Griot Multi-Tenancy Guide — Companies, Lifecycle, Roles, Client Support, Critical-Action OTP & Safe Deletion [own-stack]
 
 **Created:** 2026-09-11 · **Last updated:** 2026-09-11 (OTP + account-deletion-request + destructive-safety wave)
-**Status:** SPEC 29 IMPLEMENTED (2026-09-11, commit `9447e15` on `feature/backend/29-multi-tenant-foundation-organizations` — schema + Pool-model isolation live; organization lifecycle/read surface ships with specs 30–35). Contract sections below remain authoritative; ERD amendment awaits Figma approval before 29 is marked complete.
+**Status:** SPEC 29 IMPLEMENTED (2026-09-11, commit `9447e15` on `feature/backend/29-multi-tenant-foundation-organizations` — schema + Pool-model isolation live; organization lifecycle/read surface ships with specs 30–35). Contract sections below remain authoritative; the spec-29 ERD amendment (`diagrams/erd/multi-tenant-amendment.md`) was APPROVED + EXPORTED 2026-09-11 (v2 PNGs in the `diagrams/README.md` ledger) and spec 29 is marked complete.
 **Source of research:** `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENGINEERING.md` (v1.0.0) + `research/ai-features-research.md` §1/§3.6 (OTP/step-up) + `research/ai-integration.md` §2a (AI boundary)
 **Owner:** backend spec 29 (foundation) — dependents: backend 30–51, all other systems' bumped specs
 **Contract-sync:** every cross-system surface in this file is mirrored in `project-kit/context/integration-contracts.md`, `docs/api/auth-contract.md`, `docs/communication/COMMUNICATION-GUIDE.md`, `docs/observability/HOW-LOGGING-WORKS.md`, `diagrams/erd/multi-tenant-amendment.md`, and each owning spec (23/21/22/32/33 + web 13/14 + mobile 08/09 + qa 14). Planned behavior is labeled PLANNED and is not acceptance evidence until its owning spec ships.
@@ -76,7 +76,7 @@ Three layers, resolved in precedence order (highest wins):
 
 **Manage:** suspend (`POST /api/organizations/{id}/suspend` — auth kept, writes rejected with 403 `org_suspended`), reactivate, ownership transfer, plan/metadata edits. The Company Admin manages everything *inside* their company only.
 
-**Offboard (SuperAdmin):** `POST /api/organizations/{id}/offboard` → 1) export bundle (JSON of all org data; artifacts via blob backend 11) → 2) `Status = Offboarding`, 30-day retention window (`Organizations:RetentionDays`, default 30) → 3) purge/anonymize (`Purged` lifecycle event; personal data removed, legal/financial records retained per research §8.3). Every step is an audit event; SuperAdmin notifications use backend 27 broadcasts.
+**Offboard (SuperAdmin):** `POST /api/organizations/{id}/offboard` → 1) export bundle (JSON of all org data; artifacts via blob backend 11) → 2) `Status = Offboarding`, 30-day retention window (`Organizations:RetentionDays`, default 30) → 3) purge/anonymize (`Purged` lifecycle event; personal data removed, legal/financial records retained per research §8.3). Org FKs are all ON DELETE NO ACTION (Restrict), so nothing is deleted by FK cascade at the org level: the app-managed purge deletes leaves-first — workspace/project subtrees (boards → columns → tasks → comments/attachments), then `OrganizationMembers`, `Roles`, `OrganizationInvites`, `OrganizationLifecycleEvents` — before deleting the `Organizations` row (per-chunk transactions with `OrganizationLifecycleEvents` progress checkpoints; specs 33 + 41). Every step is an audit event; SuperAdmin notifications use backend 27 broadcasts.
 
 ## 6. Client support surface (owners: backend 34, web 15, ai 13)
 

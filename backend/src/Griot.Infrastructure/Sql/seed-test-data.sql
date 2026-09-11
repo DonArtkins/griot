@@ -1,5 +1,5 @@
 -- Seed data for GraphQL testing (local dev only, multi-tenant schema — spec 29)
--- Run: docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'SababishaDev2026!' -C -d Griot < backend/src/Griot.Infrastructure/Sql/seed-test-data.sql
+-- Run: docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -d Griot < backend/src/Griot.Infrastructure/Sql/seed-test-data.sql
 
 SET NOCOUNT ON;
 SET QUOTED_IDENTIFIER ON;
