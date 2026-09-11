@@ -2,7 +2,7 @@
 
 ## Type
 
-NEW FEATURE · MULTI-TENANT MIGRATION WAVE (2026-09-11) · **PLANNED — not implemented** (extends implemented spec 07; original spec 07 file stays untouched)
+NEW FEATURE · MULTI-TENANT MIGRATION WAVE (2026-09-11) · **✅ IMPLEMENTED — 2026-09-12** on `feature/backend/30-auth-jwt-v2` (extends implemented spec 07; original spec 07 file stays untouched)
 
 ## What This Delivers
 
@@ -50,10 +50,14 @@ No new container. `JWT__Key`/`SUPERADMIN__*` documented for Railway env.
 
 Cookie transport for web 05 (existing pending item), password flows (spec 23), payments.
 
+## Implementation record (2026-09-12, this branch)
+
+`TokenService` (sole claim builder: `sub/email/name/jti/org?/role/perms`, HS256 15-min) + `PermissionCatalogue`/`RoleSelection` (guide §3 precedence, `log.read_tier` never stamped on system roles) + `AuthService` session resolution (explicit org pin / single-membership auto-pick / platform view; SuperAdmin platform authority incl. org selection without a member row) + `GET /api/auth/organizations` / `POST /api/auth/select-organization` (404/403 fail-closed; presented family revoked after mint) + stateless `RefreshRequest.OrganizationId` pin (family id is replay-chain only) + startup key-policy fail-fast (32-byte dev / 64-byte prod) + `JWT__Key_Previous` rotation window + idempotent SuperAdmin bootstrap (audit-logged). Tests: 30 AuthServiceTests green (11 new: org list/select/bootstrap/key-policy/role-perms). Verified: `dotnet build` 0W/0E; full suite green (see tracker).
+
 ## Acceptance Criteria
 
-- [ ] Access token payload contains `name`, `org`, `role`, `perms`; decodes+verifies at jwt.io with the real key
-- [ ] Refresh token remains 64-hex opaque; rotation + family revoke tests still green
-- [ ] `select-organization` re-issues with the new org role; non-member gets 403
-- [ ] SuperAdmin bootstrap idempotent; key-length validation rejects <64-char production keys
-- [ ] `dotnet build` + `dotnet test` green
+- [x] Access token payload contains `name`, `org`, `role`, `perms`; decodes+verifies at jwt.io with the real key
+- [x] Refresh token remains 64-hex opaque; rotation + family revoke tests still green
+- [x] `select-organization` re-issues with the new org role; non-member gets 403
+- [x] SuperAdmin bootstrap idempotent; key-length validation rejects <64-char production keys
+- [x] `dotnet build` + `dotnet test` green

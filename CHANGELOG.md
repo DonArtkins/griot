@@ -2,7 +2,11 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/).
 
-## [Unreleased] — 2026-09-11 (Backend spec 20: observability & logging pipeline)
+## [Unreleased]
+
+### Backend 30 — Auth & JWT v2 (2026-09-12, `feature/backend/30-auth-jwt-v2`)
+
+- Access tokens carry `name`/`org`/`role`/`perms` (HS256 15-min unchanged; issued only by `TokenService`); `GET /api/auth/organizations` + `POST /api/auth/select-organization` (404/403 fail-closed; presented family revoked after mint); stateless refresh org pin (`RefreshRequest.OrganizationId`); startup key-policy fail-fast (32-byte dev / 64-byte prod) + `JWT__Key_Previous` rotation window; idempotent SuperAdmin bootstrap (audit-logged). Refresh tokens stay opaque 64-hex. Fixes (sync rule): literal-vs-mapped `role`-claim reads; dead `RevokeAllFamiliesAsync` removed; contract wording aligned to stateless sessions. — 2026-09-11 (Backend spec 20: observability & logging pipeline)
 
 ### Added
 - **Backend spec 20 implemented** on `feature/backend/20-observability-logging-pipeline` (finish-up wave):
@@ -16,7 +20,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 - **Docs flipped from PLANNED to IMPLEMENTED** for the spec 20 writers: spec 20 status + pipeline sections, `docs/observability/MONITORING.md` (§2–§3), `docs/observability/HOW-LOGGING-WORKS.md` (status, delivery classes, middleware order), `docs/planning/IMPLEMENTATION-ROADMAP.md` P0 row, backend progress tracker. The durable outbox/webhook-inbox/idempotency store inside spec 20 stays PLANNED until Trigger.dev callers ship (webhook remains 503 on valid HMAC by design).
 
 
-## [Unreleased] — 2026-09-11 (AI superpowers & critical-action OTP planning wave [own-stack])
+## [Unreleased]
+
+ — 2026-09-11 (AI superpowers & critical-action OTP planning wave [own-stack])
 
 ### Review corrections (2026-09-11)
 
@@ -36,7 +42,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 - **AI superpowers boundaries codified:** reports/audits ride a NEW scoped capability `CreateReport` (backend 24) — never a loosened OBO grant; **auth/OTP is human-only forever** (specs 23, ai 06/07/08, mcp 06).
 
 
-## [Unreleased] — 2026-09-11 (Backend spec 09: AI service token + OBO principal + webhook HMAC)
+## [Unreleased]
+
+ — 2026-09-11 (Backend spec 09: AI service token + OBO principal + webhook HMAC)
 
 ### Added
 - **Backend spec 09 implemented** on `feature/backend/09-ai-service-token-and-webhooks`:
@@ -57,7 +65,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 ### Fixed
 - Pre-push SQL fixture: seed historical `Users` columns through parameterized SQL before applying `AddRefreshTokenFamilyId`, avoiding the premature `EmailVerified` insert. Extended the migration regression; verified 71 passing SQL-enabled tests, zero failures/skips, a clean build, and a healthy local API on 2026-09-10. No production schema or auth behavior changed in this repair.
 
-## [Unreleased] — 2026-09-10 (Observability & audit system audit + hardening wave specs 18–22)
+## [Unreleased]
+
+ — 2026-09-10 (Observability & audit system audit + hardening wave specs 18–22)
 
 ### Added
 - **Five implementation-ready backend specs** (planning artifacts on this branch; each ships on its own feature branch):
@@ -73,7 +83,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 - `backend/Postman/Griot.postman_collection.json`: new folder 14 "Observability & audit" (logs read guard tests + audit-trail assertion; strict assertions activate when specs 18–22 land).
 - `docs/observability/MONITORING.md`: PLANNED-vs-implemented status labels so alert queries are not mistaken for live evidence.
 
-## [Unreleased] — 2026-09-10 (Cross-system implementation roadmap + tracker completeness audit)
+## [Unreleased]
+
+ — 2026-09-10 (Cross-system implementation roadmap + tracker completeness audit)
 
 ### Added
 - **`docs/planning/IMPLEMENTATION-ROADMAP.md`** — canonical cross-system build order (P0 backend 09→11→10 → P1 web 01–09 → P2 ai 01–02→web 10→ai 03–05 → P3 mobile → P4 infra → P5 mcp → P6 qa) with per-phase rationale, the cross-system unlock edge list, and the web10↔ai02 circular-dependency resolution.
@@ -88,7 +100,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 - `ai/project-kit/feature-specs/02-copilot-agent-streaming.md`: build-order note added — ai 02's "web 10" dependency is contract-design, not build-order; implementation order is ai 01 → ai 02 → web 10.
 - `docs/DEPENDENCY-AUDIT.md`: header now delegates cross-system ordering to the roadmap.
 
-## [Unreleased] — 2026-09-10 (Full REST surface specs 13–17 + Email-only communication)
+## [Unreleased]
+
+ — 2026-09-10 (Full REST surface specs 13–17 + Email-only communication)
 
 ### Added
 - **Full REST implementation (specs 13–17)** on `feature/backend/08-api-testing-postman`: workspaces
@@ -128,7 +142,9 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 - Lazy-loading proxy failure at design time: `ApiLog.User`, `AuditLog.ActivityLog`, `ErrorLog.User`,
   `ErrorLog.SolvedByUser` made `virtual`.
 
-## [Unreleased] — 2026-09-08 (Feature 07 auth repair + Email-OTP 2FA)
+## [Unreleased]
+
+ — 2026-09-08 (Feature 07 auth repair + Email-OTP 2FA)
 
 ### Added
 - Email-OTP 2FA implemented end-to-end per `research/ai-features-research.md` §1: `POST /api/auth/otp/request` (202; also auto-sent with a branded `email_verify` code on register) + `POST /api/auth/otp/verify` (200/401/429); sets `Users.EmailVerified`; purposes `email_verify`/`login_2fa`/`password_reset`.

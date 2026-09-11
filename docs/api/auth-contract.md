@@ -17,6 +17,8 @@ Local base URL: `http://localhost:5064`. The HTTPS launch profile also exposes
 | `/api/auth/logout` | `refreshToken`; bearer access token required | 204, including malformed, unknown or already revoked tokens | 400 missing/empty required field; 401 absent/invalid bearer token |
 | `/api/auth/otp/request` | `email`, `purpose` (`email_verify`/`login_2fa`/`password_reset`) | 202, code sent via Brevo branded email | 400 invalid purpose; 401 unknown email; 429 (3/15min/email; with `Retry-After`); 502 Brevo delivery failed |
 | `/api/auth/otp/verify` | `email`, `code`, `purpose` | 200 `{verified:true,message,emailVerified}` (marks `Users.EmailVerified` for `email_verify`) | 400 invalid; 401 unknown/expired/invalid code; 429 lockout after 5 failed attempts |
+| `/api/auth/organizations` (GET) | — (bearer access token required) | 200, active memberships `[{organizationId, organizationName, role, joinedAt, isActive}]` (spec 30: only Active memberships of Active organizations; `isActive` flags the session's active org) | 401 absent/invalid bearer token or unresolvable caller |
+| `/api/auth/select-organization` | `organizationId`; optional `refreshToken` | 200, new token pair carrying the new `org`/`role`/`perms` claims (spec 30) | 400 validation; 401 unresolvable caller; 403 not an Active member of an Active organization; 404 unknown organization |
 
 Token response: `{accessToken, refreshToken, expiresAt, user}`;
 `user` contains `{id, email, displayName, avatarUrl}`. `expiresAt` is the access
@@ -30,9 +32,21 @@ scaffold response and must fail acceptance checks.
 - Passwords use Argon2id (3 iterations, 65536 KiB, 4 lanes, 16-byte salt,
   32-byte output), stored as hexadecimal `salt:hash`. Unknown-account login
   verifies against a fixed valid dummy record at the same cost before rejecting.
-- JWT: HS256, 15 minutes; claims `sub`, `email`, `jti`, plus issuer, audience
-  and lifetime claims. Workspace context is selected per request and checked
-  against membership; a global workspace claim is not issued.
+- JWT (spec 30, **JWT v2**): HS256, 15 minutes; claims `sub`, `email`, `name`,
+  `jti`, `org` (active OrganizationId — omitted for platform-only sessions),
+  `role` (effective role: `super_admin`/`owner`/`admin`/`project_manager`/`member`/
+  `client`/`custom:{roleId}`) and `perms` (space-separated permission keys from the
+  fixed catalogue in `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §3 — stamped by
+  `Griot.Application/Authorization/PermissionCatalogue` + `RoleSelection`), plus
+  issuer, audience and lifetime claims. Issuance lives only in
+  `Griot.Application/Services/TokenService.cs` (spec 30 claim builder). Workspace
+  context is selected per request and checked against membership; a global workspace
+  claim is not issued.
+  - **Active-organization persistence (spec 30, stateless):** the client re-sends the active `organizationId` on every `/api/auth/refresh` (see `RefreshRequest.OrganizationId`); the session is re-resolved at issue time so role changes land within one refresh. Absent: a user with exactly one active membership gets it auto-picked, otherwise the platform view applies (`org` omitted) and the client re-selects via `POST /api/auth/select-organization`. The rotation family id is the replay-detection chain only — it never encodes tenant state (`RefreshTokens` has no org column by design).
+  - **Org switch (`select-organization`):** validates membership (404 unknown org /
+    403 not Active), mints a fresh pair in a NEW rotation family seeded with the new
+    org, and — when the optional `refreshToken` of the old session is presented —
+    revokes the presented session's family after the new pair is minted (single active session per family; the stale-org token can never be refreshed again).
 - Refresh tokens: 32 cryptographically random bytes represented by exactly
   64 hexadecimal characters, expiring 30 days after issuance/rotation.
   SQL stores SHA-256 of the decoded bytes, never the opaque token itself.
@@ -69,7 +83,9 @@ scaffold response and must fail acceptance checks.
 | Setting | Meaning |
 |---|---|
 | `ConnectionStrings__Default` | SQL Server connection string; local host `localhost,14333`; database is the configured project database |
-| `JWT__Key` | HS256 key, at least 32 bytes; required |
+| `JWT__Key` | HS256 signing key. Required. Minimum 32 UTF-8 bytes (HS256 floor) everywhere; minimum **64 UTF-8 bytes (512 bits)** in production — enforced fail-fast at startup by `TokenService.ValidateKeyPolicy` (spec 30). CSPRNG-generated, platform secret store only, never committed |
+| `JWT__Key_Previous` | Optional (spec 30 rotation): the previous signing key, accepted **during a rotation window only** so unexpired access tokens keep validating; every re-issue signs with `JWT__Key`, which retires the old key. Unset in steady state |
+| `SUPERADMIN__Email` / `SUPERADMIN__Password` | Optional (spec 30 bootstrap): when set at startup, the matching user is created (Argon2id) or upgraded to `PlatformRole=SuperAdmin` idempotently and audit-logged (`Auth.SuperAdminBootstrap`); no-op and silent when unset |
 | `JWT__Issuer` / `JWT__Audience` | Defaults `Griot` / `GriotClients` |
 | `Redis__Connection` | StackExchange.Redis endpoint; default `localhost:6380`, compose `sababisha-redis:6379` |
 | `Otp__Pepper` | HMAC-SHA256 pepper for OTP code hashes; dev default only in ignored `appsettings.Local.json` |
@@ -138,19 +154,19 @@ GraphQL mirror: `delete{Entity}Intent(input:{id, stepUpAccessToken?}) → {inten
 
 Brevo sends for all OTP purposes come from the single verified sender `Brevo:FromEmail` (2026-09-11: the `Brevo:Senders:<Key>` profile map was removed; see `docs/communication/COMMUNICATION-GUIDE.md` §2/§7b).
 
-## PLANNED — JWT v2: role + tenant claims (multi-tenant wave, backend spec 30 — NOT yet implemented)
+## Implemented — JWT v2: role + tenant claims (multi-tenant wave, backend spec 30)
 
-Owner: `backend/project-kit/feature-specs/30-auth-jwt-v2-role-tenant-claims.md`; canonical rationale `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §4. This is the PLANNED extension of the implemented Feature-07 contract above; it moves into the implemented tables when spec 30 ships:
+Owner: `backend/project-kit/feature-specs/30-auth-jwt-v2-role-tenant-claims.md`; canonical rationale `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §4. **Implemented on `feature/backend/30-auth-jwt-v2` (2026-09-11)** — the extension of the implemented Feature-07 contract above:
 
-- **Access token gains claims** (existing `sub`, `email`, `jti`, `iss=Griot`, `aud=GriotClients`, 15-min HS256 unchanged):
+- **Access token carries claims** (existing `sub`, `email`, `jti`, `iss=Griot`, `aud=GriotClients`, 15-min HS256 unchanged):
   - `name` — `Users.DisplayName`
-  - `org` — the active `OrganizationId` (multi-tenant; absent for platform-only SuperAdmin sessions)
-  - `role` — effective role in the active org (`super_admin`, `owner`, `admin`, `project_manager`, `member`, `client`, or `custom:{roleId}`)
-  - `perms` — space-separated permission keys for the active role
-- **`GET /api/auth/organizations`** → 200, caller's organization memberships. **`POST /api/auth/select-organization`** `{organizationId}` → 200 new token pair with the new `org` claim; 403 not an active member; 404 unknown organization. Claims re-derive on refresh (role changes take effect within one refresh).
+  - `org` — the active `OrganizationId` (multi-tenant; absent for platform-only sessions)
+  - `role` — effective role in the active org (`super_admin`, `owner`, `admin`, `project_manager`, `member`, `client`, or `custom:{roleId}`); platform role resolves before any org role
+  - `perms` — space-separated permission keys for the effective role (system-role map in `Griot.Application/Authorization/PermissionCatalogue`; custom roles stamp from the persisted `Roles.Permissions` column; `log.read_tier` is reserved and never stamped — spec 25/31)
+- **`GET /api/auth/organizations`** → 200, caller's Active memberships of Active organizations. **`POST /api/auth/select-organization`** `{organizationId, refreshToken?}` → 200 new token pair with the new `org` claim; 403 not an active member (SuperAdmin may select any Active company); 404 unknown organization. Claims re-derive on refresh (role changes take effect within one refresh); the client re-sends the active `organizationId` on every refresh so the selection persists across rotation (absent: a single active membership is auto-picked, otherwise the platform view applies and the client re-selects).
 - **Refresh tokens remain opaque** (64-hex, SHA-256 at rest, rotation + family revoke — unchanged). They are **not JWTs and must never encode user data**; jwt.io decoding them blank is correct behavior.
-- **Signing key policy:** production `JWT__Key` ≥ 64 chars (512 bits), CSPRNG-generated, platform secret store only, never committed; verification at jwt.io succeeds **only with the real configured key** (jwt.io's `a-string-secret-at-least-256-bits-long` string is a placeholder). Key rotation runbook: dual-key validation window in spec 30.
-- **SuperAdmin bootstrap:** `SUPERADMIN__EMAIL` (+ optional `SUPERADMIN__PASSWORD` first-boot) upgraded idempotently on startup, audit-logged.
+- **Signing key policy:** production `JWT__Key` ≥ 64 chars (512 bits), CSPRNG-generated, platform secret store only, never committed; enforced fail-fast at startup. Verification at jwt.io succeeds **only with the real configured key** (jwt.io's `a-string-secret-at-least-256-bits-long` string is a placeholder). **Key-rotation runbook (dual-key validation window):** set the new `JWT__Key` and move the old key to `JWT__Key_Previous` in the same deploy — old access tokens keep validating until their ≤15-min expiry while every re-issue signs with the new key; after one access-token TTL (or one refresh cycle, whichever the operator chooses), remove `JWT__Key_Previous`. No re-issue storm, no forced logouts.
+- **SuperAdmin bootstrap:** `SUPERADMIN__Email` (+ optional `SUPERADMIN__Password` first-boot) upgraded/created idempotently on startup, audit-logged; SuperAdmin tokens carry `role=super_admin` and may omit `org` (platform-wide authority; selecting a company is allowed without a member row).
 
 ## Verification
 

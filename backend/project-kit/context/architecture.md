@@ -45,7 +45,7 @@ backend/
 
 ## Auth (own-stack)
 
-Argon2 hashing · JWT access (15-min, `sub`/`email`/`jti`) · opaque rotated refresh (hashed at rest) · Redis sliding-window rate limit · `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → restricted real-user OBO principal (`ai-on-behalf-of`, four scope claims) · HMAC `/api/webhooks/trigger`. Full detail: `backend/.agents/skills/jwt-argon2-auth` + feature specs 07/09.
+Argon2 hashing · JWT v2 access (15-min: `sub`/`email`/`name`/`jti` + `org`?/`role`/`perms` — spec 30 ✅, issued only by `TokenService`) · opaque rotated refresh (hashed at rest, stateless org pin on refresh) · Redis sliding-window rate limit · `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → restricted real-user OBO principal (`ai-on-behalf-of`, four scope claims) · HMAC `/api/webhooks/trigger`. Full detail: `backend/.agents/skills/jwt-argon2-auth` + feature specs 07/09/30.
 
 ## Operational details
 

@@ -32,6 +32,9 @@ public sealed class TenantResolutionMiddleware
         // Spec 29: SuperAdmin platform principals (spec 32/33) are resolved before
         // any org role — they bypass tenant scoping without an `org` claim. The
         // flag travels ambiently so the pooled-factory wrapper stays org-aware.
+        // Reads both the literal v2 `role` claim and the mapped ClaimTypes.Role
+        // form: the live JwtBearer pipeline maps well-known claim names inbound
+        // (spec 29/30), so a literal-only read would silently drop platform scope.
         var isSuperAdmin = string.Equals(
             context.User?.FindFirst("role")?.Value, "super_admin", StringComparison.OrdinalIgnoreCase)
             || string.Equals(

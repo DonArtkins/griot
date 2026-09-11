@@ -1,6 +1,7 @@
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Services;
 using Griot.Domain.Entities;
+using Griot.Domain.Enums;
 using Griot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
@@ -152,6 +153,68 @@ public sealed class AuthRepository : IAuthRepository
         await _context.Users
             .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.EmailVerified, true))
+            .ConfigureAwait(false);
+    }
+
+    // ── Spec 30 (Auth & JWT v2): organization session + SuperAdmin bootstrap ──
+
+    public async Task<Organization?> FindOrganizationByIdAsync(Guid organizationId)
+    {
+        return await _context.Organizations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == organizationId)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<OrganizationMember>> GetActiveOrganizationMembershipsAsync(Guid userId)
+    {
+        return await _context.OrganizationMembers
+            .AsNoTracking()
+            .Include(m => m.CustomRole)
+            .Include(m => m.Organization)
+            .Where(m => m.UserId == userId
+                        && m.Status == OrganizationMemberStatus.Active
+                        && m.Organization.Status == OrganizationStatus.Active)
+            .OrderByDescending(m => m.JoinedAt)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+
+    public async Task<OrganizationMember?> FindActiveOrganizationMemberAsync(Guid organizationId, Guid userId)
+    {
+        return await _context.OrganizationMembers
+            .AsNoTracking()
+            .Include(m => m.CustomRole)
+            .Include(m => m.Organization)
+            .FirstOrDefaultAsync(m => m.OrganizationId == organizationId
+                                      && m.UserId == userId
+                                      && m.Status == OrganizationMemberStatus.Active
+                                      && m.Organization.Status == OrganizationStatus.Active)
+            .ConfigureAwait(false);
+    }
+
+
+    public async Task AddUserAsync(User user)
+    {
+        _context.Users.Add(user);
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    public async Task<User?> FindUserByIdAsync(Guid userId)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId)
+            .ConfigureAwait(false);
+    }
+
+    public async Task SetPlatformRoleAsync(Guid userId, PlatformRole role)
+    {
+        await _context.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(u => u.PlatformRole, role)
+                .SetProperty(u => u.UpdatedAt, DateTime.UtcNow))
             .ConfigureAwait(false);
     }
 }

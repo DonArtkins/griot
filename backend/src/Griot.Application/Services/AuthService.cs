@@ -1,12 +1,15 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Griot.Application.Authorization;
 using Griot.Application.DTOs.Auth;
 using Griot.Application.Email;
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Domain.Entities;
+using Griot.Domain.Enums;
 using Konscious.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -52,19 +55,66 @@ public sealed class AuthService : IAuthService
     private readonly ILogger<AuthService> _logger;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ITokenService _tokenService;
 
     public AuthService(
         IAuthRepository authRepository,
         IConfiguration configuration,
         ILogger<AuthService> logger,
         IEmailService emailService,
-        IAuditService auditService)
+        IAuditService auditService,
+        ITokenService tokenService)
     {
         _authRepository = authRepository;
         _configuration = configuration;
         _logger = logger;
         _emailService = emailService;
         _auditService = auditService;
+        _tokenService = tokenService;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Spec 30: JWT v2 tenant-session resolution (role/perms derive at issue time)
+    // -----------------------------------------------------------------------------
+
+    /// <summary>
+    /// Resolves the caller's tenant session: the given organization id is honored when
+    /// the user is an Active member of an Active organization (or is the platform
+    /// SuperAdmin, whose `org` selection is platform authority). A null/unresolvable
+    /// organization id yields a platform-only session — the `org` claim is then omitted.
+    /// Member roles derive from <see cref="RoleSelection"/>; SuperAdmin resolves first
+    /// per tenancy-guide §3 precedence.
+    /// </summary>
+    private async Task<ActiveOrganization> ResolveSessionAsync(User user, Guid? requestedOrganizationId)
+    {
+        var isSuperAdmin = user.PlatformRole == PlatformRole.SuperAdmin;
+
+        if (requestedOrganizationId is Guid organizationId)
+        {
+            var member = await _authRepository
+                .FindActiveOrganizationMemberAsync(organizationId, user.Id)
+                .ConfigureAwait(false);
+
+            if (member is not null)
+            {
+                return new ActiveOrganization(
+                    organizationId,
+                    RoleSelection.EffectiveRole(isSuperAdmin, member),
+                    RoleSelection.EffectivePerms(member));
+            }
+
+            // SuperAdmin may act on any company without a member row (platform authority).
+            if (isSuperAdmin)
+                return new ActiveOrganization(organizationId, RoleSelection.RoleSuperAdmin, PermissionCatalogue.Join(PermissionCatalogue.All));
+
+            return new ActiveOrganization(null, RoleSelection.RoleMember, string.Empty);
+        }
+
+        // Platform-only session: SuperAdmin keeps its platform role with full perms;
+        // everyone else falls back to an identity-only member session (no `org` claim).
+        return isSuperAdmin
+            ? new ActiveOrganization(null, RoleSelection.RoleSuperAdmin, PermissionCatalogue.Join(PermissionCatalogue.All))
+            : new ActiveOrganization(null, RoleSelection.RoleMember, string.Empty);
     }
 
     // -----------------------------------------------------------------------------
@@ -83,14 +133,15 @@ public sealed class AuthService : IAuthService
     /// observability pipeline (failure-isolation rule, "documented unavailable result").
     /// No secrets: only outcomes, family ids and user ids — never tokens, hashes or codes.
     /// </summary>
-    private async Task RecordAuthEventAsync(Guid actorId, string action, Guid entityId, object? after = null)
+    private async Task RecordAuthEventAsync(Guid actorId, string action, Guid entityId, object? after = null, Guid? organizationId = null)
     {
         try
         {
             await _auditService.RecordAsync(new AuditEntry(
                 actorId, action, "User", entityId,
                 Before: null,
-                After: after is null ? null : AuditService.Snapshot(after))).ConfigureAwait(false);
+                After: after is null ? null : AuditService.Snapshot(after),
+                OrganizationId: organizationId)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -174,7 +225,7 @@ public sealed class AuthService : IAuthService
     // Refresh (rotate)
     // -----------------------------------------------------------------------------
 
-    public async Task<AuthResponse?> RefreshAsync(string refreshToken)
+    public async Task<AuthResponse?> RefreshAsync(string refreshToken, Guid? requestedOrganizationId)
     {
         var tokenHash = HashToken(refreshToken);
         if (tokenHash is null)
@@ -215,6 +266,8 @@ public sealed class AuthService : IAuthService
         }
 
         // Atomic rotation: revoke the presented token, link it to the replacement, persist both.
+        // FamilyId is copied verbatim — the rotation chain IS the family (spec 07 reuse
+        // detection revokes the whole chain on replay), so it never changes per org.
         var rawNewRefresh = GenerateOpaqueToken();
         var replacement = new RefreshToken
         {
@@ -226,6 +279,13 @@ public sealed class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow
         };
 
+        // Spec 30 (Option A, stateless sessions): re-derive the JWT v2 tenant session on
+        // every rotation (role changes land within one refresh, never mid-access-token).
+        // The client pins the active org by re-sending its id on refresh; absent, a user
+        // with exactly ONE active membership gets it auto-picked, otherwise the platform
+        // view applies and the client re-selects via POST /api/auth/select-organization.
+        // Runs only after the rotation precondition checks — a replay/race short-circuits
+        // above without touching the session lookups.
         var rotated = await _authRepository
             .RotateRefreshTokenAsync(storedToken, replacement)
             .ConfigureAwait(false);
@@ -241,12 +301,18 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
+        var session = await ResolveSessionAsync(
+            storedToken.User,
+            requestedOrganizationId ?? await AutoPickOrganizationIdAsync(storedToken.User).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
         _logger.LogInformation("Refresh token rotated for user {UserId}.", storedToken.UserId);
         await RecordAuthEventAsync(
             storedToken.UserId, "Auth.Refresh", storedToken.UserId,
-            new { storedToken.FamilyId, outcome = "rotated" }).ConfigureAwait(false);
+            new { storedToken.FamilyId, outcome = "rotated" },
+            session.OrganizationId).ConfigureAwait(false);
 
-        return BuildAuthResponse(storedToken.User, rawNewRefresh);
+        return BuildAuthResponse(storedToken.User, rawNewRefresh, session);
     }
 
     // -----------------------------------------------------------------------------
@@ -274,6 +340,165 @@ public sealed class AuthService : IAuthService
         await RecordAuthEventAsync(
             stored.UserId, "Auth.Logout", stored.UserId,
             new { stored.FamilyId, outcome = "revoked" }).ConfigureAwait(false);
+    }
+
+    // -----------------------------------------------------------------------------
+    // Spec 30: organization session (list + select) & SuperAdmin bootstrap
+    // -----------------------------------------------------------------------------
+
+    /// <summary>
+    /// Stateless session convenience (spec 30): when the caller pins no organization,
+    /// a user with EXACTLY ONE active membership gets it auto-picked. Zero memberships
+    /// or more than one → null (platform view; the client re-selects explicitly).
+    /// </summary>
+    private async Task<Guid?> AutoPickOrganizationIdAsync(User user)
+    {
+        var memberships = await _authRepository
+            .GetActiveOrganizationMembershipsAsync(user.Id)
+            .ConfigureAwait(false);
+        return memberships.Count == 1 ? memberships[0].OrganizationId : null;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<OrganizationMembershipDto>> ListOrganizationsAsync(
+        Guid callerId, bool isSuperAdmin, Guid? activeOrganizationId)
+    {
+        var memberships = await _authRepository
+            .GetActiveOrganizationMembershipsAsync(callerId)
+            .ConfigureAwait(false);
+
+        return memberships.Select(m => new OrganizationMembershipDto
+        {
+            OrganizationId = m.OrganizationId,
+            OrganizationName = m.Organization.Name,
+            Role = RoleSelection.EffectiveRole(isSuperAdmin, m),
+            JoinedAt = m.JoinedAt,
+            IsActive = activeOrganizationId.HasValue && m.OrganizationId == activeOrganizationId.Value
+        }).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthResponse?> SelectOrganizationAsync(
+        Guid callerId, SelectOrganizationRequest request, string? refreshToken)
+    {
+        if (callerId == Guid.Empty)
+            return null;
+
+        var organization = await _authRepository
+            .FindOrganizationByIdAsync(request.OrganizationId)
+            .ConfigureAwait(false);
+        if (organization is null)
+            throw new DomainError(DomainErrorKind.NotFound, "Organization not found.");
+
+        var user = await _authRepository.FindUserByIdAsync(callerId).ConfigureAwait(false);
+        if (user is null)
+            return null;
+
+        var isSuperAdmin = user.PlatformRole == PlatformRole.SuperAdmin;
+
+        // SuperAdmin may select any Active company without holding a member row
+        // (platform authority, spec 29/30). Everyone else must be an Active member
+        // of the Active organization — anything else fails closed (403).
+        var session = await ResolveSessionAsync(user, request.OrganizationId).ConfigureAwait(false);
+        if (session.OrganizationId is null)
+            throw new DomainError(DomainErrorKind.Forbidden, "Not an active member of this organization.");
+
+        // Mint the new pair FIRST, then retire the presented session's family so a
+        // failed save never leaves the caller without a valid pair (best-effort switch).
+        var rawRefresh = GenerateOpaqueToken();
+        var refreshEntity = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            FamilyId = Guid.NewGuid(),
+            TokenHash = HashToken(rawRefresh)!,
+            ExpiresAt = DateTime.UtcNow.Add(RefreshTokenTtl),
+            CreatedAt = DateTime.UtcNow
+        };
+        await _authRepository.InsertRefreshTokenAsync(refreshEntity).ConfigureAwait(false);
+
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            var presentedHash = HashToken(refreshToken);
+            if (presentedHash is not null)
+            {
+                var presented = await _authRepository
+                    .FindRefreshTokenByTokenHashAsync(presentedHash)
+                    .ConfigureAwait(false);
+                if (presented is not null)
+                {
+                    await _authRepository
+                        .RevokeFamilyAsync(user.Id, presented.FamilyId, DateTime.UtcNow)
+                        .ConfigureAwait(false);
+                }
+            }
+        }
+
+        _logger.LogInformation(
+            "Organization session switched for user {UserId}: org {OrganizationId} (role {Role}).",
+            user.Id, organization.Id, session.Role);
+        await RecordAuthEventAsync(
+            user.Id, "Auth.SelectOrganization", user.Id,
+            new { organizationId = organization.Id, role = session.Role, outcome = "switched" },
+            organization.Id).ConfigureAwait(false);
+
+        return BuildAuthResponse(user, rawRefresh, session);
+    }
+
+    /// <inheritdoc />
+    public async Task<SuperAdminBootstrapResult> EnsureSuperAdminAsync()
+    {
+        var email = _configuration["SUPERADMIN:Email"]?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email))
+            return new SuperAdminBootstrapResult(false, false);
+
+        var password = _configuration["SUPERADMIN:Password"];
+        var user = await _authRepository.FindUserByEmailAsync(email).ConfigureAwait(false);
+
+        if (user is null)
+        {
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                _logger.LogWarning(
+                    "SUPERADMIN__Email is configured but no user exists and SUPERADMIN__Password is not set; bootstrap skipped.");
+                return new SuperAdminBootstrapResult(false, false);
+            }
+
+            var (hash, salt) = HashPassword(password);
+            user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                DisplayName = "SuperAdmin",
+                PasswordHash = $"{Convert.ToHexString(salt)}:{hash}",
+                PlatformRole = PlatformRole.SuperAdmin,
+                EmailVerified = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await _authRepository.AddUserAsync(user).ConfigureAwait(false);
+            await _authRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            _logger.LogInformation("SuperAdmin bootstrap: created user {UserId} ({Email}).", user.Id, email);
+            await RecordAuthEventAsync(user.Id, "Auth.SuperAdminBootstrap", user.Id,
+                new { outcome = "created" }).ConfigureAwait(false);
+            return new SuperAdminBootstrapResult(true, false);
+        }
+
+        if (user.PlatformRole != PlatformRole.SuperAdmin)
+        {
+            // Upgrade in place: the existing account gains platform authority (idempotent).
+            await _authRepository
+                .SetPlatformRoleAsync(user.Id, PlatformRole.SuperAdmin)
+                .ConfigureAwait(false);
+
+            _logger.LogInformation("SuperAdmin bootstrap: upgraded existing user {UserId} ({Email}).", user.Id, email);
+            await RecordAuthEventAsync(user.Id, "Auth.SuperAdminBootstrap", user.Id,
+                new { outcome = "upgraded" }).ConfigureAwait(false);
+            return new SuperAdminBootstrapResult(false, true);
+        }
+
+        return new SuperAdminBootstrapResult(false, false);
     }
 
     public async Task<OtpRequestResult?> RequestOtpAsync(OtpRequestRequest request, string? requestIp)
@@ -407,9 +632,18 @@ public sealed class AuthService : IAuthService
     // Helpers
     // -----------------------------------------------------------------------------
 
-    /// <summary>Issue a new JWT access token + persist a new refresh token row. Returns the token pair.</summary>
-    private async Task<AuthResponse> IssueTokenPairAsync(User user)
+    /// <summary>
+    /// Issue a new JWT access token + persist a new refresh token row. Returns the token pair.
+    /// Spec 30: the tenant session resolves here (optional org pin / single-membership
+    /// auto-pick / platform view) so every issued pair carries the same active org.
+    /// </summary>
+    private async Task<AuthResponse> IssueTokenPairAsync(User user, Guid? requestedOrganizationId = null)
     {
+        var session = await ResolveSessionAsync(
+            user,
+            requestedOrganizationId ?? await AutoPickOrganizationIdAsync(user).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
         // Generate opaque refresh token (256-bit random), store only its SHA-256 hash.
         var rawRefresh = GenerateOpaqueToken();
         var refreshEntity = new RefreshToken
@@ -424,13 +658,16 @@ public sealed class AuthService : IAuthService
 
         await _authRepository.InsertRefreshTokenAsync(refreshEntity).ConfigureAwait(false);
 
-        return BuildAuthResponse(user, rawRefresh);
+        return BuildAuthResponse(user, rawRefresh, session);
     }
 
-    /// <summary>Build the response DTO. The JWT is issued here, not in repositories/controllers.</summary>
-    private AuthResponse BuildAuthResponse(User user, string rawRefreshToken)
+    /// <summary>
+    /// Build the response DTO. The JWT is issued by <see cref="ITokenService"/> (spec 30
+    /// v2 claim builder) — never inline, never in repositories or controllers.
+    /// </summary>
+    private AuthResponse BuildAuthResponse(User user, string rawRefreshToken, ActiveOrganization session)
     {
-        var (accessToken, expiresAt) = IssueJwt(user);
+        var (accessToken, expiresAt) = _tokenService.IssueAccessToken(user.Id, user.Email, user.DisplayName, session);
 
         return new AuthResponse
         {
@@ -447,49 +684,7 @@ public sealed class AuthService : IAuthService
         };
     }
 
-    /// <summary>Issue a signed JWT (15-min TTL).</summary>
-    /// <remarks>
-    /// Claim set: <c>sub</c> (user GUID), <c>email</c>, <c>jti</c>.
-    /// A <c>wid</c> (workspace id) claim is intentionally NOT embedded at this layer because a user
-    /// may have zero/multiple workspaces and workspace context is selected per-request (see api-surface.md).
-    /// Validation (iss/aud/exp) is symmetrical with Program.cs JwtBearer setup.
-    /// </remarks>
     private const string CanonicalAdminInbox = "info.donartkins.ke@gmail.com";
-
-    private (string Token, DateTime ExpiresAt) IssueJwt(User user)
-    {
-        var key = _configuration["JWT:Key"];
-        if (string.IsNullOrWhiteSpace(key))
-            throw new InvalidOperationException("JWT:Key is not configured.");
-        var keyBytes = Encoding.UTF8.GetBytes(key);
-        if (keyBytes.Length < 32)
-            throw new InvalidOperationException($"JWT:Key must be at least 32 UTF-8 bytes (HS256 minimum); configured key is {keyBytes.Length} bytes. Set a longer JWT__Key.");
-        var issuer = _configuration["JWT:Issuer"] ?? "Griot";
-        var audience = _configuration["JWT:Audience"] ?? "GriotClients";
-
-        var signingKey = new SymmetricSecurityKey(keyBytes);
-        var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
-
-        var expiresAt = DateTime.UtcNow.Add(AccessTokenTtl);
-
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
-            claims: claims,
-            notBefore: DateTime.UtcNow,
-            expires: expiresAt,
-            signingCredentials: credentials
-        );
-
-        return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
-    }
 
     // -----------------------------------------------------------------------------
     // Argon2id helpers
