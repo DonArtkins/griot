@@ -30,7 +30,8 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET/POST | `/api/tasks/{id}/attachments` | list attachment metadata / upload to Cloudinary (Phase 1) | workspace member |
 | DELETE | `/api/tasks/{id}/attachments/{attachmentId}` | delete attachment (blob + DB metadata) | workspace member |
 | GET | `/api/workspaces/{id}/activity` | activity feed (paginated) | workspace member |
-| GET/POST | `/api/notifications` · POST `/api/notifications/read-all` | list / mark all read | authenticated |
+| GET | `/api/notifications` | list notifications; no creation route | authenticated |
+| POST | `/api/notifications/read-all` | mark all read | authenticated |
 | PATCH | `/api/notifications/{id}/read` | mark one notification read | authenticated |
 | GET | `/api/notifications/unread-count` | unread notification count | authenticated |
 | GET/PUT | `/api/notifications/preferences` | notification prefs (self; creates defaults) — **spec 22 PLANNED** | authenticated |
@@ -131,6 +132,10 @@ the one Brevo dashboard-verified `Brevo:FromEmail`, e.g.
 `info.donartkins.ke@gmail.com`) via `IEmailService`/`BrevoEmailService`.
 Redis gate: `ratelimit:otp:request:{email}` 3/15min before Brevo. Canonical:
 `docs/communication/COMMUNICATION-GUIDE.md`; owner spec `feature-specs/12-communication-channels-brevo.md`.
+
+## Planned review corrections — backend 24/27/28
+
+Backend 24 requires backend 28 lifecycle evidence and immutable report CreatedAt cursors. Backend 28 accepts typed run/page/total metadata and rejects duplicates (409); incomplete or inconsistent runs cannot enable formal reports. Backend 27 owns snapshot redaction, actor/revision/audience-bound confirmation and per-recipient/channel/event delivery status; ambiguous provider acceptance requires reconciliation. These are planned requirements, not current routes. Owning specs and the proposed ERD define the details.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

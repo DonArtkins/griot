@@ -38,5 +38,9 @@ Two connected surfaces inside the App shell:
 
 `npm run lint && npm run typecheck && npm test && npm run build`; Cypress E2E with MSW-stubbed copilot.
 
+## Test-run evidence entry (planned backend 28 contract)
+
+Submit typed RunId, Page, TotalPages and TotalResults with paged test evidence. Duplicate pages return 409; show incomplete/conflicting runs as ineligible, and surface backend validation reasons. Corrections append a replacement run with provenance; the UI cannot mark it complete or bypass backend 24 eligibility checks.
+
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

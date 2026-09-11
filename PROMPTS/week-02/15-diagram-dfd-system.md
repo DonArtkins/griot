@@ -30,7 +30,7 @@
 | P2 | Mobile App | Android companion — same endpoints as web | Flutter 3.19 / Dart 3 |
 | P3 | API (one process) | REST `/api/*` + GraphQL `/graphql` + `/health`; Auth, Workspace, Project, Board, Task, Comment, Attachment, Notification, Dashboard, Webhook | ASP.NET Core 8 · Griot.Application · EF Core 8 + Dapper 2 |
 | P4 | MCP Server | 8 tools (list_projects … summarize_project); stdio + Streamable HTTP | Node 20 + @modelcontextprotocol/sdk |
-| P5 | AI Agents | `griotCopilot` + scheduled (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`); streams to web via Trigger realtime | Trigger.dev v3 |
+| P5 | AI Agents | `griotCopilot` + scheduled (`dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder`); streams to web via Trigger realtime | Trigger.dev v4 |
 | P6 | Email dispatch | Invites (user-triggered), reminders + digests (AI-triggered) | SMTP provider |
 
 ## 3. Data stores (open-sided rectangles / cylinders)
@@ -72,7 +72,7 @@ PROCESSES (center, left→right):
 - P2 Mobile App — Flutter 3.19 (Android companion, same endpoints)
 - P3 API — ASP.NET Core 8: REST /api/* + GraphQL /graphql + /health; Griot.Application services; EF Core 8 + Dapper 2
 - P4 MCP Server — Node 20, 8 tools, stdio + Streamable HTTP
-- P5 AI Agents — Trigger.dev v3: griotCopilot + dueReminders, sprintDigest, staleBoard, standupBuilder
+- P5 AI Agents — Trigger.dev v4: griotCopilot + dueReminders, sprintDigest, staleBoard, standupBuilder
 - P6 Email dispatch — SMTP provider integration
 
 DATA STORES (right edge): D1 SQL Server 2022 (sababisha-sqlserver) — 16 tables: Users, Workspaces, WorkspaceMembers, Invites, Projects, Boards, Columns, TaskItems, Comments, Attachments, ActivityLogs, Notifications, RefreshTokens, ApiLogs, ErrorLogs, AuditLogs. D2 Redis 7 (sababisha-redis) — rate limits, refresh metadata, token budgets. D3 PostgreSQL 16 (sababisha-postgres) — secondary/test.

@@ -17,7 +17,7 @@
 | Mobile | `mobile/` | Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod | Week 4 |
 | DevOps / Infra | `infra/` | Docker 26+, Compose v2, Vercel, Railway, GitHub Actions | Week 5 |
 | Quality Engineering | `qa/` | xUnit, Jest+RTL, Flutter, Cypress, Newman, k6 | Weeks 6–7 |
-| AI agents | `ai/` [own-stack] | Trigger.dev v3 | `ai-integration.md` |
+| AI agents | `ai/` [own-stack] | Trigger.dev v4 | `ai-integration.md` |
 | MCP server | `mcp/` [own-stack] | MCP stdio + Streamable HTTP | `ai-integration.md` |
 
 Auth [own-stack]: JWT + Argon2 + Redis. AI writes never touch SQL Server directly — always through the API with `GRIOT_SERVICE_TOKEN`.
@@ -28,7 +28,7 @@ Auth [own-stack]: JWT + Argon2 + Redis. AI writes never touch SQL Server directl
 2. **Edge** — Vercel (static CDN only — assets + env; **not** an API proxy; browser/mobile call the API directly).
 3. **API** — ASP.NET Core 8, one process: REST `/api/*` + GraphQL `/graphql` (HotChocolate) + `/health` (port 8080); `Griot.Application` shared service layer; `Griot.Domain`; infrastructure (EF Core 8 repos + Dapper 2 procs `usp_BulkUpdateTaskStatus` / `usp_GetDashboardSummary`); DataLoader (N+1 prevention); Auth middleware (JWT → principal `sub`/`email`/`jti`; `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of` → `ai-on-behalf-of`); WebhookRelayService (`POST /api/webhooks/trigger`, HMAC `X-Trigger-Signature`).
 4. **Data** — SQL Server 2022 (primary, source of truth, host port 14333); PostgreSQL 16 (secondary/test, 5433); Redis 7 (rate limit + refresh metadata + token budgets, 6380). Compose service keys: `sababisha-sqlserver`, `sababisha-postgres`, `sababisha-redis`.
-5. **Intelligence** — `ai/` Trigger.dev v3 agents (`griotCopilot` + `dueReminders`/`sprintDigest`/`staleBoard`/`standupBuilder`); `mcp/` server (8 tools; stdio local + Streamable HTTP 3001; Bearer `GRIOT_MCP_TOKEN`).
+5. **Intelligence** — `ai/` Trigger.dev v4 agents (`griotCopilot` + `dueReminders`/`sprintDigest`/`staleBoard`/`standupBuilder`); `mcp/` server (8 tools; stdio local + Streamable HTTP 3001; Bearer `GRIOT_MCP_TOKEN`).
 6. **External AI clients** — Claude Desktop / Cursor / Cline (MCP).
 7. **Platform** — Railway (api + mcp + DBs, private network), Vercel (web), Trigger.dev cloud (ai).
 8. **Cross-cutting rails** — `infra/` (Docker + Compose v2, CI/CD); `qa/` (test harnesses + gates); observability (ApiLogs/ErrorLogs/AuditLogs, 90-day hot retention).
@@ -59,7 +59,7 @@ ZONE 1 — PRESENTATION (top): box "Web App — React 18 · Vite 5 · MUI v6 (Pu
 ZONE 2 — EDGE: box "Vercel — static CDN ONLY (assets + env; NOT an API proxy)". Annotation: "Browser/Mobile call the Railway API DIRECTLY — Vercel never proxies API calls."
 ZONE 3 — API: ONE wide box "backend/ — ASP.NET Core 8": REST /api/* + GraphQL /graphql (HotChocolate) + /health :8080; inside sub-blocks: "Griot.Application (shared service layer — Auth, Workspace, Project, Board, Task, Comment, Attachment, Notification, Dashboard, WebhookRelay)"; "Griot.Domain"; "Infrastructure — EF Core 8 repos + Dapper 2 (usp_BulkUpdateTaskStatus, usp_GetDashboardSummary)"; "DataLoader (N+1 prevention)"; "Auth middleware (JWT → sub/email/jti; GRIOT_SERVICE_TOKEN + X-On-Behalf-Of → ai-on-behalf-of)"; "WebhookRelayService (HMAC X-Trigger-Signature)".
 ZONE 4 — DATA: three boxes with compose service-key badges: "sababisha-sqlserver — SQL Server 2022 (primary, source of truth, host 14333)"; "sababisha-postgres — PostgreSQL 16 (secondary/test, 5433)"; "sababisha-redis — Redis 7 (rate limit + refresh metadata + token budgets, 6380)".
-ZONE 5 — INTELLIGENCE: box "ai/ — Trigger.dev v3: griotCopilot + scheduled dueReminders, sprintDigest, staleBoard, standupBuilder"; box "mcp/ — Griot MCP server (Node 20): 8 tools (list_projects … summarize_project); stdio + Streamable HTTP :3001".
+ZONE 5 — INTELLIGENCE: box "ai/ — Trigger.dev v4: griotCopilot + scheduled dueReminders, sprintDigest, staleBoard, standupBuilder"; box "mcp/ — Griot MCP server (Node 20): 8 tools (list_projects … summarize_project); stdio + Streamable HTTP :3001".
 ZONE 6 — EXTERNAL AI CLIENTS: box "Claude Desktop / Cursor / Cline (MCP clients)".
 ZONE 7 — PLATFORM: Railway (private network: api + mcp + the 3 DBs; TLS terminates at proxy), Vercel (web), Trigger.dev cloud (ai).
 ZONE 8 — CROSS-CUTTING RAILS (bottom strip): "infra/ — Docker + Compose v2, GitHub Actions CI/CD (jobs: test-dotnet, test-web, test-mobile, test-ai, test-mcp, newman, cypress, deploy)"; "qa/ — xUnit · Jest+RTL · Flutter · Cypress · Newman · k6"; "Observability — ApiLogs / ErrorLogs / AuditLogs (90-day hot retention)".

@@ -17,7 +17,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 | 3 | Mobile (Flutter 3.19+) | `mobile/` | Week 4 | `mobile/AGENTS.md` |
 | 4 | DevOps / Infra (Docker, Vercel, Railway, CI/CD) | `infra/` | Week 5 | `infra/AGENTS.md` |
 | 5 | Quality Engineering (tests, OWASP, k6) | `qa/` | Weeks 6–7 | `qa/AGENTS.md` |
-| 6 | AI agents (Trigger.dev v3) [own-stack] | `ai/` | `ai-integration.md` | `ai/AGENTS.md` |
+| 6 | AI agents (Trigger.dev v4) [own-stack] | `ai/` | `ai-integration.md` | `ai/AGENTS.md` |
 | 7 | MCP server [own-stack] | `mcp/` | `ai-integration.md` | `mcp/AGENTS.md` |
 
 ## Mandatory Reading Order
@@ -34,7 +34,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Where We Are — Implementation Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–12 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–06 → P6 qa 01–13**. Right now: backend specs 01–09, 12 (Email-only), 13–17 are ✅ (09 = AI service token + webhooks, implemented OBO) — **the next spec is backend 20 (observability/logging pipeline)**, the first of the 2026-09-10 observability/hardening wave (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups → **23** critical-action OTP/step-up → **11** blob storage → **24** AI reports & export surface (`CreateReport` scope) → **25** role-tiered log access + AI capability gateway → **26** AI memory & conversations → **27** incident alerting + confirmed SuperAdmin broadcasts; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
+The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–12 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–06 → P6 qa 01–13**. Right now: backend specs 01–09, 12 (Email-only), 13–17 are ✅ (09 = AI service token + webhooks, implemented OBO) — **the next spec is backend 20 (observability/logging pipeline)**, the first of the 2026-09-10 observability/hardening wave (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups → **23** critical-action OTP/step-up → **11** blob storage → **28** project lifecycle report evidence → **24** AI reports & export surface (`CreateReport` scope) → **25** role-tiered log access + AI capability gateway → **26** AI memory & conversations → **27** incident alerting + confirmed SuperAdmin broadcasts; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
 
 ## Required Skills
 
@@ -70,7 +70,7 @@ The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 
 
 ## Stack at a Glance
 
-Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. Communication [own-stack]: Brevo transactional Email only — multi-sender identities (`Brevo:Senders:<Key>`, reply-to per profile) — see `docs/communication/COMMUNICATION-GUIDE.md`. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v3 Level-4 Autonomous Agents, MCP — orchestrated by the .NET backend only (Trigger.dev = compute adapter, never a data owner; web/mobile never trigger or poll Trigger.dev, web may consume the scoped, read-only Copilot stream; contract: `research/ai-integration.md` §2a).
+Backend: .NET 8, ASP.NET Core Web API, EF Core 8, Dapper 2.x, HotChocolate 14+, SQL Server 2022, PostgreSQL 16. Web: React 18.3, Vite 5, MUI v6, Apollo, Axios, TanStack Query 5. Mobile: Flutter 3.19+, Dart 3, GraphQL Flutter, Riverpod. DevOps: Docker 26+, Compose v2, Vercel, GitHub Actions, Railway/Render/Azure. Auth [own-stack]: JWT + Argon2 + Redis. Communication [own-stack]: Brevo transactional Email only — multi-sender identities (`Brevo:Senders:<Key>`, reply-to per profile) — see `docs/communication/COMMUNICATION-GUIDE.md`. Reports [own-stack]: RBAC-scoped digests & ad-hoc. AI [own-stack]: Trigger.dev v4 Level-4 Autonomous Agents, MCP — orchestrated by the .NET backend only (Trigger.dev = compute adapter, never a data owner; web/mobile never trigger or poll Trigger.dev, web may consume the scoped, read-only Copilot stream; contract: `research/ai-integration.md` §2a).
 
 **Engineering Excellence. Production Mindset. Professional Impact. 🚀**
 
@@ -140,6 +140,10 @@ implemented acceptance evidence. Run the system verification gates as well.
 ## Audit synchronization — 2026-09-11
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+
+## Review-batch exception — 2026-09-11
+
+The user authorized committing and pushing the reviewed planning/contract and AI dependency corrections together on the backend 09 branch, in response to the one-time grouping exception request. Scope and validation: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`. Future production features retain one spec per branch/PR; merge and next-feature work remain subject to user approval.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

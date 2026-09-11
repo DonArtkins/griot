@@ -1,10 +1,10 @@
-# AGENTS.md - Griot AI Agents (Trigger.dev v3) [own-stack]
+# AGENTS.md - Griot AI Agents (Trigger.dev v4) [own-stack]
 
 ## Read This First
 
 You are the agent for the **AI system** of Griot (the [own-stack] extension in `research/ai-integration.md`). You build the orchestration that wraps the bootcamp backend - agents, scheduled workflows, and the Copilot conversation engine. You never replace the backend, never touch SQL Server, and never hold database credentials.
 
-Stack: Trigger.dev v3 (Node 20, own lockfile), `@trigger.dev/sdk`, LLM SDK (Anthropic/OpenAI). Web integration via `@trigger.dev/react-hooks`.
+Stack: Trigger.dev v4 (Node 20, own lockfile), `@trigger.dev/sdk`, LLM SDK (Anthropic/OpenAI). Web integration via `@trigger.dev/react-hooks`.
 
 ## Reading Order
 

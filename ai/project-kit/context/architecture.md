@@ -2,7 +2,7 @@
 
 ## Positioning
 
-`ai/` is a separate npm package (own `.nvmrc` -> 20, own lockfile) in the GTP repo. It orchestrates LLM + tool calls; **domain reads and tool access are ONLY through the backend GraphQL with `GRIOT_SERVICE_TOKEN`.** The one REST exception is the required write-back: task results return to the .NET API via `POST /api/webhooks/trigger` (HMAC) or service-token REST — .NET remains the only writer of source-of-truth data.
+`ai/` is a separate npm package (own `.nvmrc` -> 20, own lockfile) in the GTP repo. It orchestrates LLM + tool calls; **domain reads and tool access use backend REST or GraphQL with `GRIOT_SERVICE_TOKEN`, trusted X-On-Behalf-Of and an unexpired user/workspace/scope delegation.** For required write-back, task results return to the .NET API via `POST /api/webhooks/trigger` (HMAC) or service-token REST — .NET remains the only writer of source-of-truth data.
 
 ```
 ai/
@@ -50,6 +50,10 @@ persistence; malformed refresh returns 401 and authenticated logout remains 204.
 
 
 **Superpowers (specs 06–08, PLANNED):** the Copilot gains a knowledge agent + system auditor (ai 06, read-only, RBAC-scoped, cites sources), report generation to PDF/CSV (ai 07, deterministic aggregation in Node, artifacts via backend 11/24), and a Level-4 planning executor (ai 08, PLAN → human gate → ACT → OBSERVE, full-plan approval + idempotency). All through `GRIOT_SERVICE_TOKEN` + `X-On-Behalf-Of`; NEW scoped capability `CreateReport` (backend 24) for report rows; NEVER auth/OTP/delete/invite/member tools.
+
+## Reviewed bootstrap dependency set
+
+Trigger.dev CLI, SDK and react-hooks are pinned to 4.5.16 in ai/package.json and its lockfile. Use `npm ci` then the installed CLI; Node 20 is the local toolchain. This preserves the existing v4 decision; cloud v3 is retired. AI 01 remains unimplemented.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

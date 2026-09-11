@@ -1,6 +1,6 @@
 ---
 name: trigger-dev-tasks
-description: "Trigger.dev v3 tasks/agents on Griot: durable scheduled jobs, streaming to the web Copilot via realtime, idempotency, and webhook HMAC to the backend."
+description: "Trigger.dev v4 tasks/agents on Griot: durable scheduled jobs, streaming to the web Copilot via realtime, idempotency, and webhook HMAC to the backend."
 metadata:
   version: "0.1.0"
 ---
@@ -17,7 +17,7 @@ npm i @trigger.dev/sdk @trigger.dev/react-hooks
 
 ## Patterns
 
-- Agents defined in TS (`agents.ts`) using `@trigger.dev/sdk/v3` agent API; tool calls go to the backend GraphQL with `GRIOT_SERVICE_TOKEN`.
+- Trigger tasks use `@trigger.dev/sdk` v4; verify the orchestration/LLM library API in Context7 before implementing agent loops. Do not assume Trigger exports `agent` or `tool`. Data calls use backend REST/GraphQL with the trusted OBO delegation described by ai-agent-security.
 - Scheduled tasks: `dueReminders`, `sprintDigest`, `staleBoard`, `standupBuilder` - durable, idempotent runs.
 - Real-time streaming to web via `useRealtimeRun`/`useRealtimeStream` in `@trigger.dev/react-hooks`.
 - NEVER wrap `triggerAndWait`/`batchTriggerAndWait` in `Promise.all`/

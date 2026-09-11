@@ -52,7 +52,7 @@ Status codes: **exact** = bootcamp-mandated, use as-is. **[own-stack]** = the gu
 | Communication | Brevo transactional Email only (single verified sender `Brevo:FromEmail` + per-call reply-to; 2026-09-11: `Brevo:Senders:*` profile map removed) | backend |
 | Auth | Custom JWT (15-min access, rotated opaque refresh, Argon2, Redis sliding-window rate limit, Brevo Email OTP 2FA — critical-action OTP/step-up on login/forgot/reset/delete/guarded ops spec 23 PLANNED) | backend |
 | Perf/load testing | k6 | qa |
-| AI layer | Trigger.dev v3 Level-4 Autonomous Agents (reasoning loops, human-in-loop) + Griot MCP server + in-app Copilot — orchestrated by the .NET backend only; Trigger.dev = compute adapter, never a data owner (`research/ai-integration.md` §2a). Superpowers wave (PLANNED): knowledge agent + system auditor (ai 06), report generation PDF/CSV (ai 07), advanced executor (ai 08) — all behind `CreateReport` scope (backend 24), never loosening the OBO grant, never touching auth/OTP | ai, mcp, web |
+| AI layer | Trigger.dev v4 (CLI/SDK/react-hooks pinned to 4.5.16; Node 20 toolchain) Level-4 Autonomous Agents (reasoning loops, human-in-loop) + Griot MCP server + in-app Copilot — orchestrated by the .NET backend only; Trigger.dev = compute adapter, never a data owner (`research/ai-integration.md` §2a). Superpowers wave (PLANNED): knowledge agent + system auditor (ai 06), report generation PDF/CSV (ai 07), advanced executor (ai 08) — all behind `CreateReport` scope (backend 24), never loosening the OBO grant, never touching auth/OTP | ai, mcp, web |
 | System Reports | SQL Server stored procedures + Trigger.dev scheduled digests + AI ad-hoc generation — surface = backend 24 (Report rows + PDF/CSV artifacts + audit-summary) | backend, ai, web |
 | Contract testing | Postman collection → Newman | qa |
 
@@ -64,6 +64,10 @@ Use the [auth contract](../../docs/api/auth-contract.md) for current routes, sta
 configuration, token lifetime and storage. `FamilyId` is preserved on rotation;
 replay revokes only the same user/family. Registration returns 201 after SQL
 persistence; malformed refresh returns 401 and authenticated logout remains 204.
+
+## Trigger.dev version correction — 2026-09-11
+
+[own-stack] Preserve the v4 adoption from commit `7e90c5b`; the previous v3 descriptions were stale. The [vendor migration notice](https://trigger.dev/docs/migrating-from-v3) records the v3 cloud shutdown on July 1, 2026. AI 01 pins CLI/SDK/react-hooks together at 4.5.16. No task or cloud deployment is claimed by this dependency correction.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.
