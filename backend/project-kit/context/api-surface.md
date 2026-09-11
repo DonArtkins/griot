@@ -114,7 +114,7 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 | **18** | uniform `page`/`pageSize` (cap 100)/`sortBy` whitelist/`sortDir`/`q` + `PagedResult<T>` (`items,page,pageSize,totalCount,totalPages`) + `X-Total-Count`/`X-Page`/`X-Total-Pages` headers; violations → 400 ProblemDetails |
 | **19** | Redis cache-aside (`cache:dashboard:{ws}` 60s, `cache:board:{id}` 30s, `cache:notif:unread:{user}` 15s; `X-Cache: HIT/MISS`; fail-open) + limiter partitions auth 10/min/IP, webhook 60/min, GraphQL mutations 30/min, depth 10 / complexity 1000 (unchanged global 100/min) |
 | **21** | `AFTER INS/UPD/DEL` triggers on TaskItems/WorkspaceMembers/Invites/Attachments → `AuditLogs` (`DB.`-prefixed actions; app rows unprefixed); FULL nightly + DIFF 15min + LOG 10min backups on `sababisha_mssql_backup` + restore drill runbook |
-| **22** | fan-out matrix (Assignment/Mention/DueDate/System → sender keys noreply/support/noreply/team+admin); new `NotificationPreferences` (1:1 Users) + `GET/PUT /api/notifications/preferences` + service-token-only `POST /api/notifications/fanout`; email best-effort (failure → `ErrorLogs`, request still succeeds) |
+| **22** | fan-out matrix (Assignment/Mention/DueDate/System → all email from spec 12's single verified sender); new `NotificationPreferences` (1:1 Users) + `GET/PUT /api/notifications/preferences` + service-token-only `POST /api/notifications/fanout`; email best-effort (failure → `ErrorLogs`, request still succeeds) |
 | **23** | critical-action OTP & step-up: login 202-challenge (EmailOtp), purposes `delete_account`/`step_up`, forgot/reset-password, `DELETE /api/auth/account`, `RequireStepUp(action)` guards on the curated risk list — human-only, AI OBO 403 |
 | **24** | report surface `GET/POST/DELETE /api/workspaces/{id}/reports…` + `download?format=pdf\|csv` + export/embed artifact links; `GET /api/workspaces/{id}/audit-summary` (Owner); FIFTH OBO scope `CreateReport` (AI create OK, AI delete 403) |
 | **25** | role-tiered log access (`/api/logs/*` SuperAdmin/Dev only; `/api/logs/summary` Admin+ redacted) + `GET /api/me/capabilities` (per-role AI tool manifest) |
@@ -126,10 +126,11 @@ Audit + incident runbook: `docs/observability/LOGGING-AUDIT-REPORT.md` (what/whe
 ## Communication contracts (Spec 12 — own-stack)
 
 Outbound messaging is **Email only** (no new REST routes; SMS/WhatsApp/Contacts/automations
-removed from code in the same branch): Email with per-purpose sender identities
-(`Brevo:Senders:<Key>` — Key ∈ Security, Admin, NoReply, Support, Info, Team; OTP=security,
-admin notice=admin) via `IEmailService`/`BrevoEmailService`. Redis gate:
-`ratelimit:otp:request:{email}` 3/15min before Brevo. Canonical:
+removed from code in the same branch): Email with a **single sender identity** (2026-09-11
+user decision — the `Brevo:Senders:<Key>` profile map was removed; every email sends from
+the one Brevo dashboard-verified `Brevo:FromEmail`, e.g.
+`info.donartkins.ke@gmail.com`) via `IEmailService`/`BrevoEmailService`.
+Redis gate: `ratelimit:otp:request:{email}` 3/15min before Brevo. Canonical:
 `docs/communication/COMMUNICATION-GUIDE.md`; owner spec `feature-specs/12-communication-channels-brevo.md`.
 
 ## Planned review corrections — backend 24/27/28

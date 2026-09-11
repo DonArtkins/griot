@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Griot.Api.Auth;
 using Griot.Api.GraphQL.Types;
+using Griot.Application.Interfaces.Services;
+using Griot.Application.Services;
 using Griot.Infrastructure.Persistence;
 using HotChocolate.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +11,22 @@ namespace Griot.Api.GraphQL;
 
 public class GriotMutation
 {
+    /// <summary>
+    /// Spec 20 (pipeline §3–4): audit + activity rows queued into the same scoped
+    /// change tracker as the domain write, so the resolver's next SaveChanges commits
+    /// state + audit atomically. Actor is the authenticated (or OBO) user id.
+    /// </summary>
+    private void QueueAudit(IAuditService auditService, Guid actorId, string action, string entityType, Guid entityId, object? before, object? after, Guid? workspaceId = null)
+    {
+        Guid? activityId = null;
+        if (workspaceId is not null)
+            activityId = auditService.QueueActivity(new ActivityEntry(
+                workspaceId.Value, actorId, entityType, entityId, action.Split('.').Last(), null));
+        auditService.QueueAudit(new AuditEntry(actorId, action, entityType, entityId,
+            before is null ? null : AuditService.Snapshot(before),
+            after is null ? null : AuditService.Snapshot(after), activityId));
+    }
+
     /// <summary>
     /// True when the ClaimsPrincipal originated from the AI GRIOT_SERVICE_TOKEN
     /// On-Behalf-Of flow. Detected via the "ai-on-behalf-of" role or the explicit
@@ -28,6 +46,7 @@ public class GriotMutation
         string name,
         string slug,
         [Service] GriotDbContext dbContext,
+        [Service] IAuditService auditService,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
@@ -45,6 +64,7 @@ public class GriotMutation
         };
 
         dbContext.Workspaces.Add(workspace);
+        QueueAudit(auditService, userGuid, "Workspace.Created", "Workspace", workspace.Id, null, null);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new WorkspaceType
@@ -66,6 +86,7 @@ public class GriotMutation
         Guid id,
         string name,
         [Service] GriotDbContext dbContext,
+        [Service] IAuditService auditService,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
@@ -79,8 +100,11 @@ public class GriotMutation
         // Caller must be workspace owner or member (CWE-862): never trust the id alone.
         await RequireWorkspaceAccessAsync(dbContext, workspace.Id, claimsPrincipal, cancellationToken);
 
+        var oldName = workspace.Name;
+        var oldSlug = workspace.Slug;
         workspace.Name = name;
         workspace.UpdatedAt = DateTime.UtcNow;
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Workspace.Updated", "Workspace", workspace.Id, new { Name = oldName, Slug = oldSlug }, workspace);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new WorkspaceType
@@ -101,6 +125,7 @@ public class GriotMutation
     public async Task<bool> DeleteWorkspace(
         Guid id,
         [Service] GriotDbContext dbContext,
+        [Service] IAuditService auditService,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
@@ -118,6 +143,7 @@ public class GriotMutation
         await RequireWorkspaceOwnerAsync(dbContext, workspace.Id, claimsPrincipal, cancellationToken);
 
         dbContext.Workspaces.Remove(workspace);
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Workspace.Deleted", "Workspace", workspace.Id, workspace, null);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return true;
@@ -132,6 +158,7 @@ public class GriotMutation
         string name,
         string? description,
         [Service] GriotDbContext dbContext,
+        [Service] IAuditService auditService,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
@@ -150,6 +177,7 @@ public class GriotMutation
         };
 
         dbContext.Projects.Add(project);
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Project.Created", "Project", project.Id, null, project, workspaceId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new ProjectType
@@ -172,6 +200,7 @@ public class GriotMutation
         Guid id,
         string name,
         [Service] GriotDbContext dbContext,
+        [Service] IAuditService auditService,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
@@ -184,8 +213,10 @@ public class GriotMutation
 
         await RequireWorkspaceAccessAsync(dbContext, project.WorkspaceId, claimsPrincipal, cancellationToken);
 
+        var oldName = project.Name;
         project.Name = name;
         project.UpdatedAt = DateTime.UtcNow;
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Project.Updated", "Project", project.Id, new { Name = oldName }, project, project.WorkspaceId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new ProjectType
@@ -207,6 +238,7 @@ public class GriotMutation
     public async Task<bool> DeleteProject(
         Guid id,
         [Service] GriotDbContext dbContext,
+        [Service] IAuditService auditService,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
@@ -237,6 +269,7 @@ public class GriotMutation
         Guid projectId,
         string name,
         [Service] GriotDbContext dbContext,
+        [Service] IAuditService auditService,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
@@ -258,6 +291,7 @@ public class GriotMutation
         };
 
         dbContext.Boards.Add(board);
+        QueueAudit(auditService, AuthenticatedUserId(claimsPrincipal), "Board.Created", "Board", board.Id, null, board, project.WorkspaceId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new BoardType
@@ -279,6 +313,7 @@ public class GriotMutation
         string? description,
         int priority,
         [Service] GriotDbContext dbContext,
+        [Service] IAuditService auditService,
         ClaimsPrincipal claimsPrincipal,
         CancellationToken cancellationToken)
     {
@@ -307,6 +342,7 @@ public class GriotMutation
         };
 
         dbContext.TaskItems.Add(task);
+        QueueAudit(auditService, userGuid, "Task.Created", "Task", task.Id, null, task, workspaceId);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new TaskItemType

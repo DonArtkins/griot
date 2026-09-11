@@ -33,4 +33,16 @@ public class DashboardController : DomainControllerBase
     [Route("api/logs/audit")]
     public async Task<IActionResult> GetAudit([FromQuery] Guid workspaceId, [FromQuery] string? entityType, [FromQuery] Guid? entityId, [FromQuery] int limit)
     { try { return Ok(await _domain.GetAuditLogsAsync(workspaceId, CurrentUserId(), entityType, entityId, limit)); } catch (DomainError e) { return Handle(e); } }
+
+    // Spec 20: FixStatus lifecycle writer (Owner/Admin). Destructive-ish log mutation —
+    // AI OBO calls are forbidden (spec 09 default-deny boundary; raw-log mutation is
+    // permanently closed to AI, spec 25 tiering comes later).
+    [HttpPatch]
+    [Route("api/logs/errors/{id}/fix-status")]
+    public async Task<IActionResult> UpdateErrorFixStatus(Guid id, [FromQuery] Guid workspaceId, [FromBody] Griot.Application.DTOs.UpdateErrorLogStatusRequest request)
+    {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
+        try { return Ok(await _domain.UpdateErrorLogStatusAsync(workspaceId, id, CurrentUserId(), request.FixStatus)); }
+        catch (DomainError e) { return Handle(e); }
+    }
 }

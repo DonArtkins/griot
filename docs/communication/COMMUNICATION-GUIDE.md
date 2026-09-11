@@ -27,44 +27,38 @@ no email.
 ```
 
 - **AuthService** is the only auto-caller today: `register` -> OTP `email_verify` email to
-  the user (`security` sender) + admin "New user registered" notice to
-  `Brevo:ContactToEmail` (`admin` sender); `/api/auth/otp/request` -> OTP email.
+  the user + admin "New user registered" notice to `Brevo:ContactToEmail`;
+  `/api/auth/otp/request` -> OTP email. All send via the single sender (§2).
 - **Redis gate before Brevo:** the OTP request route enforces `ratelimit:otp:request:{email}`
   3/15min; the API global rate limiter caps 100/min/caller. This slows abuse but does NOT
   make Brevo's 300/day cap mathematically unreachable — the cap is an operational budget
   to monitor, not a hard guarantee (see §4/§7).
 - Future task/notification/agent callers add calls via `IEmailService` - never Brevo directly.
 
-## 2. Sender identities (your `from:` question)
+## 2. Sender identity (single `from:` — 2026-09-11 user decision)
 
-Brevo rewrites unverified From-domains to their shared `<account-id>.brevosend.com`
-(your case: `info.donartkins.ke@12095245.brevosend.com`, account id `12095245`). To send
-as **your own brand** you must verify a custom domain in Brevo (free plan supports one
-sender-domain per account) and use addresses on it. Public domains (gmail.com) can't be
-verified. **Reply-to** is fully controlled per sender profile (empty = no reply expected).
+Every Griot email is sent from **one** Brevo-verified sender — `Brevo:FromEmail`, currently
+the Brevo dashboard-verified `info.donartkins.ke@gmail.com` (account id
+`12095245`) with display name `Brevo:FromName` (default `Griot`). The former six-profile
+map (`Brevo:Senders:Security/Admin/NoReply/Support/Info/Team`, e.g. `noreply@griot.app`) was
+**removed** because `griot.app` was never verified — Brevo rejected those sends (§7b).
+A per-call `message.ReplyTo` still controls the reply address (currently unused by callers).
 
-| SenderKey | From (after domain verified) | Reply-To | Used for |
+| Caller | From | Reply-To | Used for |
 |---|---|---|---|
-| `Security` | Griot Security <noreply@yourdomain> | *(none)* | OTP/verification codes (never reply) |
-| `NoReply` | Griot <noreply@yourdomain> | *(none)* | system/automated notices |
-| `Admin` | Griot <noreply@yourdomain> | support@yourdomain | ops "new user registered" |
-| `Support` | Griot Support <support@yourdomain> | support@yourdomain | support communications |
-| `Info` | Griot <info@yourdomain> | info@yourdomain | info/announcements |
-| `Team` | Griot Team <team@yourdomain> | team@yourdomain | team/feature updates |
+| All email (OTP/verify, admin notice, future notification email) | `Brevo:FromEmail` as `Brevo:FromName` | *(none unless `message.ReplyTo` set)* | everything |
 
-Config (git-ignored `appsettings.Local.json` under `Brevo:Senders:<Key>`) or env vars
-`BREVO_SENDER_<KEY>_EMAIL/_NAME/_REPLYTO`, e.g.:
+Config (git-ignored `appsettings.Local.json`) or env vars:
 ```jsonc
 "Brevo": {
   "ApiKey": "xkeysib-...",
-  "Senders": {
-    "Security": { "Email": "noreply@griot.app", "Name": "Griot Security", "ReplyTo": "" },
-    "Admin":    { "Email": "noreply@griot.app", "Name": "Griot",        "ReplyTo": "support@griot.app" }
-  }
+  "FromEmail": "info.donartkins.ke@gmail.com",  // the dashboard-verified sender
+  "FromName": "Griot",
+  "ContactToEmail": "info.donartkins.ke@gmail.com"           // admin new-user notice inbox
 }
 ```
-Email `SenderKey` is passed by the caller (AuthService sends OTP with `security`, admin
-notice with `admin`). Fallbacks: `Brevo:FromEmail/Brevo:FromName`, then "Griot".
+If a branded domain is verified later (§7b), ONLY `Brevo:FromEmail` changes — no code
+change and no per-feature senders. Callers never pass a From; the transport owns it.
 
 ## 3. Brevo dashboard setup (one-time)
 
@@ -98,9 +92,8 @@ multi-user event.
 | Var | Notes |
 |---|---|
 | `BREVO_API_KEY` (`Brevo:ApiKey`) | `xkeysib-...` -- REQUIRED for delivery |
-| `BREVO_FROM_EMAIL` (`Brevo:FromEmail`) | fallback sender when no `Senders` profile; must be verified |
-| `BREVO_FROM_NAME` (`Brevo:FromName`) | fallback display name (default `Griot`) |
-| `BREVO_SENDER_<KEY>_EMAIL/_NAME/_REPLYTO` | per-profile identities (KEY in SECURITY, ADMIN, NOREPLY, SUPPORT, INFO, TEAM) |
+| `BREVO_FROM_EMAIL` (`Brevo:FromEmail`) | THE single sender — must be the Brevo dashboard-verified sender (currently `info.donartkins.ke@gmail.com`) |
+| `BREVO_FROM_NAME` (`Brevo:FromName`) | display name (default `Griot`) |
 | `CONTACT_TO_EMAIL` (`Brevo:ContactToEmail`) | admin inbox for register notices (canonical `info.donartkins.ke@gmail.com`) |
 | `SITE_URL` | deployed origin, used in branded email footer links |
 
@@ -113,9 +106,8 @@ Backend env (Railway or compose -- `__` separator), NOT committed:
 | Var | Value |
 |---|---|
 | `BREVO_API_KEY` | `xkeysib-...` |
-| `BREVO_FROM_EMAIL` | verified sender (only if no `Brevo:Senders:*` profiles) |
-| `BREVO_SENDER_SECURITY_EMAIL` | `noreply@griot.app` |
-| `BREVO_SENDER_ADMIN_EMAIL` / `_NAME` / `_REPLYTO` | admin profile |
+| `BREVO_FROM_EMAIL` | the dashboard-verified sender, e.g. `info.donartkins.ke@gmail.com` |
+| `BREVO_FROM_NAME` | `Griot` |
 | `SITE_URL` | deployed app origin (used in email footers/links) |
 
 Frontend (Vercel): the **web app never calls Brevo** -- it only calls the .NET API
@@ -126,8 +118,9 @@ Frontend (Vercel): the **web app never calls Brevo** -- it only calls the .NET A
 - Every accepted/rejected send is logged with recipient + Brevo status/body in the API log.
 - `502` from `POST /api/auth/otp/request` -> check log line "Brevo rejected email to ...:
   4xx ..." and Brevo dashboard -> Transactional -> Emails.
-- Still seeing `brevosend.com`? The domain isn't verified yet (see 3) -- the profile
-  addresses exist but Brevo performs the rewrite until verification completes.
+- Still seeing `brevosend.com`? That IS the configured sender — the dashboard-verified
+  `<account-id>@<account-id>.brevosend.com` address (§2). A branded From requires domain
+  verification (§7b), which changes only `Brevo:FromEmail`.
 - In-app notifications (web push, mobile push, AI copilot messages) are the NEXT layer:
   they will ship on the Notifications domain + GraphQL (spec 16) without adding new channels.
 
@@ -135,17 +128,19 @@ Frontend (Vercel): the **web app never calls Brevo** -- it only calls the .NET A
 
 **Q: "Sending has been rejected because the sender you used noreply@griot.app is not valid. Validate your sender or authenticate your domain"**
 
-The From-domain (`griot.app`) is **not verified in Brevo**, so Brevo rejects the send at the API. Hosting the frontend on **`griot.vercel.app` does NOT fix it**: Vercel owns `*.vercel.app` (shared wildcard) — you cannot add Brevo's DKIM/SPF TXT records there, and it is not a domain you control.
+The From-domain (`griot.app`) is **not verified in Brevo**, so Brevo rejects the send at the API. Hosting the frontend on **`griot.vercel.app` does NOT fix it**: Vercel owns `*.vercel.app` (shared wildcard) — you cannot add Brevo's DKIM/SPF TXT records there, and it is not a domain you control. **This is why the `noreply@griot.app`-style profile senders were removed on 2026-09-11** — every email now sends from the single dashboard-verified sender.
 
-**The fix that works:** verify a domain **you own** (e.g. `griot.app` or `mail.griot.app`): Brevo dashboard → Senders → authenticate your domain → add the Brevo verification TXT plus the required DKIM and DMARC records shown for the domain → verify. Once verified, every sender on that domain (`noreply@...`, `security@...`, `support@...`, `team@...`, `info@...`) is valid and delivers as your brand (no more `brevosend.com` rewrite). Outbound-only sending needs no MX records; reply-to mailboxes such as support@... require inbound mail hosting and MX records. SPF is added only when Brevo requires it for this account setup. Confirm the domain shows authenticated before enabling production senders.
+**The sender that works (implemented):** `Brevo:FromEmail` = `info.donartkins.ke@gmail.com` — Brevo's dashboard-verified `<account-id>@<account-id>.brevosend.com` address (account id `12095245`). It delivers today to arbitrary recipients (300/day free cap); it just isn't the brand.
 
-**Best format for all Griot email** — one authenticated domain + the six identities (`Security`, `NoReply`, `Admin`, `Support`, `Info`, `Team`): `security` for OTP/2FA (reply-to none), `noreply` for system notices, `admin` for ops (reply-to support), plus the audience profiles. Keep `SITE_URL=https://griot.vercel.app` for email-footer links (separate concept; correct as-is). Interim until DNS is ready: Brevo's default sender (`<account-id>@<account-id>.brevosend.com`) still delivers — it just isn't your brand.
+**If a branded From is wanted later (optional):** verify a domain **you own** (e.g. `griot.app` or `mail.griot.app`): Brevo dashboard → Senders → authenticate your domain → add the Brevo verification TXT plus the required DKIM and DMARC records shown for the domain → verify → change ONLY `Brevo:FromEmail` to an address on that domain. Outbound-only sending needs no MX records; reply-to mailboxes (e.g. support@...) require inbound mail hosting and MX records. SPF is added only when Brevo requires it for this account setup. Confirm the domain shows authenticated before switching the sender.
+
+**Keep `SITE_URL=https://griot.vercel.app`** for email-footer links (separate concept; correct as-is).
 
 ## 8. Roadmap (email + in-app notifications)
 
 | Form | Channel | Status |
 |---|---|---|
-| Email OTP/admin | Brevo Email (multi-sender) | implemented (Email only) |
+| Email OTP/admin | Brevo Email (single verified sender) | implemented (Email only) |
 | SMS transactional | Brevo SMS | removed (user decision -- Email only) |
 | WhatsApp transactional | Brevo WhatsApp | removed (user decision -- Email only) |
 | Brevo Contacts sync + automations | Brevo Contacts/Workflows | removed (user decision -- Email only) |

@@ -84,9 +84,12 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 
 Outbound operator/user email is **Email only** (SMS/WhatsApp/Contacts/automations were
 removed from code in the same branch; contract-synced docs below). Every transactional
-email goes through `IEmailService` (`BrevoEmailService`, best-effort, never throws) with
-per-purpose sender identities (`Brevo:Senders:<Key>`: Security/OTP, Admin/ops, NoReply,
-Support, Info, Team — reply-to per profile; OTP = `security`, admin notice = `admin`).
+email goes through `IEmailService` (`BrevoEmailService`, best-effort, never throws) with a
+single Brevo-verified sender identity (`Brevo:FromEmail`/`BREVO_FROM_EMAIL` — required,
+dashboard-verified; `Brevo:FromName` default `Griot`; optional per-call `message.ReplyTo`;
+2026-09-11 user decision: the `Brevo:Senders:<Key>` profile map — Security/Admin/NoReply/
+Support/Info/Team, e.g. `noreply@griot.app` — was removed because `griot.app` is unverified;
+every email sends from the one dashboard-verified sender).
 Callers today: register (OTP `email_verify` to user + admin "New user registered" notice
 to `Brevo:ContactToEmail`) and `/api/auth/otp/request`. The OTP request route itself is
 rate-limited (3/15min/email via Redis) before Brevo, and the API global limiter caps

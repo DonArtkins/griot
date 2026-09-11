@@ -6,6 +6,7 @@ using Griot.Api.Auth;
 using Griot.Api.GraphQL;
 using Griot.Api.GraphQL.DataLoaders;
 using Griot.Api.Middleware;
+using Griot.Api.Services;
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
@@ -76,6 +77,23 @@ builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Notification
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ActivityLog>, GenericRepository<Griot.Domain.Entities.ActivityLog>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ErrorLog>, GenericRepository<Griot.Domain.Entities.ErrorLog>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.AuditLog>, GenericRepository<Griot.Domain.Entities.AuditLog>>();
+
+// Spec 20 audit pipeline: request correlation + audit-trail writer. IAuditService queues
+// AuditLogs/ActivityLogs rows into the same scoped change tracker as the domain mutation
+// (atomic commit with the caller's SaveChanges); IRequestContext is the API-layer
+// implementation of the application-layer correlation surface.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IRequestContext, RequestContext>();
+builder.Services.AddScoped<IAuditService, AuditService>();
+
+// Spec 20 telemetry delivery ("Bumped §1"): bounded best-effort ApiLogs/ErrorLogs queue
+// (capacity 1,000) with one background flusher + shutdown drain. Singleton = one shared
+// queue; also hosted so StopAsync flushes before the host exits. The 500 handler records
+// ErrorLogs through IErrorLogService (pipeline §2) — best-effort, never throws.
+builder.Services.AddSingleton<ITelemetryWriter, TelemetryWriter>();
+builder.Services.AddHostedService(sp => (TelemetryWriter)sp.GetRequiredService<ITelemetryWriter>());
+builder.Services.AddSingleton<IErrorLogService, ErrorLogService>();
+
 builder.Services.AddScoped<IDomainService, DomainService>();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -245,43 +263,85 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Spec 04: global exception handler — every response carries X-Request-Id,
-// including 500s. Must wrap the request-id middleware so TraceIdentifier is
-// available; the handler re-applies the header after the downstream pipeline
-// (e.g. the dev exception page) clears response headers.
+// Spec 20 ("Bumped §5"): dev-only observability seed so Postman folder 14 and the
+// dashboard have representative ApiLogs/AuditLogs data before real traffic. Production
+// seeds nothing (environment-gated inside the seeder; skipped once any row exists).
+await DevObservabilitySeeder.SeedAsync(app.Services);
+
+// Spec 20 (pipeline §2): global exception handler — every unhandled 5xx is persisted to
+// ErrorLogs (same RequestId as the X-Request-Id response header) and responded with an
+// RFC 7807 `application/problem+json` body ({ type, title, status, detail?, traceId,
+// requestId }). X-Request-Id is preserved on every response, including 500s. Dev keeps
+// the exception detail body; production sends the generic title only. DomainError-based
+// 4xx stays as-is (business errors are not exceptions) — only unhandled 5xx land in ErrorLogs.
 app.UseExceptionHandler(appBuilder =>
 {
     appBuilder.Run(async context =>
     {
+        var error = context.Features.Get<IExceptionHandlerPathFeature>()?.Error
+                    ?? context.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+        // Persist to ErrorLogs BEFORE the response is written; the service never throws
+        // and the queue write completes synchronously (best-effort delivery contract).
+        try
+        {
+            var errorLogs = context.RequestServices.GetRequiredService<IErrorLogService>();
+            var errorUserId = Guid.TryParse(
+                context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+                out var errorUid) ? errorUid : (Guid?)null;
+            await errorLogs.RecordAsync(
+                error ?? new InvalidOperationException("Unhandled exception with no handler feature."),
+                Guid.TryParse(context.TraceIdentifier, out var rid) ? rid : null,
+                errorUserId,
+                "Griot.Api").ConfigureAwait(false);
+        }
+        catch
+        {
+            // Never let telemetry recording fail the 500 response itself.
+        }
+
         context.Response.Headers["X-Request-Id"] = context.TraceIdentifier;
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        context.Response.ContentType = "text/plain";
+        context.Response.ContentType = "application/problem+json";
 
-        if (context.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment())
+        var problem = new Dictionary<string, object?>
         {
-            var error = context.Features.Get<IExceptionHandlerFeature>()?.Error
-                        ?? context.Features.Get<IExceptionHandlerPathFeature>()?.Error;
-            await context.Response.WriteAsync(error?.ToString() ?? "Internal Server Error");
-        }
-        else
-        {
-            await context.Response.WriteAsync("Internal Server Error");
-        }
+            ["type"] = "https://tools.ietf.org/html/rfc7231#section-6.6.1",
+            ["title"] = "Internal Server Error",
+            ["status"] = StatusCodes.Status500InternalServerError,
+            ["traceId"] = System.Diagnostics.Activity.Current?.Id ?? context.TraceIdentifier,
+            ["requestId"] = context.TraceIdentifier
+        };
+        if (context.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment() && error is not null)
+            problem["detail"] = error.Message; // Dev keeps the exception detail body.
+
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(problem)).ConfigureAwait(false);
     });
 });
 
-// Request-id middleware (spec 04: structured logging + stable request id on every response).
+// Request-id middleware (spec 04 + spec 20 ERD amendment): X-Request-Id is normalized to
+// a real GUID ("D" format) — assigned when absent, REPLACED when malformed — so
+// TraceIdentifier, the X-Request-Id response header and every observability row
+// (ApiLogs.RequestId, ErrorLogs.RequestId, AuditLogs.RequestId) carry the SAME value.
 app.Use(async (context, next) =>
 {
-    var requestId = context.Request.Headers["X-Request-Id"].FirstOrDefault();
-    if (string.IsNullOrWhiteSpace(requestId))
-        requestId = Guid.NewGuid().ToString("N");
+    var raw = context.Request.Headers["X-Request-Id"].FirstOrDefault();
+    var requestId = Guid.TryParse(raw, out var parsed)
+        ? parsed
+        : Guid.NewGuid();
 
-    context.Request.Headers["X-Request-Id"] = requestId;
-    context.TraceIdentifier = requestId;
-    context.Response.Headers["X-Request-Id"] = requestId;
+    context.Request.Headers["X-Request-Id"] = requestId.ToString("D");
+    context.TraceIdentifier = requestId.ToString("D");
+    context.Response.Headers["X-Request-Id"] = requestId.ToString("D");
     await next(context);
 });
+
+// Spec 20 (pipeline §1): ApiLogs capture starts HERE — registered after request-id and
+// BEFORE every early exit (401 challenge, 404, 429 limiter, HMAC 401, 500) — and
+// finalizes from response completion after authentication/exception handling, so rows
+// record the status the client actually saw and the resolved user (or null when auth
+// was never reached). Health checks are excluded. Fire-and-forget bounded write.
+app.UseMiddleware<ApiLoggingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("DefaultCorsPolicy");

@@ -87,9 +87,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 - **Schema migration `20260910082854_AddTaskItemBoardId`**: `TaskItems.BoardId` (NOT NULL, backfilled
   from `Columns.BoardId` via join). Lazy-loading proxies enabled (`Microsoft.EntityFrameworkCore.Proxies`);
   all navigation properties marked `virtual`.
-- **Communication layer (spec 12) final state = Email only**: multi-sender identities
-  (`Brevo:Senders:<Key>` Security/Admin/NoReply/Support/Info/Team with per-profile reply-to; OTP=`security`,
-  admin notice=`admin`) via `IEmailService`/`BrevoEmailService` — best-effort, never fails auth.
+- **Communication layer (spec 12) final state = Email only, single verified sender**: the
+  `Brevo:Senders:<Key>` profile map (Security/Admin/NoReply/Support/Info/Team with per-profile
+  reply-to; OTP=`security`, admin notice=`admin`) was REMOVED on 2026-09-11 (user decision —
+  `griot.app` unverified; `IEmailService`/`BrevoEmailService` now resolve the From solely from
+  `Brevo:FromEmail`/`Brevo:FromName` + optional per-call `ReplyTo`) — best-effort, never fails auth.
 - **Fresh local DB** (`Griot` @ `localhost,14333`): dropped + recreated from the 4 migrations; stored
   procedures re-applied (`usp_BulkUpdateTaskStatus`, `usp_GetDashboardSummary` from
   `Griot.Infrastructure/Sql/`).

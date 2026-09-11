@@ -118,8 +118,12 @@ Local secrets live in the git-ignored `backend/src/Griot.Api/appsettings.Local.j
 ```
 
 - **`Brevo:ApiKey` / `BREVO_API_KEY`** — Brevo SMTP/API key (`xkeysib-...`).
-- **`Brevo:FromEmail` / `BREVO_FROM_EMAIL`** — **REQUIRED.** Add + verify a sender in Brevo
-  (Settings → Senders) or verify a domain (Settings → Senders/Domains) and use an address on it.
+- **`Brevo:FromEmail` / `BREVO_FROM_EMAIL`** — **REQUIRED.** The single sender every email
+  uses; it must be verified in Brevo (Settings → Senders). Current value: the dashboard-verified
+  `info.donartkins.ke@gmail.com` (`<account-id>@<account-id>.brevosend.com`), which
+  delivers today. For a branded From, verify a domain you own (Settings → Senders/Domains) and
+  change ONLY this value — no code change and no per-feature senders (2026-09-11: the
+  `Brevo:Senders:<Key>` profile map was removed).
 - **`Brevo:FromName` / `BREVO_FROM_NAME`** — sender display name (default `Griot`).
 - **`Brevo:ContactToEmail` / `CONTACT_TO_EMAIL`** — inbox for the "New user registered" admin notice
   (default `info.donartkins.ke@gmail.com`).

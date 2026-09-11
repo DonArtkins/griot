@@ -51,17 +51,53 @@ public sealed class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
     private readonly IEmailService _emailService;
+    private readonly IAuditService _auditService;
 
     public AuthService(
         IAuthRepository authRepository,
         IConfiguration configuration,
         ILogger<AuthService> logger,
-        IEmailService emailService)
+        IEmailService emailService,
+        IAuditService auditService)
     {
         _authRepository = authRepository;
         _configuration = configuration;
         _logger = logger;
         _emailService = emailService;
+        _auditService = auditService;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Auth audit events (spec 20 pipeline §6)
+    // -----------------------------------------------------------------------------
+
+    /// <summary>
+    /// Spec 20 (pipeline §6): login success/fail, refresh rotate, replay-revoke and
+    /// logout each write one durable <c>AuditLogs</c> row (<c>Auth.Login</c>,
+    /// <c>Auth.Refresh</c>, <c>Auth.RefreshReplayRevoked</c>, <c>Auth.Logout</c>) so
+    /// security incidents are reconstructable. Auth writes go through
+    /// <see cref="IAuthRepository"/> (no shared tracked transaction), so the event
+    /// commits its own transaction via <see cref="IAuditService.RecordAsync"/> and is
+    /// BEST-EFFORT: if the durable audit store is unavailable the auth outcome stands
+    /// (a 401 must never become a 500) and the coverage gap is logged for the
+    /// observability pipeline (failure-isolation rule, "documented unavailable result").
+    /// No secrets: only outcomes, family ids and user ids — never tokens, hashes or codes.
+    /// </summary>
+    private async Task RecordAuthEventAsync(Guid actorId, string action, Guid entityId, object? after = null)
+    {
+        try
+        {
+            await _auditService.RecordAsync(new AuditEntry(
+                actorId, action, "User", entityId,
+                Before: null,
+                After: after is null ? null : AuditService.Snapshot(after))).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Spec-20 auth audit row could not be persisted (action={Action}, user={UserId}); the auth outcome is unaffected.",
+                action, actorId);
+        }
     }
 
     // -----------------------------------------------------------------------------
@@ -120,10 +156,17 @@ public sealed class AuthService : IAuthService
         if (user is null || !passwordValid)
         {
             _logger.LogWarning("Failed login attempt for {Email}", email);
+            if (user is not null)
+            {
+                // Attributable failure (account exists, credentials wrong). Unknown
+                // emails have no actor id to audit and are already rate-limited/logged.
+                await RecordAuthEventAsync(user.Id, "Auth.Login", user.Id, new { outcome = "failed" }).ConfigureAwait(false);
+            }
             return null;
         }
 
         _logger.LogInformation("User logged in: {UserId}", user.Id);
+        await RecordAuthEventAsync(user.Id, "Auth.Login", user.Id, new { outcome = "success" }).ConfigureAwait(false);
         return await IssueTokenPairAsync(user).ConfigureAwait(false);
     }
 
@@ -158,6 +201,9 @@ public sealed class AuthService : IAuthService
             await _authRepository
                 .RevokeFamilyAsync(storedToken.UserId, storedToken.FamilyId, DateTime.UtcNow)
                 .ConfigureAwait(false);
+            await RecordAuthEventAsync(
+                storedToken.UserId, "Auth.RefreshReplayRevoked", storedToken.UserId,
+                new { storedToken.FamilyId, outcome = "reuse-revoked" }).ConfigureAwait(false);
             return null;
         }
 
@@ -189,10 +235,16 @@ public sealed class AuthService : IAuthService
             await _authRepository
                 .RevokeFamilyAsync(storedToken.UserId, storedToken.FamilyId, DateTime.UtcNow)
                 .ConfigureAwait(false);
+            await RecordAuthEventAsync(
+                storedToken.UserId, "Auth.RefreshReplayRevoked", storedToken.UserId,
+                new { storedToken.FamilyId, outcome = "rotation-conflict-revoked" }).ConfigureAwait(false);
             return null;
         }
 
         _logger.LogInformation("Refresh token rotated for user {UserId}.", storedToken.UserId);
+        await RecordAuthEventAsync(
+            storedToken.UserId, "Auth.Refresh", storedToken.UserId,
+            new { storedToken.FamilyId, outcome = "rotated" }).ConfigureAwait(false);
 
         return BuildAuthResponse(storedToken.User, rawNewRefresh);
     }
@@ -219,6 +271,9 @@ public sealed class AuthService : IAuthService
         stored.RevokedAt = DateTime.UtcNow;
         await _authRepository.SaveChangesAsync().ConfigureAwait(false);
         _logger.LogInformation("Refresh token revoked for user {UserId}.", stored.UserId);
+        await RecordAuthEventAsync(
+            stored.UserId, "Auth.Logout", stored.UserId,
+            new { stored.FamilyId, outcome = "revoked" }).ConfigureAwait(false);
     }
 
     public async Task<OtpRequestResult?> RequestOtpAsync(OtpRequestRequest request, string? requestIp)
@@ -311,7 +366,7 @@ public sealed class AuthService : IAuthService
 
         var html = BrandedEmailTemplate.RenderOtpEmail(purpose, code, displayName, GetSiteUrl());
         var ok = await _emailService.SendAsync(
-            new EmailMessage(email, BrandedEmailTemplate.OtpSubject(purpose), html, SenderKey: "security"), ct).ConfigureAwait(false);
+            new EmailMessage(email, BrandedEmailTemplate.OtpSubject(purpose), html), ct).ConfigureAwait(false);
         if (!ok)
             _logger.LogWarning("OTP email delivery failed for {Email} purpose={Purpose}", email, purpose);
 
@@ -329,7 +384,7 @@ public sealed class AuthService : IAuthService
 
         var html = BrandedEmailTemplate.RenderNewAccountAdminEmail(user.DisplayName, user.Email, GetSiteUrl());
         await _emailService.SendAsync(
-            new EmailMessage(adminTo, "New user registered on Griot", html, SenderKey: "admin")).ConfigureAwait(false);
+            new EmailMessage(adminTo, "New user registered on Griot", html)).ConfigureAwait(false);
     }
 
     private static string GenerateOtpCode()

@@ -256,6 +256,9 @@ public class GriotDbContext : DbContext
         modelBuilder.Entity<ApiLog>(b =>
         {
             b.HasIndex(a => a.RequestId).IsUnique();
+            // ERD amendment (2026-09-11, spec 20): standalone CreatedAt index —
+            // spillover-window and distinct-user incident queries scan by time alone.
+            b.HasIndex(a => a.CreatedAt);
             b.HasIndex(a => new { a.UserId, a.CreatedAt });
             b.HasIndex(a => a.Path);
 
@@ -274,6 +277,9 @@ public class GriotDbContext : DbContext
         // ErrorLogs
         modelBuilder.Entity<ErrorLog>(b =>
         {
+            // ERD amendment (2026-09-11, spec 20): request-id lookup —
+            // "one request, one incident" recipe (LOGGING-AUDIT-REPORT §5).
+            b.HasIndex(e => e.RequestId);
             b.HasIndex(e => e.FixStatus).HasFilter("[FixStatus] IN ('Open', 'Investigating')");
             b.HasIndex(e => e.FixedAt);
 
@@ -297,6 +303,11 @@ public class GriotDbContext : DbContext
         {
             b.HasIndex(a => a.ActorId);
             b.HasIndex(a => a.ActivityId);
+            // ERD amendment (2026-09-11, spec 20): audit rows correlate to the
+            // producing request; "what a mutation changed" incident recipe scans
+            // entity + time (AuditLogs WHERE EntityType/EntityId ORDER BY CreatedAt).
+            b.HasIndex(a => a.RequestId);
+            b.HasIndex(a => new { a.EntityType, a.EntityId, a.CreatedAt });
 
             b.Property(a => a.Action).HasMaxLength(50);
             b.Property(a => a.EntityType).HasMaxLength(50);
