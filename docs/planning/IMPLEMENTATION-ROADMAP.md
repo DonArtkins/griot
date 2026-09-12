@@ -7,15 +7,13 @@
 `feature/backend/29-multi-tenant-foundation-organizations` (commit `9447e15`, pushed
 after explicit user approval; review-fix follow-up `52cb862` pushed 2026-09-12), backend 30
 is IMPLEMENTED on `feature/backend/30-auth-jwt-v2`, and backend 31 is IMPLEMENTED on
-`feature/backend/31-rbac-roles-custom-permissions`. Its §P0.5 order governs: 29 ✅ → 30 ✅ → 31 ✅ →
-32 → 33 → 34 → 35, then hardening — never older shorthand that goes directly from 20 to 18.
-**Specs 29 (✅ COMPLETE, all gates closed 2026-09-11) and 30 are ✅ IMPLEMENTED
-(2026-09-12: JWT v2 claims + org session + SuperAdmin bootstrap; build 0W/0E;
-164 passed / 8 skipped), and spec 31 is ✅ IMPLEMENTED (2026-09-12: RBAC v2 —
-seeded system roles + custom-role CRUD + force-revoke + server-side permission
-enforcement via `PermissionService`; build 0W/0E; 187 passed / 8 skipped / 0 failed).
-Backend 32 (Company onboarding & platform management, SuperAdmin) is next on its own
-feature branch.**
+`feature/backend/32-company-onboarding-lifecycle`. Its §P0.5 order governs: 29 ✅ → 30 ✅ → 31 ✅ →
+32 ✅ → 33 → 34 → 35, then hardening — never older shorthand that goes directly from 20 to 18.
+**Specs 29 (✅ COMPLETE, all gates closed 2026-09-11), 30 (✅ IMPLEMENTED 2026-09-12), and 31
+(✅ IMPLEMENTED + COMPLETE 2026-09-12) are done, and spec 32 is ✅ IMPLEMENTED (2026-09-12:
+SuperAdmin onboarding — transactional company seed + Brevo owner invite + invite-accept +
+suspend/reactivate + ownership transfer + plan metadata; build 0W/0E; 25 unit + 7 SQL
+spec-32 tests green). Backend 33 (Company offboarding) is next on its own feature branch.**
 See the [preflight report](BACKEND-29-PREFLIGHT-2026-09-11.md) for the pre-implementation
 snapshot.
 

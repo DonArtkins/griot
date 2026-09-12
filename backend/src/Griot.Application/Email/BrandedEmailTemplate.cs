@@ -168,4 +168,30 @@ public static class BrandedEmailTemplate
             "This notification was sent because a new user registered on Griot.",
             siteUrl);
     }
+
+    /// <summary>Subject line for the spec-32 company-owner onboarding invitation.</summary>
+    public static string OrganizationInviteSubject(string companyName)
+        => $"You're invited to own {companyName} on Griot";
+
+    /// <summary>Spec 32 — company-owner onboarding invitation (organization invite accept token).</summary>
+    public static string RenderOrganizationInviteEmail(
+        string companyName, string displayName, string role, string token, string siteUrl)
+    {
+        var intro = $"<p style=\"margin:0 0 22px;font-family:{FontSans};font-size:16px;line-height:1.6;color:{Muted};\">Hi {Esc(displayName)},</p>";
+        var tokenBox = $@"
+        <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"" border=""0"" style=""margin:0 0 16px;"">
+        <tr><td style=""background:{Soft};border:1px solid {Border};border-radius:18px;padding:18px 20px;"">
+            <p style=""margin:0 0 10px;font-family:{FontSans};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:{Muted};"">Invite token</p>
+            <p style=""margin:0;font-family:'Courier New', monospace;font-size:14px;font-weight:700;color:{Ink};word-break:break-all;"">{Esc(token)}</p>
+        </td></tr></table>";
+        var body = $@"{intro}<p style=""margin:0 0 22px;font-family:{FontSans};font-size:16px;line-height:1.6;color:{Muted};"">You have been invited to become the <strong style=""color:{Ink};"">{Esc(role)}</strong> of <strong style=""color:{Ink};"">{Esc(companyName)}</strong> on Griot. Provide the token below in Griot to accept the invitation and activate your company membership. It expires in 7 days.</p>{tokenBox}<p style=""margin:20px 0 0;font-family:{FontSans};font-size:14px;color:{Muted};"">If you didn&rsquo;t expect this invitation, ignore this email &mdash; an unused token expires on its own.</p>";
+        return Shell(
+            $"Company invitation — {companyName}",
+            "Company invitation",
+            $"Own {companyName}",
+            "Own",
+            body,
+            "This token accepts a company-owner invitation in Griot. Never share it.",
+            siteUrl);
+    }
 }

@@ -26,9 +26,11 @@ no email.
                               Brevo (api-key)
 ```
 
-- **AuthService** is the only auto-caller today: `register` -> OTP `email_verify` email to
-  the user + admin "New user registered" notice to `Brevo:ContactToEmail`;
-  `/api/auth/otp/request` -> OTP email. All send via the single sender (§2).
+- **Auto-callers today:** `AuthService` (`register` -> OTP `email_verify` email to the user +
+  admin "New user registered" notice to `Brevo:ContactToEmail`; `/api/auth/otp/request` -> OTP email)
+  and `OrganizationLifecycleService` (spec 32: `POST /api/organizations` -> branded company-owner
+  invite email via `RenderOrganizationInviteEmail`, sent best-effort AFTER the durable onboarding
+  commit). All send via the single sender (§2).
 - **Redis gate before Brevo:** the OTP request route enforces `ratelimit:otp:request:{email}`
   3/15min; the API global rate limiter caps 100/min/caller. This slows abuse but does NOT
   make Brevo's 300/day cap mathematically unreachable — the cap is an operational budget

@@ -123,8 +123,20 @@ operator, exported as `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.p
 Spec 30 (Auth & JWT v2) is IMPLEMENTED 2026-09-12 on its own feature branch
 (`feature/backend/30-auth-jwt-v2`: TokenService v2 claims + org session routes + stateless
 refresh pin + key policy/rotation + SuperAdmin bootstrap; build 0W/0E; 164 passed / 8 skipped).
-Next: spec 32 (Company onboarding & platform management). Roadmap §P0.5
-(29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 before hardening)
+Spec 31 (RBAC v2) is IMPLEMENTED + COMPLETE 2026-09-12 on its own feature branch
+(`feature/backend/31-rbac-roles-custom-permissions`: seeded system roles, custom-role CRUD,
+member role assignment, force-revoke, server-side `PermissionService` enforcement; build 0W/0E).
+Spec 32 (Company onboarding & platform management) is IMPLEMENTED 2026-09-12 on its own
+feature branch (`feature/backend/32-company-onboarding-lifecycle`: one-transaction onboarding
+seed — org + owner Invited membership + 5 system roles + default workspace + lifecycle + audit —
+best-effort branded Brevo owner invite + `POST /api/organizations/invites/{token}/accept`
+(Invited → Active under an org-row-lock re-check), suspend/reactivate (writes 403
+`org_suspended` via the spec-29 TenantGuard; reads/auth preserved), transfer-ownership
+(previous owner → Admin), plan metadata, paginated company list; build 0W/0E;
+25 unit + 7 SQL spec-32 tests green; full `GRIOT_RUN_SQL_TESTS=1` suite 244 passed /
+0 skipped / 0 failed).
+Next: spec 33 (Company offboarding) after user approval. Roadmap §P0.5
+(29 ✅ → 30 ✅ → 31 ✅ → 32 ✅ → 33 → 34 → 35 before hardening)
 supersedes older next-feature statements below. Read the
 [preflight findings and plan](../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md) and tracker.
 
