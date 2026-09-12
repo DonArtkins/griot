@@ -7,9 +7,11 @@ Outbound messaging is **Email only** (SMS/WhatsApp/Contacts/automations were rem
 code in the same branch — user decision: only transactional Email is needed). All email
 runs through **Brevo** (`POST /v3/smtp/email`, one account/API key — 300 emails/day free
 cap). Delivery is **best-effort for registration AND organization onboarding (spec 32)**:
-register and org-onboarding owner-invite sends are fire-and-forget with structured logging
-and never fail their 201 responses — in onboarding the owner invite is sent AFTER the durable
-commit, so a Brevo delivery failure must NOT roll back or invalidate the committed onboarding.
+register and org-onboarding owner-invite sends are **awaited best-effort post-commit sends**:
+the caller awaits `IEmailService.SendAsync` AFTER the durable commit; the sender contract
+never throws (it returns `false` on Brevo reject/outage) and the result is structured-logged,
+so a delivery failure never fails the 201 response — in onboarding this means a Brevo
+failure must NOT roll back or invalidate the committed onboarding.
 `/api/auth/otp/request` is the
 one caller that surfaces delivery failure (HTTP 502 on Brevo reject/outage). Login sends
 no email.

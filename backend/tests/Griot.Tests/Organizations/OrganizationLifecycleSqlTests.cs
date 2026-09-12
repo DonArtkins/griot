@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -172,8 +173,10 @@ public sealed class OrganizationLifecycleSqlTests : IClassFixture<SqlAuthFixture
         await using var first = _fixture.CreateContext();
         await using var second = _fixture.CreateContext();
         var request = Request(slug, owner.Email);
-        var successes = new List<CreateOrganizationResponse>();
-        var conflicts = new List<DomainError>();
+        // ConcurrentBag: Task.WhenAll continuations run on thread-pool threads, so
+        // both RunAsync bodies may Add concurrently — List<T> is not thread-safe.
+        var successes = new ConcurrentBag<CreateOrganizationResponse>();
+        var conflicts = new ConcurrentBag<DomainError>();
 
         async Task RunAsync(OrganizationLifecycleService service)
         {
@@ -192,8 +195,8 @@ public sealed class OrganizationLifecycleSqlTests : IClassFixture<SqlAuthFixture
         // Exactly one onboarding wins; the loser conflicts on the serialized slug.
         Assert.Single(successes);
         Assert.Single(conflicts);
-        Assert.Equal(DomainErrorKind.Conflict, conflicts[0].Kind);
-        Assert.Equal(successes[0].Organization.Slug, slug);
+        Assert.Equal(DomainErrorKind.Conflict, conflicts.Single().Kind);
+        Assert.Equal(successes.Single().Organization.Slug, slug);
         await using var verify = _fixture.CreateContext();
         Assert.Equal(1, await verify.Organizations.IgnoreQueryFilters().CountAsync(o => o.Slug == slug));
     }
