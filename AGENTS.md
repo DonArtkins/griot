@@ -35,7 +35,7 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Where We Are — Implementation Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-Backend is in **P0/P0.5**: specs 01–09, 12 (Email-only), 13–17, 20 (logging), and 29–30 are delivered. **Spec 31 (RBAC v2) is the current feature**, undergoing completion and verification on `feature/backend/31-rbac-roles-custom-permissions`. **Spec 32 is next after 31 passes its gates and the user approves the transition.**
+Backend is in **P0/P0.5**: specs 01–09, 12 (Email-only), 13–17, 20 (logging), and 29–32 are delivered. **Spec 32 (Company onboarding & platform management) is ✅ IMPLEMENTED + COMPLETE (2026-09-12) on `feature/backend/32-company-onboarding-lifecycle`** — transactional company seed + Brevo owner invite + invite-accept + suspend/reactivate + ownership transfer + plan metadata (build 0W/0E; full SQL-enabled suite 244 passed / 0 skipped / 0 failed). **Spec 33 (Company offboarding) is next after the user approves the transition.**
 
 Remaining backend order: **32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10**, with revisions 36–51 governed by roadmap §P0.5. Then P1 Web, P2 AI/Copilot, P3 Mobile, P4 Infra, P5 MCP, and P6 QA.
 

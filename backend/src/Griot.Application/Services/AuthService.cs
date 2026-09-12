@@ -315,11 +315,6 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
-        var session = await ResolveSessionAsync(
-            storedToken.User,
-            requestedOrganizationId ?? await AutoPickOrganizationIdAsync(storedToken.User).ConfigureAwait(false))
-            .ConfigureAwait(false);
-
         _logger.LogInformation("Refresh token rotated for user {UserId}.", storedToken.UserId);
         await RecordAuthEventAsync(
             storedToken.UserId, "Auth.Refresh", storedToken.UserId,

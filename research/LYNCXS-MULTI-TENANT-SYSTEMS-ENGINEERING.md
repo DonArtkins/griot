@@ -168,6 +168,17 @@ Onboarding has two very different sub-problems that are easy to conflate: **tena
 
 ### 4.1 Tenant provisioning — the first-run sequence
 
+> **Griot delivery note (2026-09-12, backend 32):** this sequence now ships in Griot.
+> `POST /api/organizations` (SuperAdmin-only) runs the provisioning step as ONE SQL
+> transaction — `Organizations` row + the owner's `OrganizationMembers` row (Role
+> Owner, status Invited) + the five seeded system `Roles` + the default `Workspaces`
+> row + an `OrganizationLifecycleEvents(Onboarded)` row + the AuditLogs row — serialized
+> on the unique Slug key; the branded Brevo owner invite (7-day token) is best-effort
+> AFTER the durable commit, and `POST /api/organizations/invites/{token}/accept` flips
+> the membership Invited → Active (the invited, authenticated account only). Suspend/
+> reactivate/transfer-ownership/plan ride the same transaction pattern (`OrganizationStatus`
+> maps 1:1 to the `TenantStatus` state machine below; offboarding stays backend 33).
+
 ```typescript
 // Synthesized from OWASP Multi-Tenant Security Cheat Sheet §7 and
 // LPIP's Merchant onboarding_status state machine (draft→submitted→

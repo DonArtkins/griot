@@ -54,6 +54,8 @@ builder.Services.AddSingleton<ITokenService, TokenService>();
 // Spec 31: server-side permission resolution + role engine.
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
+// Spec 32: company onboarding & platform management (SuperAdmin surface).
+builder.Services.AddScoped<IOrganizationLifecycleService, OrganizationLifecycleService>();
 builder.Services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
@@ -68,6 +70,8 @@ builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+// Spec 32: platform lifecycle persistence (IgnoreQueryFilters + explicit org targeting).
+builder.Services.AddScoped<IOrganizationLifecycleRepository, OrganizationLifecycleRepository>();
 
 // Generic repositories (specs 13-17): one per domain entity, injected into DomainService.
 // Spec 29 tenancy: ITenantContext (AsyncLocal scope by default) + the generic
