@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (roadmap §P0.5 first: backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35, then 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10). Kit written (12 specs). **Not started.** 9 of 12 specs depend only on backend specs that are all ✅ (04–08, 13–17, 07 auth). Specs 10–12 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
+**Phase P1** in `docs/planning/IMPLEMENTATION-ROADMAP.md` — the next layer after backend P0 closes (roadmap §P0.5 first: backend 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35, then 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10). Kit written (16 specs). **Not started.** Core API prerequisites are implemented; tenant lifecycle, reports, and notification dependencies remain pending. Specs 10–12 are deliberately held out of P1: 10 needs ai 01–02; 11 (AI Reports & Audit Center — award-grade UX) needs ai 06–07 + backend 24 (see P2 in the roadmap).
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|
@@ -17,20 +17,27 @@
 | 09 | Notifications & activity feed UI | Pending | w 07, backend 04–06 ✅ |
 | 10 | Copilot panel integration | Pending (**P2**) | w 05+07, **ai 01–02** |
 | 11 | AI Reports & Audit Center (award-grade UX) | Pending (**P2**) | w 10, **ai 06–07 + backend 24** |
-
 | 12 | Persistent AI workspace, charts, review cards | Pending | ai 09, backend 25/26/27; ai 10–12 integrate later |
-| 13 | Company admin console (members/custom roles/all-projects/settings) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 07; backend 29/30/31 (PLANNED) |
-| 14 | SuperAdmin platform console (companies/onboard/offboard/lifecycle) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05; backend 29/30/32/33 (PLANNED) |
-| 15 | Client portal UI (progress/feedback/handoff acceptance/maintenance) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 16; backend 29/30/34/35 (PLANNED) |
-| 16 | Project handoff & maintenance UI (PM side) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 07, 15; backend 29/30/35, blob 11, ai 14 (PLANNED) |
+| 13 | Company admin console (members/custom roles/all-projects/settings) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 07; backend 29/30/31 ✅ |
+| 14 | SuperAdmin platform console (companies/onboard/offboard/lifecycle) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05; backend 29/30 ✅; 32/33 PLANNED |
+| 15 | Client portal UI (progress/feedback/handoff acceptance/maintenance) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 16; backend 29/30 ✅; 34/35 PLANNED |
+| 16 | Project handoff & maintenance UI (PM side) | 📋 Spec written (PLANNED) — multi-tenant wave | w 03–05, 07, 15; backend 29/30 ✅; 35, blob 11, ai 14 PLANNED |
 
-## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P1–P2)
+## Next Steps
+
+1. Wait for backend P0/P0.5 completion and approval to begin Web.
+2. Start `feature/web/01-react-setup-vite` with spec 01 only.
+3. Run `npm run lint && npm run typecheck && npm test && npm run build` before completion.
+
+### Roadmap order
 
 `web 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09` → *(AI hop: ai 01 → ai 02)* → `web 10` → *(ai 06 → ai 07, after backend 24)* → `web 11`
 
-**Why web is the next layer after backend:** it is the bootcamp's next graded week (Week 3), the primary demo surface, and every dependency is already green. **The web10↔ai02 cycle is resolved in the roadmap:** ai 02's spec references web 10 as its *consumer* (contract-design dependency, not build-order) — build ai 01–02 first, then web 10, then ai 04's propose-before-write wraps the panel's approval cards.
+**Why web is the next layer after backend:** it is the bootcamp's next graded week (Week 3), the primary demo surface, and P0 must close before this phase begins. **The web10↔ai02 cycle is resolved in the roadmap:** ai 02's spec references web 10 as its *consumer* (contract-design dependency, not build-order) — build ai 01–02 first, then web 10, then ai 04's propose-before-write wraps the panel's approval cards.
 
 ## Session Notes
+
+- **2026-09-12 (tracker repair)** — Corrected current counts, table structure, and prerequisite status; kept historical checkpoints inside Session Notes. Backend 29–31 are implemented; backend 32 is next. This system's features remain pending; tenant extensions follow their owning specs' dependencies.
 
 - **2026-09-11 (multi-tenant wave sync)** — Canonical contract read (`docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`): tenant = Organization (Company), pool model, JWT v2 (`name`/`org`/`role`/`perms`), opaque refresh, `POST /api/auth/select-organization`. Added web specs 13–16 (company admin console · SuperAdmin platform console · client portal · PM handoff/maintenance) as **PLANNED**; appended "Multi-Tenant Update (2026-09-11 — PLANNED)" to specs 01–12; `web/AGENTS.md` + `web/project-kit/context/integration-contracts.md` (new) carry the JWT v2 / select-organization / new-route contract. No production code; no existing statuses changed; contract-sync run pending (planning-only docs).
 
@@ -41,11 +48,11 @@
 - **2026-09-07** — Design system landed: `src/theme.ts` implemented from the inspo-synthesized master tokens (`docs/design/MASTER-DESIGN-SYSTEM.md` → root `ui-tokens.md`); design-system.md + MUI skill 0.2.0 + spec 02 synced (light canvas, chrome-ink CTA, severity maps incl. Todo/Backlog). Theme is implementation-ready ahead of spec 01 scaffold; zero hardcoded colors outside the token module is now enforced by `theme.griot`.
 
 
-## Audit synchronization — 2026-09-11
+### Audit synchronization — 2026-09-11 (historical)
 
-Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
-## CodeRabbit follow-up — 2026-09-11
+### CodeRabbit follow-up — 2026-09-11 (historical)
 
 Review corrections are documented in `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`: backend 24/28 schema proposals, backend 27 incident/delivery boundaries, notification availability and final documentation dependencies are synchronized. AI 01 pins the existing Trigger.dev v4 decision to 4.5.16. Future features remain PLANNED. The user authorized this one-time review-batch grouping and commit/push on 2026-09-11 ("COMMIT AND PUSH TO GITHUB" in response to the exception request). Build, 108 SQL-enabled tests, API health, clean npm install/imports and contract-sync passed; details are recorded in the ledger. Future features remain on separate branches/PRs; backend 20 starts only after backend 09 review approval.
 

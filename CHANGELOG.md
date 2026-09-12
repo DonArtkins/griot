@@ -4,6 +4,18 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 
 ## [Unreleased]
 
+### Backend 31 — RBAC v2: roles & custom permissions (2026-09-12, `feature/backend/31-rbac-roles-custom-permissions`)
+
+- **Feature delivered:** five seeded system roles per organization (Owner/Admin/ProjectManager/Member/Client; idempotent startup backfill + `EnsureSystemRolesAsync` for spec 32 onboarding); custom-role CRUD limited to the fixed permission catalogue (no escalation — callers cannot grant keys they don't hold; duplicate-name 409; cross-tenant/system-role writes 403); member role assignment (`Admin`/`custom:{roleId}`; self-change 403; Owner demotion requires an Owner); force-revoke with `RevokeAllFamiliesAsync` + actual family count; custom-role DELETE cascade → system `Member` with inactive-member/invitation fallback; `[RequirePermission("perm:{key}")]` REST attribute + GraphQL `perm:` policies enforced server-side via `PermissionService` (DB truth, SuperAdmin-first, fail-closed).
+- **Review hardening (same branch):** role mutations run in real transactions (audit/revoke failure rolls back role changes + member demotions); GraphQL authorization honors `[RequirePermission]` policies; `RoleSelection.EffectivePerms` cross-tenant invariant (custom role must belong to the member's organization and match `CustomRoleId`); `RoleSelection` hardening keeps unknown persisted permission keys out of JWTs.
+- **Test completion (212 total):** 23 `RoleServiceTests` unit tests + 5 SQL-gated `RoleSqlTests` HTTP-integration tests (stale-claim rejection, cross-tenant write rejection, partial/concurrent seeding, delete-cascade rollback, force-revoke family counting). **Repairs:** `RoleSelection_SuperAdminWins_AndCustomRoleFormats` fixture now satisfies the cross-tenant invariant (`CustomRole.OrganizationId` set); `ObservabilityPruneSqlTests` now seeds a real `Organizations` row before the workspace (spec-29 FK on `Workspaces.OrganizationId`).
+- **Verification:** `dotnet build` 0W/0E; full suite `GRIOT_RUN_SQL_TESTS=1` **212 passed / 0 skipped / 0 failed**; `/health` Healthy; `check-contract-sync.py` exit 0. Spec 31 acceptance criteria all checked with test evidence.
+
+### Backend 30/31 review hardening (2026-09-12, `feature/backend/31-rbac-roles-custom-permissions`)
+
+- select-organization requires + validates the presented refresh token before minting (CWE-613); family revoke + replacement insert are atomic (`SwapRefreshFamilyAsync`); refresh resolves the session before rotation commits; SuperAdmin sessions always carry full catalogue perms; `EffectivePerms` filters unknown custom-role keys; `JWT__Key_Previous` policy-validated at startup; shared `org_suspended` write gate for inactive orgs (middleware-stamped status + `TenantGuard`); docs synced (auth-contract, README, Postman, research). Progress tracker restored to the canonical format (H1 first).
+
+
 ### Backend 30 — Auth & JWT v2 (2026-09-12, `feature/backend/30-auth-jwt-v2`)
 
 - Access tokens carry `name`/`org`/`role`/`perms` (HS256 15-min unchanged; issued only by `TokenService`); `GET /api/auth/organizations` + `POST /api/auth/select-organization` (404/403 fail-closed; presented family revoked after mint); stateless refresh org pin (`RefreshRequest.OrganizationId`); startup key-policy fail-fast (32-byte dev / 64-byte prod) + `JWT__Key_Previous` rotation window; idempotent SuperAdmin bootstrap (audit-logged). Refresh tokens stay opaque 64-hex. Fixes (sync rule): literal-vs-mapped `role`-claim reads; dead `RevokeAllFamiliesAsync` removed; contract wording aligned to stateless sessions. — 2026-09-11 (Backend spec 20: observability & logging pipeline)

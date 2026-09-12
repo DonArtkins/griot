@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics;
 using Griot.Api.Auth;
+using Griot.Api.Authorization;
 using Griot.Api.GraphQL;
 using Griot.Api.GraphQL.DataLoaders;
 using Griot.Api.Middleware;
@@ -50,6 +51,9 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 // Spec 30: JWT v2 claim builder/key policy — singleton, stateless.
 builder.Services.AddSingleton<ITokenService, TokenService>();
+// Spec 31: server-side permission resolution + role engine.
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
@@ -63,6 +67,7 @@ builder.Services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 
 // Generic repositories (specs 13-17): one per domain entity, injected into DomainService.
 // Spec 29 tenancy: ITenantContext (AsyncLocal scope by default) + the generic
@@ -87,6 +92,7 @@ builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Notification
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ActivityLog>, GenericRepository<Griot.Domain.Entities.ActivityLog>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ErrorLog>, GenericRepository<Griot.Domain.Entities.ErrorLog>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.AuditLog>, GenericRepository<Griot.Domain.Entities.AuditLog>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ApiLog>, GenericRepository<Griot.Domain.Entities.ApiLog>>();
 
 // Spec 20 audit pipeline: request correlation + audit-trail writer. IAuditService queues
 // AuditLogs/ActivityLogs rows into the same scoped change tracker as the domain mutation
@@ -204,6 +210,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         // Resolve the finalized configuration used by TokenService, including host overrides.
+        // CodeRabbit fix: one shared environment policy floor — 32-byte dev / 64-byte
+        // production — applied to EVERY configured signing key (current + previous).
+        var minimumKeyBytes = builder.Environment.IsProduction() ? 64 : 32;
         var jwtKey = builder.Configuration["JWT:Key"];
         if (string.IsNullOrWhiteSpace(jwtKey))
             throw new InvalidOperationException("JWT:Key is not configured (set JWT__Key).");
@@ -218,13 +227,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         // their normal 15-minute expiry; every re-issue (login/refresh/org switch)
         // signs with the new key, which retires the old one. Runbook:
         // docs/api/auth-contract.md (JWT v2 section).
+        // CodeRabbit fix: EVERY configured signing key must satisfy the applicable
+        // environment minimum (32-byte dev / 64-byte production) — a nonblank previous
+        // key that fails the policy ABORTS startup instead of being silently omitted
+        // (a silently-omitted key would 401 every old token for the whole window).
         var validationKeys = new List<SecurityKey> { new SymmetricSecurityKey(jwtKeyBytes) };
         var previousKey = builder.Configuration["JWT:Key_Previous"];
         if (!string.IsNullOrWhiteSpace(previousKey))
         {
             var previousBytes = Encoding.UTF8.GetBytes(previousKey);
-            if (previousBytes.Length >= 32)
-                validationKeys.Add(new SymmetricSecurityKey(previousBytes));
+            if (previousBytes.Length < minimumKeyBytes)
+                throw new InvalidOperationException(
+                    $"JWT:Key_Previous must also be at least {minimumKeyBytes} UTF-8 bytes ({(builder.Environment.IsProduction() ? "512-bit production policy" : "HS256 minimum")}); configured previous key is {previousBytes.Length} bytes.");
+            validationKeys.Add(new SymmetricSecurityKey(previousBytes));
         }
 
         options.TokenValidationParameters = new TokenValidationParameters
@@ -268,7 +283,9 @@ builder.Services.Configure<AuthenticationOptions>(options =>
     options.DefaultChallengeScheme    = "MultiAuth";
 });
 
-builder.Services.AddAuthorization();
+// Spec 31: one policy per catalogue key ("perm:{key}") evaluated by
+// PermissionAuthorizationHandler via IPermissionService (server-side, DB truth).
+builder.Services.AddAuthorizationBuilder().AddPermissionPolicies(builder.Configuration);
 
 // Rate limiting (per-client fixed window; refined in spec 06 auth and bulk paths).
 builder.Services.AddRateLimiter(options =>
@@ -325,6 +342,24 @@ try
 catch (Exception ex)
 {
     bootstrapLogger.LogWarning(ex, "Spec 30 SuperAdmin bootstrap failed at startup; the API continues.");
+}
+
+// Spec 31 (RBAC v2): idempotent system-role backfill — every Active organization gets
+// its five seeded system roles (IsSystem=true) exactly once. The platform path runs
+// OUTSIDE any request tenant scope (IRoleRepository bypasses the strict tenant filters
+// for the backfill explicitly); a failure is logged and never aborts startup.
+using (var backfillScope = app.Services.CreateScope())
+try
+{
+    var roleService = backfillScope.ServiceProvider.GetRequiredService<IRoleService>();
+    var created = await roleService.BackfillSystemRolesAsync().ConfigureAwait(false);
+    if (created > 0)
+        bootstrapLogger.LogInformation(
+            "Spec 31 system-role backfill applied ({Count} role rows created).", created);
+}
+catch (Exception ex)
+{
+    bootstrapLogger.LogWarning(ex, "Spec 31 system-role backfill failed at startup; the API continues.");
 }
 
 // Spec 20 (pipeline §2): global exception handler — every unhandled 5xx is persisted to

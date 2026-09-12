@@ -2,8 +2,10 @@
 ## Building Multi-Tenant Platforms: Tenancy, Onboarding, Offboarding, Auth, RBAC, and Payments Across Web, Mobile, MCP, and AI Surfaces
 
 **CLASSIFICATION: HIGHLY CLASSIFIED PRIVATE PROPERTY OF LYNCXS INDUSTRIES**
-**Status**: NEW RESEARCH VOLUME — v1.0.0 (2026-09-11)
-**Companion documents**: `LYNCXS-AUTH-SERVICES-GUIDE.md` (Vol I–II), `LYNCXS-WORLD-CLASS-SOFTWARE-ENGINEERING-ARCHITECTURE(WCSEA).md` §9, `LYNCXS-PAYMENT-INFRASTRUCTURE-PLATFORM.md` (LPIP), `LYNCXS-PAYMENT-INTEGRATION-MASTER.md`, `LYNCXS-WORLD-CLASS-PRODUCTION-SECURITY-ENGINEERING(WCPSE).md`, `LYNCXS-ORM-DATA-ACCESS-ENGINEERING.md`, `LYNCXS-GLOBAL-REGULATORY&COMPLIANCE-ENGINEERING.md`
+**Status**: NEW RESEARCH VOLUME — v1.1.0 (2026-09-12)
+**Companion documents**: `LYNCXS-AUTH-SERVICES-GUIDE.md` (Vol I–II), `LYNCXS-WORLD-CLASS-SOFTWARE-ENGINEERING-ARCHITECTURE(WCSEA).md` §9, `LYNCXS-PAYMENT-INFRASTRUCTURE-PLATFORM.md` (LPIP), `LYNCXS-PAYMENT-INTEGRATION-MASTER.md`, `LYNCXS-WORLD-CLASS-PRODUCTION-SECURITY-ENGINEERING(WCPSE).md`, `LYNCXS-ORM-DATA-ACCESS-ENGINEERING.md`, `LYNCXS-GLOBAL-REGULATORY&COMPLIANCE-ENGINEERING.md`, `LYNCXS-AI-SYSTEMS-ENGINEERING.md`
+
+**v1.1.0 change note**: Added §5.6.1–5.7 (MCP tool-registry RBAC at scale, multi-agent orchestration within tenant boundaries, tenant-scoped AI memory taxonomy, AI-specific threat additions), drawing on `LYNCXS-AI-SYSTEMS-ENGINEERING.md`'s Tool Engineering, Multi-Agent Systems, Memory Engineering, and AI Security sections. Renumbered former §5.7 (Cross-surface summary) to §5.8. No prior sections modified or removed.
 
 ---
 
@@ -448,7 +450,66 @@ async function executeAgentTool(agentToken: string, toolName: string, input: unk
 
 **Enterprise-Managed Authorization (EMA)** is the newest development worth tracking here: <cite index="23-1">in July 2026 MCP had its biggest update since launch, and with it Enterprise-Managed Authorization went from experimental to production-grade</cite> — the direction the protocol is heading is treating agents as first-class organizational entities with their own governed identity lifecycle, not as an extension of a human's session. For a multi-tenant product, this means the same lifecycle discipline you apply to human members (§4, §8) will increasingly need to apply to agent identities too: agents get provisioned, get scoped roles, and get deprovisioned when a tenant offboards or revokes a specific integration — not just when a human's session expires.
 
-### 5.7 Cross-surface summary
+### 5.6.1 MCP at scale — the tool registry as an RBAC boundary
+
+MCP has moved from novelty to default infrastructure faster than almost any protocol in recent memory: by mid-2026 it was seeing over 97 million monthly SDK downloads across languages, with more than 10,000 active MCP servers in production use, native support from every major model provider, and governance handed to the Agentic AI Foundation under the Linux Foundation as of December 2025 — the "any AI connects to any tool via one standard" framing has become a reasonably accurate description of the ecosystem, not just marketing language. That scale is exactly why a multi-tenant product exposing MCP tools needs the tool registry itself to be a first-class RBAC boundary, not an afterthought bolted onto individual tool handlers.
+
+The production shape that holds up at real scale, drawn from Pinterest's own MCP deployment (reported April 2026: roughly 66,000 monthly tool invocations across 844 active users, saving an estimated 7,000 engineering hours a month) — domain-specific MCP servers rather than one monolithic server, a central registry for discovery, and mandatory security/legal/privacy/compliance review before any new server reaches production. Translated into the multi-tenant vocabulary from §5.6:
+
+```typescript
+// A tool registry lookup is itself a tenant + role scoped operation —
+// an agent should discover only the tools its capability grant permits,
+// not enumerate every tool the platform has ever registered.
+async function listAvailableTools(agentToken: string): Promise<ToolDescriptor[]> {
+  const grant = await verifyAgentJWT(agentToken);
+  return TOOL_REGISTRY.filter(tool =>
+    grant.capabilities.includes(tool.requiredScope) &&
+    tool.availableToOrgTier.includes(grant.organizationTier)
+  );
+}
+```
+
+Five tool-engineering disciplines apply directly to a multi-tenant MCP surface, independent of the underlying business domain:
+
+1. **Idempotency.** An agent may retry a call after a timeout without knowing whether the first attempt succeeded — a tool that isn't idempotent turns a retry into a duplicate side effect (a duplicate refund, a duplicate task). Apply the same `Idempotency-Key` discipline from §7.7's payment-API contract to any mutating MCP tool, not just payment endpoints.
+2. **Confirmation gates on destructive or high-stakes tools.** Deleting records, sending bulk communications, or moving money should require human-in-the-loop confirmation by default — this is the same `requireUserConfirmation` constraint already shown in §5.6's capability-grant example, and it is worth encoding as a property of the *tool definition* itself (so a new destructive tool is confirmation-gated by default) rather than something each integrator has to remember to add.
+3. **Structured, schema-validated responses in both directions.** Validate tool *input* against a schema before it reaches any handler, and validate tool *output* against an expected schema before an orchestrating agent acts on it — an agent parsing free-text tool output is a reliability problem even before it's a security one.
+4. **Tool-level RBAC enforced at the MCP server, not inferred by the model.** Not every AI role should see every tool; a customer-support agent and a finance agent calling into the same multi-tenant platform should be issued different capability grants, each scoped to the organization they're acting for and the specific tool set their role needs — this is the same allowlist principle from §5.6, applied across an entire fleet of role-specific agents rather than one agent.
+5. **Discoverability over pre-loading.** In a platform with a large tool surface, an agent should query the registry for what it can currently do rather than having every tool definition force-loaded into context regardless of relevance — this keeps context budgets sane and keeps the capability boundary enforced server-side rather than by convention.
+
+### 5.6.2 Multi-agent orchestration inside a tenant boundary
+
+Products mature enough to run multiple specialized agents — a support agent, a finance agent, an operations agent, each with its own tool set — need the orchestration layer itself to respect tenant boundaries, not just each individual agent. The common orchestration patterns (orchestrator-worker, hierarchical supervisor/worker, peer-to-peer mesh over a shared message bus, sequential pipeline, evaluator-optimizer) are architecture-neutral with respect to multi-tenancy, but the message bus or task queue connecting them is exactly the shared-infrastructure case §9.4 already covers: **a shared agent-to-agent message bus is not itself a tenant-isolation boundary.** Bind every inter-agent message to the organization it belongs to, and re-verify that scope at each agent that consumes it — a compromised or misconfigured agent in a multi-agent pipeline should never be able to pull another tenant's task off a shared queue simply because the queue itself has no tenant awareness.
+
+The practical framework note worth carrying over is that the choice of orchestration framework (LangGraph, CrewAI, or a custom implementation) is rarely what determines whether a multi-agent system is production-ready — the gap between a reliable multi-agent deployment and an unreliable one is almost always the eval pipeline, the observability setup, and the failure-recovery logic, not the framework. For a multi-tenant product this translates directly: instrument every agent action with the same tenant-scoped audit logging from §10.1's threat table, regardless of which orchestration framework sits underneath.
+
+### 5.6.3 Tenant-scoped AI memory
+
+An AI feature that remembers things — user preferences, past conversations, organizational knowledge — is implicitly building a new data store, and that store needs the same tenant-isolation discipline as every other table in the system (§2, §9.2). The useful distinction here is that "AI memory" is not one thing but a taxonomy with genuinely different scope, storage, and retrieval characteristics per type, and the scope of each type maps directly onto the tenant hierarchy from §3:
+
+| Memory type | Scope | Isolation implication |
+|---|---|---|
+| Conversation (working) memory | Current session only | Lives in-context; no persistent storage risk, but still must not leak across a multi-tenant agent's concurrent sessions |
+| Long-term / personal memory | Per-user, cross-session | Tenant-scoped table, same RLS discipline as any other user data (§2.1) |
+| Semantic memory (facts, policies, product catalog) | Organizational | Vector index partitioned by `organization_id` — a shared vector database without per-tenant filtering is a direct cross-tenant leak vector, since embedding similarity search has no inherent tenant awareness unless the filter is applied explicitly |
+| Team memory | Team/department within an org | Filtered subset of organizational memory, scoped search with RBAC — this is the ReBAC case from §6.3 in miniature |
+| Episodic memory (what happened, when) | Per-user or per-session, cross-session | Indexed conversation store; treat exactly like the audit log in §10.1 — tenant-scoped, append-heavy |
+
+The concrete risk worth naming explicitly: a RAG pipeline backing a multi-tenant AI feature must filter retrieved documents by the requesting agent's organization *before* they reach the model, not rely on the model to decline to use information it shouldn't have seen. This is precisely the same principle as §5.6's "authorization happens outside the LLM's context" — retrieval-time filtering is an authorization control, and it belongs in the retrieval query (a `WHERE organization_id = $1` clause or an equivalent vector-index namespace/filter), not in a system-prompt instruction asking the model to ignore irrelevant results.
+
+### 5.7 AI-specific threats layered onto the multi-tenant threat model
+
+§10.1's threat catalog is written for the isolation, identity, and payments dimensions of a multi-tenant system; a product with meaningful AI/agent surface area needs five additional threats folded into the same model, all of them specific to how AI systems fail in ways traditional software doesn't:
+
+| Threat | What it looks like | Primary control |
+|---|---|---|
+| Prompt injection | Malicious instructions embedded in user input, a retrieved document, or a tool's own output attempt to override system instructions or exfiltrate data | Treat all retrieved/tool-sourced content as untrusted input; authorization decisions never happen inside the model's context (§5.6) |
+| Tool poisoning | A malicious or compromised MCP server, or a manipulated tool description, alters agent behavior | MCP server vetting before production (security/legal/privacy/compliance review) — non-negotiable at any real scale, per §5.6.1 |
+| Cross-tenant data exfiltration via AI | An agent with broad knowledge access is manipulated into revealing another tenant's information | Retrieval-time tenant filtering (§5.6.3), never a model-level instruction to "not share" |
+| Agent hijacking in a multi-agent pipeline | A compromised agent corrupts downstream agents' input in an orchestrated system | Validate every inter-agent output against a typed schema before passing it downstream — never assume inter-agent trust, even within one tenant (§5.6.2) |
+| Unbounded agent action | An autonomous agent takes an irreversible action (payment, deletion, bulk send) without a human checkpoint | Human approval gates on irreversible actions, encoded as a property of the tool definition, not left to each integrator (§5.6.1) |
+
+### 5.8 Cross-surface summary
 
 | Surface | Mechanism | Token | Storage |
 |---|---|---|---|
@@ -1062,6 +1123,7 @@ Two concrete applications of everything above, matching the examples given for t
 - `LYNCXS-ORM-DATA-ACCESS-ENGINEERING.md`, Addendum L (Payment Data Access Rules — tenant scoping, ledger immutability)
 - `LYNCXS-API-DESIGN-ENGINEERING.md`, Addendum A (Payment Platform API Alignment)
 - `LYNCXS-GLOBAL-REGULATORY&COMPLIANCE-ENGINEERING.md`, Addendum R (Kenya PSP Boundary Operationalized, KYC Pipeline States)
+- `LYNCXS-AI-SYSTEMS-ENGINEERING.md` — Tool Engineering §§(The MCP Standard, Tool Categories, Tool Engineering Principles), AI Maturity Levels §5 (Multi-Agent Systems), Memory Engineering (full taxonomy: conversation/long-term/semantic/episodic/procedural/organizational/team/personal), Human Escalation (HITL patterns, escalation ladder), AI Security (AI-specific threats and controls)
 - `upgrade.md`, `README.md`, `UPGRADE-LOG.md` (platform layering and strategic rationale for LPIP)
 
 **External research (current as of September 2026):**

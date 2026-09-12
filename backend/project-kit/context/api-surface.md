@@ -8,7 +8,11 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 |---|---|---|---|
 | POST | `/api/auth/register` · `/login` · `/refresh` (optional `organizationId` pins the active org — spec 30) · `/logout` · `/otp/request` · `/otp/verify` | auth lifecycle + email-OTP 2FA | public / authenticated |
 | GET | `/api/auth/organizations` | caller's Active memberships of Active orgs (`isActive` = session org) — spec 30 ✅ | authenticated |
-| POST | `/api/auth/select-organization` (`organizationId`, optional `refreshToken`) | switch active org, re-issue pair with new `org`/`role`/`perms` (404 unknown / 403 non-member; SuperAdmin may select any Active org) — spec 30 ✅ | authenticated |
+| POST | `/api/auth/select-organization` (`organizationId`, required `refreshToken`) | validate presented refresh token, switch active org, atomically replace its family (400 missing token / 401 invalid token / 404 unknown org / 403 non-member) — spec 30 ✅ | authenticated |
+| GET/POST | `/api/organizations/{organizationId}/roles` | list/create company roles — spec 31 | `org.read` / `org.roles.manage` |
+| PUT/DELETE | `/api/organizations/{organizationId}/roles/{roleId}` | update/delete custom role — spec 31 | `org.roles.manage` |
+| POST | `/api/organizations/{organizationId}/roles/{roleId}/revoke` | revoke active holders' refresh families — spec 31 | `org.roles.manage` |
+| PUT | `/api/organizations/{organizationId}/members/{memberId}/role` | assign system/custom role — spec 31 | `org.members.manage` |
 | POST | `/api/auth/forgot-password` · `/reset-password`; DELETE `/api/auth/account`; `otp/request` purposes `delete_account` / `step_up` — **spec 23 PLANNED** | critical-action OTP & step-up (login 2FA challenge, forgot/reset, delete account, guarded ops) | public / bearer + step-up |
 | GET/POST | `/api/workspaces` | list/create | authenticated |
 | GET/PUT/DELETE | `/api/workspaces/{id}` | read/update/delete | DELETE = Owner only |
@@ -39,8 +43,8 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | GET/PUT | `/api/notifications/preferences` | notification prefs (self; creates defaults) — **spec 22 PLANNED** | authenticated |
 | POST | `/api/notifications/fanout` | event → in-app+email fan-out — **spec 22 PLANNED** | service token only |
 | GET | `/api/dashboard/summary?workspaceId=` | dashboard via `usp_GetDashboardSummary` (one round-trip; Phase 1: Redis 60s cache) | workspace member |
-| GET | `/api/logs/errors` | error log — persisted by backend spec 20 (PLANNED; Owner/Admin) | Owner/Admin |
-| GET | `/api/logs/audit?entityType=&entityId=` | audit log — persisted by backend spec 20 (PLANNED; Owner) | Owner |
+| GET | `/api/logs/errors` | error log — persisted by backend spec 20 | Owner/Admin |
+| GET | `/api/logs/audit?entityType=&entityId=` | audit log — persisted by backend spec 20 | Owner |
 | GET/POST/DELETE | `/api/workspaces/{id}/reports…` + `GET …/reports/{id}/download?format=pdf\|csv` — **spec 24 PLANNED** | AI/human reports + PDF/CSV artifacts | workspace member (delete Owner/Admin) |
 | GET | `/api/workspaces/{id}/audit-summary?window=&severity=` — **spec 24 PLANNED** | Owner-only log rollup feeding the ai 06 auditor | Owner |
 | POST | `/api/webhooks/trigger` | Trigger.dev webhook (HMAC `X-Trigger-Signature`) — **body cap 64 KiB (413 over)**; replay protection (signed-timestamp freshness + bounded event-id cache) PLANNED | HMAC only |
@@ -62,6 +66,7 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 
 ## GraphQL (`/graphql`)
 
+- **RBAC query (31):** `organizationRoles { id organizationId name isSystem permissions createdAt }`, active company only, `perm:org.read`. Shared database-backed authorization with REST; no role-management mutations. See the [RBAC contract](../../../docs/api/rbac-contract.md).
 - **Queries**: `me`, `workspace(id)`, `projects(workspaceId, filter, sort)`, `board(id)`, `tasks(boardId, filter, sort, pagination)` — **`boardId` is required** (an unscoped task query would cross workspace boundaries), `task(id)`, `comments(taskId)`, `notifications`, `unreadNotificationCount`, `activityFeed(workspaceId)`, `dashboardSummary(workspaceId)`
 - **Mutations** (spec 05 — only fully implemented fields are registered; auth spec 07, bulk/column/invite spec 06, attachments spec 11 register theirs later): `createWorkspace`, `updateWorkspace`, `deleteWorkspace`, `createProject`, `updateProject`, `deleteProject`, `createBoard`, `createTask`, `updateTask`, `deleteTask`, `addComment`
 - **Types**: `User`, `Workspace`, `WorkspaceMember`, `Project`, `Board`, `Column`, `TaskItem`, `Comment`, `Attachment`, `ActivityLog`, `Notification`, `Invite`, `AuthPayload`, `DashboardSummary`, `NotificationCount`
@@ -79,6 +84,7 @@ All CRUD orchestration (specs 13–17) lives in `IDomainService`/`DomainService`
 | Controller | Routes | Service(s) |
 |---|---|---|
 | AuthController | `/api/auth/*` | AuthService |
+| RoleController | `/api/organizations/{organizationId}/roles*`, `.../members/{memberId}/role` | RoleService + PermissionService |
 | WorkspaceController | `/api/workspaces*` | DomainService |
 | InviteController | `/api/invites/*` | DomainService |
 | ProjectController | `/api/workspaces/{id}/projects`, `/api/projects/{id}` | DomainService |

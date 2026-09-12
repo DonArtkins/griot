@@ -19,6 +19,15 @@ public interface ITenantContext
     bool IsSuperAdmin { get; }
 
     /// <summary>
+    /// Lifecycle gate (spec 32/39 suspend semantics — CodeRabbit fix): true when no
+    /// org scope is active or the scoped organization is `Active`; false when the
+    /// scoped organization is Suspended/Offboarding/Archived (writes → 403
+    /// `org_suspended` via <see cref="TenantGuard.RequireOrganization"/>; reads/auth
+    /// stay allowed).
+    /// </summary>
+    bool IsOrganizationActive { get; }
+
+    /// <summary>
     /// Runs <paramref name="action"/> with the tenant scope temporarily replaced.
     /// Used only by platform-level paths; restores the previous scope on return.
     /// </summary>

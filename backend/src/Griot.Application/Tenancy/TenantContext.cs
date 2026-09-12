@@ -26,6 +26,18 @@ public sealed class TenantContext : ITenantContext
 
     public static void SetSuperAdmin(bool value) => SuperAdminFlag.Value = value;
 
+    /// <summary>
+    /// Spec 32/39 suspend gate (CodeRabbit fix): lifecycle status of the scoped
+    /// organization, stamped by the middleware once per request. Writes must be
+    /// rejected with 403 `org_suspended` when this is false; reads stay allowed.
+    /// Nullable backing flag: UNSET means "no status stamped" → treated as Active
+    /// (unit tests / non-HTTP paths without the middleware stay fail-open, matching
+    /// the pre-gate behavior; only a middleware-stamped `false` suspends writes).
+    /// </summary>
+    private static readonly System.Threading.AsyncLocal<bool?> OrganizationActiveFlag = new();
+
+    public static void SetOrganizationActive(bool? value) => OrganizationActiveFlag.Value = value;
+
     public Guid? OrganizationId => Current.Value;
 
     public bool IsSuperAdmin
@@ -33,6 +45,9 @@ public sealed class TenantContext : ITenantContext
         get => SuperAdminFlag.Value;
         set => SuperAdminFlag.Value = value;
     }
+
+    /// <summary>True when no org scope is active, no status was stamped, or the scoped org is Active (spec 32 gate).</summary>
+    public bool IsOrganizationActive => OrganizationActiveFlag.Value ?? true;
 
     public void WithTenantScope(Guid? organizationId, Action action)
     {

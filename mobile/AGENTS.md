@@ -78,7 +78,12 @@ User-directed planning wave (canonical contract: `docs/multi-tenancy/MULTI-TENAN
 
 **JWT v2 handling (PLANNED, owner: backend 30):** the access token adds claims `name`, `org`, `role`, `perms`; mobile parses these on login and after every org switch. **The refresh token stays opaque by design — it is NOT a JWT and is never parsed client-side; it remains in `flutter_secure_storage` exactly as implemented (jwt.io decoding it blank is correct behavior).** Access tokens stay in memory; lifetimes unchanged. Specs 01–07 carry a "Multi-Tenant Update (2026-09-11 — PLANNED)" section each; nothing in this wave changes the implemented status of existing specs, and no production code exists yet.
 
-## Audit synchronization — 2026-09-11
+
+## Historical notes
+
+These dated snapshots preserve prior decisions. Current work and verification are recorded in the owning progress tracker.
+
+### Audit synchronization — 2026-09-11
 
 Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 Mobile stays at core PM parity; no dedicated AI workspace, report composer or assignment UI is added to its seven specs. Consume permitted notification/report links through .NET only.

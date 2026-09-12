@@ -63,7 +63,12 @@ User-directed planning wave (canonical contract: `docs/multi-tenancy/MULTI-TENAN
 
 **Client capability tier (PLANNED, backend 25 extension):** an effective `Client` role selects a reduced agent/manifest surface — client-scoped read tools + `submit_feedback` only. Internal capability tools (task/comment write proposals, executor plans, BI internals, raw logs, assignment/memory suggestions) are absent from client manifests; "what can you do?" answers from the live manifest; direct invocation of absent tools is denied server-side. Specs 01–12 each carry a "Multi-Tenant Update (2026-09-11 — PLANNED)" section: org-stamped payloads/events, per-org scheduling + tenant-aware budgets, org+role-context proposals, per-org reports (+ client progress variant), per-org executor bounds, org-stamped memory, SuperAdmin-delegated platform ops agent, org-scoped institutional memory and role/permission-aware (custom-role-respecting) suggestions. Nothing in this wave changes the implemented status of existing specs, and no production code exists yet.
 
-## Audit synchronization — 2026-09-11
+
+## Historical notes
+
+These dated snapshots preserve prior decisions. Current work and verification are recorded in the owning progress tracker.
+
+### Audit synchronization — 2026-09-11
 
 Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 AI kit now has 12 planned specs. Institutional memory is ai 11; assignment suggestions ai 12. No direct SQL, auto-commit, silent assignment or borrowed mutation scopes.

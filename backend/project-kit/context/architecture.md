@@ -17,6 +17,12 @@ backend/
 
 ## Layer responsibilities (absolute)
 
+RBAC v2 (spec 31) uses `PermissionService` for database-backed decisions in both
+REST and GraphQL. `RoleService` owns authorization and role composition;
+`RoleRepository` owns tenant-scoped persistence and the transaction that commits
+role changes, member/invite fallback, refresh revocation, and audit rows together.
+Only startup/onboarding seeding uses explicit platform lookups.
+
 | Layer | Owns | Never does |
 |---|---|---|
 | Griot.Api | HTTP: routing, serialization, auth middleware, CORS, GraphQL, **ApiLoggingMiddleware + ProblemDetails → ErrorLogs (spec 20 planned), rate-limit partitions + Redis cache-aside (spec 19 planned)** | business logic |

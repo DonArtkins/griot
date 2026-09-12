@@ -1,23 +1,5 @@
 # AGENTS.md — Griot Backend / API (ASP.NET Core 8)
 
-## Current working-tree checkpoint — 2026-09-11
-
-Spec 29 (multi-tenant foundation) is IMPLEMENTED on its own feature branch — commit
-`9447e15`, `9f7400e`, pushed after explicit user approval (2026-09-11). Fail-closed
-`ITenantContext` scoping across REST/GraphQL, `OrganizationId` on tenant tables +
-observability stamps, migration `20260911190926` (all Organization FKs ON DELETE
-NO ACTION — the cascade variant failed with SQL error 1785), ERD Amendment v2.
-Build 0W/0E; 152 tests passed with 8 SQL tests skipped. The database was rebuilt from
-all migrations and is verified up to date on the user's machine (2026-09-11). **All
-gates closed 2026-09-11 — spec 29 is ✅ COMPLETE** (tenancy ERD approved by the
-operator, exported as `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png` + `griot-erd3-v2.0.0.png`).
-Spec 30 (Auth & JWT v2) is IMPLEMENTED 2026-09-12 on its own feature branch
-(`feature/backend/30-auth-jwt-v2`: TokenService v2 claims + org session routes + stateless
-refresh pin + key policy/rotation + SuperAdmin bootstrap; build 0W/0E; 164 passed / 8 skipped).
-Next: spec 31 (RBAC roles & custom permissions). Roadmap §P0.5
-(29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 before hardening)
-supersedes older next-feature statements below. Read the
-[preflight findings and plan](../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md) and tracker.
 
 ## Read This First
 
@@ -55,7 +37,7 @@ Check `/.agents/skills/` (contract-sync, figma-make-erd, git-branch-flow, thrott
 
 ## Where This System Sits in the Build Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-**Phase P0 — current.** Backend specs 01–09, 12 (Email-only), 13–17, 20 (observability pipeline), and 29 (multi-tenant foundation, 2026-09-11 — all gates closed) are ✅. Remaining order per roadmap §P0.5: **31** (RBAC roles & custom permissions) → **32** → **33** → **34** → **35**, then the hardening wave **18** (30 ✅ 2026-09-12) (search/filter/pagination/sorting) → **19** (caching + rate-limit partitions) → **22** (notification fan-out in-app + email) → **21** (DB audit triggers + backup chain + restore drill) → **23** (critical-action OTP & step-up: login 2FA, forgot/reset password, delete account, guarded-op step-up) → **11** (blob storage) → **28** (project lifecycle report evidence) → **24** (AI reports & export surface: Report rows, PDF/CSV artifacts, `audit-summary`, 5th OBO scope `CreateReport`) → **25** (role-tiered log access + AI capability gateway) → **26** (AI memory & conversations) → **27** (incident alerting + confirmed SuperAdmin broadcasts) → **10** (API docs — freezes the hardened surface before Web consumes it). Brevo: verified senders need a domain YOU own (`griot.vercel.app` is Vercel-owned and cannot be authenticated — COMMUNICATION-GUIDE §7b). Logging runtime explained in `docs/observability/HOW-LOGGING-WORKS.md`. Rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004. When 10 lands, P0 closes and the **Web system (P1)** becomes the active layer. Track state in `backend/project-kit/context/progress-tracker.md`; never reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
+**Phase P0/P0.5.** Spec 31 (RBAC v2) is the active completion task on its feature branch; spec 32 follows after its gates and user approval. Remaining order: **32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10**, with revisions 36–51 as defined by roadmap §P0.5. Current verification belongs in the [progress tracker](project-kit/context/progress-tracker.md); build order belongs in the [roadmap](../docs/planning/IMPLEMENTATION-ROADMAP.md).
 
 ## Verification Gates
 
@@ -84,9 +66,8 @@ replay revokes only the same user/family. Email-OTP 2FA implemented: `POST /api/
 
 Outbound messaging is **Email only** (SMS/WhatsApp/Contacts/automations removed from code
 in this branch). Every transactional email goes through `IEmailService`
-(`BrevoEmailService`, best-effort, non-throwing) with per-purpose sender identities
-(`Brevo:Senders:<Key>`, reply-to per profile). OTP uses `security`, the admin new-user
-notice uses `admin`. Best-effort is scoped to **registration only** (register always
+(`BrevoEmailService`, best-effort, non-throwing) with the single dashboard-verified sender
+(`Brevo:FromEmail`/`BREVO_FROM_EMAIL`) and optional per-call reply-to. Best-effort is scoped to **registration only** (register always
 returns 201; a Brevo failure there is logged, not surfaced). `/api/auth/otp/request`
 is the one caller that surfaces delivery failure: Brevo reject/outage → **HTTP 502**
 (202 on success; 401 unknown email; 429 rate-limited). Redis gate:
@@ -123,9 +104,33 @@ implemented acceptance evidence. Run the system verification gates as well.
 
 Backend owns the tenant foundation: specs **29–35** (29 Organizations schema + Pool-model isolation via `ITenantContext` + EF global query filters; 30 JWT v2 claims `name/org/role/perms` + `POST /api/auth/select-organization` + SuperAdmin bootstrap + `JWT__Key` ≥512-bit policy — refresh tokens stay opaque, never JWTs; 31 RBAC: system roles Owner/Admin/ProjectManager/Member/Client + Admin/PM-created custom roles from a fixed permission catalogue; 32 SuperAdmin company onboarding/suspend/reactivate; 33 offboarding export → 30-day retention → purge; 34 client portal + `ClientFeedback` + AI client boundary; 35 handoff + AI-generated client manual + client offboarding + maintenance) plus revision specs **36–51** for every *implemented* backend feature (36→01 … 51→20 — the implemented spec files themselves stay frozen). Spec 29 requires the Figma-Make-approved ERD amendment `diagrams/erd/multi-tenant-amendment.md` first (hard rule 4). Canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`. Includes the workspace POST fix: `CreateWorkspaceAsync` must hydrate member user data (`displayName`/`email`/`avatarUrl`) so POST responses match GET.
 
-## Audit synchronization — 2026-09-11
 
-Implemented through backend 30 (Auth & JWT v2, 2026-09-12 on `feature/backend/30-auth-jwt-v2`); backend 29 (multi-tenant foundation) implemented 2026-09-11 — roadmap §P0.5 next is backend 31 (29 ✅ + 30 ✅ complete). Future planning is not completed implementation. P0 (2026-09-12): backend 29 ✅ → 30 ✅ → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+## Historical notes
+
+These dated snapshots preserve prior decisions. Current work and verification are recorded in the owning progress tracker.
+
+### Implementation checkpoint — 2026-09-12
+
+Spec 29 (multi-tenant foundation) is IMPLEMENTED on its own feature branch — commit
+`9447e15`, `9f7400e`, pushed after explicit user approval (2026-09-11). Fail-closed
+`ITenantContext` scoping across REST/GraphQL, `OrganizationId` on tenant tables +
+observability stamps, migration `20260911190926` (all Organization FKs ON DELETE
+NO ACTION — the cascade variant failed with SQL error 1785), ERD Amendment v2.
+Build 0W/0E; 152 tests passed with 8 SQL tests skipped. The database was rebuilt from
+all migrations and is verified up to date on the user's machine (2026-09-11). **All
+gates closed 2026-09-11 — spec 29 is ✅ COMPLETE** (tenancy ERD approved by the
+operator, exported as `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png` + `griot-erd3-v2.0.0.png`).
+Spec 30 (Auth & JWT v2) is IMPLEMENTED 2026-09-12 on its own feature branch
+(`feature/backend/30-auth-jwt-v2`: TokenService v2 claims + org session routes + stateless
+refresh pin + key policy/rotation + SuperAdmin bootstrap; build 0W/0E; 164 passed / 8 skipped).
+Next: spec 32 (Company onboarding & platform management). Roadmap §P0.5
+(29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 before hardening)
+supersedes older next-feature statements below. Read the
+[preflight findings and plan](../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md) and tracker.
+
+### Audit synchronization — 2026-09-11
+
+Implemented through backend 31 (RBAC v2, 2026-09-12 on `feature/backend/31-rbac-roles-custom-permissions` — seeded system roles + custom-role CRUD + force-revoke + server-side permission enforcement via `PermissionService`; build 0W/0E, 187 passed / 8 skipped / 0 failed); backend 30 (Auth & JWT v2, 2026-09-12) and backend 29 (multi-tenant foundation) implemented — roadmap §P0.5 next is backend 32 (29 ✅ + 30 ✅ + 31 ✅ complete). Future planning is not completed implementation. P0 (2026-09-12): backend 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

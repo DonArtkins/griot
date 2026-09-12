@@ -56,7 +56,7 @@ Cookie transport for web 05 (existing pending item), password flows (spec 23), p
 
 ## Acceptance Criteria
 
-- [x] Access token payload contains `name`, `org`, `role`, `perms`; decodes+verifies at jwt.io with the real key
+- [x] Organization-session access tokens contain `name`, `org`, `role`, `perms`; platform-only sessions may omit `org`; tokens decode and verify with the real key
 - [x] Refresh token remains 64-hex opaque; rotation + family revoke tests still green
 - [x] `select-organization` re-issues with the new org role; non-member gets 403
 - [x] SuperAdmin bootstrap idempotent; key-length validation rejects <64-char production keys

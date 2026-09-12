@@ -97,10 +97,18 @@ public sealed class AuthService : IAuthService
 
             if (member is not null)
             {
+                // Tenancy-guide §3: the platform role resolves first — a SuperAdmin's
+                // session always carries the full permission set (with or without a
+                // membership row); a Member membership must never produce
+                // role=super_admin with empty perms.
                 return new ActiveOrganization(
                     organizationId,
-                    RoleSelection.EffectiveRole(isSuperAdmin, member),
-                    RoleSelection.EffectivePerms(member));
+                    isSuperAdmin
+                        ? RoleSelection.RoleSuperAdmin
+                        : RoleSelection.EffectiveRole(isSuperAdmin: false, member),
+                    isSuperAdmin
+                        ? PermissionCatalogue.Join(PermissionCatalogue.All)
+                        : RoleSelection.EffectivePerms(member));
             }
 
             // SuperAdmin may act on any company without a member row (platform authority).
@@ -284,8 +292,14 @@ public sealed class AuthService : IAuthService
         // The client pins the active org by re-sending its id on refresh; absent, a user
         // with exactly ONE active membership gets it auto-picked, otherwise the platform
         // view applies and the client re-selects via POST /api/auth/select-organization.
-        // Runs only after the rotation precondition checks — a replay/race short-circuits
-        // above without touching the session lookups.
+        // CodeRabbit fix: the session (including the auto-pick DB reads) resolves BEFORE
+        // the rotation commits — a session-resolution failure then rolls nothing back,
+        // and the replacement is never minted against an unresolvable session.
+        var session = await ResolveSessionAsync(
+            storedToken.User,
+            requestedOrganizationId ?? await AutoPickOrganizationIdAsync(storedToken.User).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
         var rotated = await _authRepository
             .RotateRefreshTokenAsync(storedToken, replacement)
             .ConfigureAwait(false);
@@ -384,6 +398,27 @@ public sealed class AuthService : IAuthService
         if (callerId == Guid.Empty)
             return null;
 
+        // CodeRabbit fix (CWE-613): the presented refresh token is REQUIRED and is
+        // validated FIRST — before any organization lookup and before anything is
+        // minted. Missing, unknown, revoked, expired or foreign tokens reject the
+        // switch with 401, so a stolen ACCESS token alone can never create a
+        // renewable session.
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            throw new DomainError(DomainErrorKind.Validation,
+                "A refresh token from the session being switched is required.");
+
+        var presentedHash = HashToken(refreshToken);
+        var presented = presentedHash is null
+            ? null
+            : await _authRepository
+                .FindRefreshTokenByTokenHashAsync(presentedHash)
+                .ConfigureAwait(false);
+        if (presented is null
+            || presented.RevokedAt is not null
+            || presented.ExpiresAt < DateTime.UtcNow
+            || presented.UserId != callerId)
+            return null; // → 401 at the controller
+
         var organization = await _authRepository
             .FindOrganizationByIdAsync(request.OrganizationId)
             .ConfigureAwait(false);
@@ -403,8 +438,6 @@ public sealed class AuthService : IAuthService
         if (session.OrganizationId is null)
             throw new DomainError(DomainErrorKind.Forbidden, "Not an active member of this organization.");
 
-        // Mint the new pair FIRST, then retire the presented session's family so a
-        // failed save never leaves the caller without a valid pair (best-effort switch).
         var rawRefresh = GenerateOpaqueToken();
         var refreshEntity = new RefreshToken
         {
@@ -415,24 +448,11 @@ public sealed class AuthService : IAuthService
             ExpiresAt = DateTime.UtcNow.Add(RefreshTokenTtl),
             CreatedAt = DateTime.UtcNow
         };
-        await _authRepository.InsertRefreshTokenAsync(refreshEntity).ConfigureAwait(false);
-
-        if (!string.IsNullOrWhiteSpace(refreshToken))
-        {
-            var presentedHash = HashToken(refreshToken);
-            if (presentedHash is not null)
-            {
-                var presented = await _authRepository
-                    .FindRefreshTokenByTokenHashAsync(presentedHash)
-                    .ConfigureAwait(false);
-                if (presented is not null)
-                {
-                    await _authRepository
-                        .RevokeFamilyAsync(user.Id, presented.FamilyId, DateTime.UtcNow)
-                        .ConfigureAwait(false);
-                }
-            }
-        }
+        // Atomic swap: revoke the presented family + insert the replacement in one
+        // transaction — no minted-but-unavailable token, no still-refreshable old family.
+        await _authRepository
+            .SwapRefreshFamilyAsync(refreshEntity, presented.FamilyId, DateTime.UtcNow)
+            .ConfigureAwait(false);
 
         _logger.LogInformation(
             "Organization session switched for user {UserId}: org {OrganizationId} (role {Role}).",

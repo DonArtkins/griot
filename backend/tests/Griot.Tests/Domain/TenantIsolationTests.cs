@@ -44,7 +44,7 @@ public class TenantIsolationTests
         if (existing is not null)
             wsMock.Setup(r => r.GetByIdAsync(existing.Id)).ReturnsAsync(existing);
 
-        var tenant = Mock.Of<ITenantContext>(t => t.OrganizationId == orgScope);
+        var tenant = Mock.Of<ITenantContext>(t => t.OrganizationId == orgScope && t.IsOrganizationActive);
         return new DomainService(
             users.Object, wsMock.Object,
             Mock.Of<IGenericRepository<WorkspaceMember>>(),
@@ -121,7 +121,7 @@ public class TenantIsolationTests
     [Fact]
     public void TenantGuard_AssertTenant_MismatchedOrg_Throws()
     {
-        var tenant = Mock.Of<ITenantContext>(t => t.OrganizationId == OrgA);
+        var tenant = Mock.Of<ITenantContext>(t => t.OrganizationId == OrgA && t.IsOrganizationActive);
         var ex = Assert.Throws<DomainError>(() => TenantGuard.AssertTenant(tenant, OrgB));
         Assert.Equal(DomainErrorKind.Forbidden, ex.Kind);
     }
@@ -131,6 +131,17 @@ public class TenantIsolationTests
     {
         var tenant = Mock.Of<ITenantContext>(t => t.OrganizationId == null);
         Assert.Throws<DomainError>(() => TenantGuard.RequireOrganization(tenant));
+    }
+
+    [Fact]
+    public void TenantGuard_RequireOrganization_InactiveOrg_ThrowsOrgSuspended()
+    {
+        // Spec 32/39 suspend gate (CodeRabbit fix): an inactive scoped org blocks ALL
+        // tenant-scoped writes with the `org_suspended` response.
+        var tenant = Mock.Of<ITenantContext>(t => t.OrganizationId == OrgA && !t.IsOrganizationActive);
+        var ex = Assert.Throws<DomainError>(() => TenantGuard.RequireOrganization(tenant));
+        Assert.Equal(DomainErrorKind.Forbidden, ex.Kind);
+        Assert.Equal("org_suspended", ex.Message);
     }
 
     [Fact]

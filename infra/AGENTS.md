@@ -68,10 +68,7 @@ research, docs, contexts, agent instructions, diagram sources and progress notes
 in the feature branch. Planned behavior must be labeled and must not count as
 implemented acceptance evidence. Run the system verification gates as well.
 
-## Audit synchronization — 2026-09-11
 
-Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
-No new service/container is required. SQL Server remains primary; memory does not add a vector database. Trigger cloud only. Backend grants are provisioned privately; no static shared stream token in a frontend environment variable.
 ## Multi-Tenant Migration Wave (2026-09-11 — PLANNED)
 
 Griot becomes a multi-tenant platform (canonical contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; owner specs: backend 29–35). Infra impact — all PLANNED, **no new service/container**:
@@ -82,6 +79,15 @@ Griot becomes a multi-tenant platform (canonical contract: `docs/multi-tenancy/M
 - **PITR unchanged and platform-level:** a restored service restores ALL tenants atomically; the per-org export bundle (backend 33) is the tenant-level data path, not a restore mechanism.
 - **CI:** the cross-tenant isolation suite (qa 14) joins the pipeline as a blocking gate; per-tenant Netdata dashboards are Phase 2, evidence-gated (infra 07).
 - Implemented-status claims above are unchanged until each bump ships on its own feature branch.
+
+## Historical notes
+
+These dated snapshots preserve prior decisions. Current work and verification are recorded in the owning progress tracker.
+
+### Audit synchronization — 2026-09-11
+
+Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+No new service/container is required. SQL Server remains primary; memory does not add a vector database. Trigger cloud only. Backend grants are provisioned privately; no static shared stream token in a frontend environment variable.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

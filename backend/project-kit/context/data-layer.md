@@ -1,13 +1,5 @@
 # Backend Data Layer
 
-## Spec 29 preflight — 2026-09-11
-
-The working tree contains an unapproved tenancy migration and partial tenant
-filters. These are not the accepted schema contract. The [preflight report](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
-records enum/field/nullability drift, backfill review findings, missing persistence
-guards and pooled-context coverage. Do not apply that migration to Griot before
-ERD approval and preservation/isolation tests. No schema was changed by this run.
-
 ## Entities (from the approved Figma Make ERD — names are contracts)
 
 **Core (13):** `Users` · `Workspaces` · `WorkspaceMembers` (M:N join with `Role`) · `Invites` · `Projects` · `Boards` · `Columns` · `TaskItems` · `Comments` · `Attachments` · `ActivityLogs` (feed + AI audit) · `Notifications` · `RefreshTokens`
@@ -30,6 +22,8 @@ ERD approval and preservation/isolation tests. No schema was changed by this run
 
 ## EF Core 8 mapping (`Griot.Infrastructure`)
 
+- Spec 29's approved tenancy migration is `20260911190926_AddMultiTenantColumns`; ERD/export/migration gates closed on 2026-09-11. Organization foreign keys use NO ACTION. The [preflight](../../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md) is a historical snapshot.
+- Spec 31 serializes role mutations and seeding with an update lock on the target organization row. Role/member/invite changes, refresh revocation, and audit persistence share one transaction. No new migration is required.
 - `GriotDbContext` maps everything in `OnModelCreating`; enums via `HasConversion<string>()`.
 - `Guid` PKs; timestamps from `SYSUTCDATETIME()` in `SaveChangesAsync`.
 - Cascade rules: deleting a Task removes its Comments/Attachments; deleting a Workspace removes its members.
@@ -51,7 +45,7 @@ ERD approval and preservation/isolation tests. No schema was changed by this run
 |---|---|---|---|
 | SQL Server 2022 | primary | 14333 | EF + Dapper + procs |
 | PostgreSQL 16 | secondary/test | 5433 | cohort exercises |
-| Redis 7 | auth support | 6380 | rate limit, refresh metadata, token budgets |
+| Redis 7 | auth support | 6380 | rate limiting; refresh tokens are stored in SQL Server |
 
 ## Implemented authentication contract (Feature 07)
 

@@ -47,6 +47,22 @@ public interface IAuthRepository
     /// </summary>
     Task RevokeFamilyAsync(Guid userId, Guid familyId, DateTime revokedAt);
 
+    /// <summary>
+    /// Revoke every active refresh token belonging to <paramref name="userId"/> across
+    /// ALL families (spec 31 force-revoke / role delete cascade — a role change must
+    /// be immediately effective on the next login/refresh).
+    /// </summary>
+    Task RevokeAllFamiliesAsync(Guid userId, DateTime revokedAt);
+
+    /// <summary>
+    /// Atomic org-switch token swap (spec 31 CodeRabbit fix): inside ONE SQL transaction —
+    /// (1) revoke every active token of the presented family, (2) insert the replacement
+    /// token. Returns the inserted token. All-or-nothing: a failure rolls back both
+    /// writes, so the caller never ends up with a minted-but-unavailable new token while
+    /// the old family stays refreshable.
+    /// </summary>
+    Task<RefreshToken> SwapRefreshFamilyAsync(RefreshToken replacement, Guid presentedFamilyId, DateTime revokedAt);
+
     /// <summary>Flush any pending changes (e.g. token revocation on logout).</summary>
     Task SaveChangesAsync();
 
