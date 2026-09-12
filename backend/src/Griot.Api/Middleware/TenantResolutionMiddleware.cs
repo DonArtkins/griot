@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Griot.Application.Tenancy;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace Griot.Api.Middleware;
 
@@ -43,6 +44,25 @@ public sealed class TenantResolutionMiddleware
 
         TenantContext.SetCurrent(organizationId);
         TenantContext.SetSuperAdmin(isSuperAdmin);
+        // CodeRabbit fix (CWE-862, spec 32/39 suspend gate): resolve the org's lifecycle
+        // status ONCE per request so the shared write guard (TenantGuard) can reject
+        // writes to suspended/offboarding/archived organizations with the spec-32
+        // `org_suspended` response, while reads/auth stay allowed for every role
+        // (including the platform SuperAdmin). Unknown org (deleted row) behaves like
+        // inactive — fail closed for writes.
+        var organizationActive = true;
+        if (organizationId is Guid scopeOrgId)
+        {
+            using var scope = context.RequestServices.CreateScope();
+            var organization = await scope.ServiceProvider
+                .GetRequiredService<Griot.Infrastructure.Persistence.GriotDbContext>()
+                .Organizations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == scopeOrgId)
+                .ConfigureAwait(false);
+            organizationActive = organization?.Status == Griot.Domain.Enums.OrganizationStatus.Active;
+        }
+        TenantContext.SetOrganizationActive(organizationActive);
         try
         {
             await _next(context);
@@ -51,6 +71,7 @@ public sealed class TenantResolutionMiddleware
         {
             TenantContext.SetCurrent(null);
             TenantContext.SetSuperAdmin(false);
+            TenantContext.SetOrganizationActive(null); // unset → next request re-resolves
         }
     }
 }

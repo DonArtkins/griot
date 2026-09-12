@@ -270,15 +270,15 @@ volumes:
 YAML
 
 docker compose up -d
-docker exec sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "SELECT @@VERSION"
-docker exec sababisha-redis redis-cli ping        # PONG
+docker compose exec sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "SELECT @@VERSION"
+docker compose exec sababisha-redis redis-cli ping        # PONG
 ```
 
 > The `.env` with `SABABISHA_SA_PASSWORD` is git-ignored; defaults here are development-only. Host ports (14333, 5433, 6380) are chosen the same way the old `gtp-*` setup chose them — to avoid colliding with any personal-stack Postgres/Redis/SQL Server running on the default ports (5432, 6379, 1433).
 
 Create Griot's own database on the shared instance (one `CREATE DATABASE` per project, not a new container per project):
 ```bash
-docker exec -it sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "CREATE DATABASE Griot"
+docker compose exec sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "CREATE DATABASE Griot"
 ```
 Griot's connection string points at `Server=localhost,14333;Database=Griot;...` — same shared server, isolated purely by database name.
 
@@ -312,7 +312,7 @@ This is the actual point of moving the setup to org level: **a new project never
    ```
 3. **Create one database for it** on the already-running SQL Server (and/or a schema on the shared Postgres, if it needs Postgres instead):
    ```bash
-   docker exec -it sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "CREATE DATABASE <NewProjectName>"
+   docker compose exec sababisha-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -Q "CREATE DATABASE <NewProjectName>"
    ```
 4. **Point its own connection string** at `localhost,14333` / `localhost,5433` / `localhost,6380` with its own database/schema name — never a new container, new port, or new compose file.
 5. **Pin its own `.NET` SDK/EF tools per-repo** (§6.7) if it's a .NET project — this part stays per-project by design, since different Sababisha projects may need different .NET/EF versions over time; only the database *engines* are shared, not the tooling versions.
@@ -335,7 +335,7 @@ sudo apt --fix-broken install
 
 **Launching it:** the app-menu search surfaces two near-identical entries — the correct one is **"DBeaver Community"**, not the bare `dbeaver-ce` result (that's just the underlying package/binary name matched by the search index, not a proper desktop launcher). From a terminal, `dbeaver &` works either way.
 
-**Connecting to the shared SQL Server:** New Database Connection → **SQL Server** → host `localhost`, port `14333` (the remapped port from §6.4, not the default 1433), database `Griot`, SQL Server Authentication, user `sa`, password `$SABABISHA_SA_PASSWORD`. Under the SSL/driver-properties tab, enable **Trust server certificate** — required since the container's cert is self-signed; the connection test fails without it. First connect prompts to download the SQL Server JDBC driver — accept it.
+**Connecting to the shared SQL Server:** New Database Connection → **SQL Server** → host `localhost`, port `14333` (the remapped port from §6.4, not the default 1433), database `Griot`, SQL Server Authentication, user `sa`, password = your **actual** `SABABISHA_SA_PASSWORD` value (set in your environment or `.env`; DBeaver fields don't expand shell variables). Under the SSL/driver-properties tab, enable **Trust server certificate** — required since the container's cert is self-signed; the connection test fails without it. First connect prompts to download the SQL Server JDBC driver — accept it.
 
 **Connecting to the shared Postgres:** same flow, driver **PostgreSQL**, host `localhost`, port `5433`, user `postgres`, password `sababisha-pg` (or `$SABABISHA_PG_PASSWORD`).
 

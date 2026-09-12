@@ -14,7 +14,7 @@ operator, exported as `diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.p
 Spec 30 (Auth & JWT v2) is IMPLEMENTED 2026-09-12 on its own feature branch
 (`feature/backend/30-auth-jwt-v2`: TokenService v2 claims + org session routes + stateless
 refresh pin + key policy/rotation + SuperAdmin bootstrap; build 0W/0E; 164 passed / 8 skipped).
-Next: spec 31 (RBAC roles & custom permissions). Roadmap §P0.5
+Next: spec 32 (Company onboarding & platform management). Roadmap §P0.5
 (29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 before hardening)
 supersedes older next-feature statements below. Read the
 [preflight findings and plan](../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md) and tracker.
@@ -125,7 +125,7 @@ Backend owns the tenant foundation: specs **29–35** (29 Organizations schema +
 
 ## Audit synchronization — 2026-09-11
 
-Implemented through backend 30 (Auth & JWT v2, 2026-09-12 on `feature/backend/30-auth-jwt-v2`); backend 29 (multi-tenant foundation) implemented 2026-09-11 — roadmap §P0.5 next is backend 31 (29 ✅ + 30 ✅ complete). Future planning is not completed implementation. P0 (2026-09-12): backend 29 ✅ → 30 ✅ → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+Implemented through backend 31 (RBAC v2, 2026-09-12 on `feature/backend/31-rbac-roles-custom-permissions` — seeded system roles + custom-role CRUD + force-revoke + server-side permission enforcement via `PermissionService`; build 0W/0E, 187 passed / 8 skipped / 0 failed); backend 30 (Auth & JWT v2, 2026-09-12) and backend 29 (multi-tenant foundation) implemented — roadmap §P0.5 next is backend 32 (29 ✅ + 30 ✅ + 31 ✅ complete). Future planning is not completed implementation. P0 (2026-09-12): backend 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

@@ -156,6 +156,36 @@ public sealed class AuthRepository : IAuthRepository
             .ConfigureAwait(false);
     }
 
+    // ── Spec 31: revoke every active refresh token of a user (all families) ──
+
+    public async Task RevokeAllFamiliesAsync(Guid userId, DateTime revokedAt)
+    {
+        await _context.RefreshTokens
+            .Where(r => r.UserId == userId && r.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(r => r.RevokedAt, revokedAt))
+            .ConfigureAwait(false);
+    }
+
+    public async Task<RefreshToken> SwapRefreshFamilyAsync(RefreshToken replacement, Guid presentedFamilyId, DateTime revokedAt)
+    {
+        // One transaction: revoke the presented family + insert the replacement —
+        // all-or-nothing so a failed save never leaves the new token minted while
+        // the old family stays refreshable (spec 31 CodeRabbit fix).
+        await using var transaction = await _context.Database.BeginTransactionAsync().ConfigureAwait(false);
+
+        await _context.RefreshTokens
+            .Where(r => r.FamilyId == presentedFamilyId && r.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(r => r.RevokedAt, revokedAt))
+            .ConfigureAwait(false);
+
+        _context.RefreshTokens.Add(replacement);
+        await _context.SaveChangesAsync().ConfigureAwait(false);
+        await transaction.CommitAsync().ConfigureAwait(false);
+        return replacement;
+    }
+
     // ── Spec 30 (Auth & JWT v2): organization session + SuperAdmin bootstrap ──
 
     public async Task<Organization?> FindOrganizationByIdAsync(Guid organizationId)

@@ -51,6 +51,8 @@ Three layers, resolved in precedence order (highest wins):
 
 **Permission catalogue (fixed keys, used by the `perms` JWT claim):** `org.read`, `org.settings.manage`, `org.members.manage`, `org.roles.manage`, `org.projects.view_all`, `project.manage`, `task.manage`, `comment.write`, `client.manage`, `client.feedback.read`, `client.feedback.respond`, `report.generate`, `log.read_tier` (tier rules owned by backend 25). Custom roles compose these keys only.
 
+> **✅ Implemented (backend 31, 2026-09-12, `feature/backend/31-rbac-roles-custom-permissions`):** the five system roles are seeded rows (`Roles.IsSystem = true`, undeletable/uneditable) via an idempotent startup backfill + `EnsureSystemRolesAsync(orgId)` for spec 32 onboarding; Admin/PM custom roles compose the catalogue keys only (unknown or escalating keys → 400); member role assignment accepts `Admin`-family names or `custom:{roleId}`; role changes take effect on next refresh, with a force-revoke endpoint (+ all-families refresh revoke) for immediate effect, and custom-role DELETE cascades affected members back to system `Member`. Enforcement is **server-side**: `[RequirePermission("perm:{key}")]` (REST) and `perm:{key}` GraphQL policies re-resolve the caller's membership and persisted permissions through `PermissionService` — the JWT `perms` claim is an optimization, never the policy.
+
 | Actor | Sees |
 |---|---|
 | SuperAdmin (platform) | everything — all companies, platform console, lifecycle |

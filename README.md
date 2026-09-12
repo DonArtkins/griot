@@ -84,9 +84,10 @@ dotnet test                               # xUnit suite (when tests exist)
 - **Swagger/OpenAPI:** http://localhost:5064/swagger · **Health:** http://localhost:5064/health
 - Local dev secrets (DB connection string, JWT dev key) live in the **git-ignored** `backend/src/Griot.Api/appsettings.Local.json` — it is loaded automatically; for other environments set env vars instead:
   ```bash
-  export ConnectionStrings__Default='Server=localhost,14333;Database=Griot;User Id=sa;Password=$SABABISHA_SA_PASSWORD;TrustServerCertificate=True'
+  export ConnectionStrings__Default="Server=localhost,14333;Database=Griot;User Id=sa;Password=$SABABISHA_SA_PASSWORD;TrustServerCertificate=True"
   export JWT__Key='<dev key>' JWT__Issuer='Griot' JWT__Audience='GriotClients'
   ```
+  > `$SABABISHA_SA_PASSWORD` must already be set in your environment (or `.env`) — the double quotes let the shell expand it into the connection string.
 
 ### 3. Transactional email — Brevo (OTP / admin notices)
 
@@ -156,7 +157,7 @@ docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd \
   < src/Griot.Infrastructure/Sql/usp_GetDashboardSummary.sql
 ```
 
-**DBeaver:** new connection → SQL Server → host `localhost`, port `14333`, database `Griot`, user `sa`, password `$SABABISHA_SA_PASSWORD`, enable **Trust server certificate**. Right-click database → Refresh to see new tables/procs. Stored procedures appear under **Stored Procedures** — not as tables.
+**DBeaver:** new connection → SQL Server → host `localhost`, port `14333`, database `Griot`, user `sa`, password = your **actual** `SABABISHA_SA_PASSWORD` value (set in your environment or `.env`; DBeaver fields don't expand shell variables), enable **Trust server certificate**. Right-click database → Refresh to see new tables/procs. Stored procedures appear under **Stored Procedures** — not as tables.
 
 ### 5. Web app (React + Vite + MUI) — from `web/`
 

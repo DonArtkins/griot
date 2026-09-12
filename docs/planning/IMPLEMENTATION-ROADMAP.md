@@ -5,12 +5,16 @@
 
 **2026-09-12 checkpoint (updated):** backend 29 is IMPLEMENTED on
 `feature/backend/29-multi-tenant-foundation-organizations` (commit `9447e15`, pushed
-after explicit user approval; review-fix follow-up `52cb862` pushed 2026-09-12) and backend 30
-is IMPLEMENTED on `feature/backend/30-auth-jwt-v2`. Its §P0.5 order governs: 29 ✅ → 30 ✅ → 31 →
+after explicit user approval; review-fix follow-up `52cb862` pushed 2026-09-12), backend 30
+is IMPLEMENTED on `feature/backend/30-auth-jwt-v2`, and backend 31 is IMPLEMENTED on
+`feature/backend/31-rbac-roles-custom-permissions`. Its §P0.5 order governs: 29 ✅ → 30 ✅ → 31 ✅ →
 32 → 33 → 34 → 35, then hardening — never older shorthand that goes directly from 20 to 18.
-**Spec 29 is ✅ COMPLETE (all gates closed 2026-09-11) and spec 30 is ✅ IMPLEMENTED
+**Specs 29 (✅ COMPLETE, all gates closed 2026-09-11) and 30 are ✅ IMPLEMENTED
 (2026-09-12: JWT v2 claims + org session + SuperAdmin bootstrap; build 0W/0E;
-164 passed / 8 skipped). Backend 31 (RBAC roles & custom permissions) is next on its own
+164 passed / 8 skipped), and spec 31 is ✅ IMPLEMENTED (2026-09-12: RBAC v2 —
+seeded system roles + custom-role CRUD + force-revoke + server-side permission
+enforcement via `PermissionService`; build 0W/0E; 187 passed / 8 skipped / 0 failed).
+Backend 32 (Company onboarding & platform management, SuperAdmin) is next on its own
 feature branch.**
 See the [preflight report](BACKEND-29-PREFLIGHT-2026-09-11.md) for the pre-implementation
 snapshot.

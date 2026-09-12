@@ -423,9 +423,15 @@ public class AuthServiceTests
     public async Task Refresh_LostRotationRace_RevokesOnlyStoredFamily_AndIssuesNoPair()
     {
         var raw = MakeRawToken();
-        var token = new RefreshToken { UserId = Guid.NewGuid(), ExpiresAt = DateTime.UtcNow.AddDays(1) };
+        // storedToken.User is eager-loaded in production (FindRefreshTokenByTokenHashAsync
+        // includes User) and the reordered session resolution reads it BEFORE rotation —
+        // the fixture must mirror that shape.
+        var token = new RefreshToken { UserId = Guid.NewGuid(), ExpiresAt = DateTime.UtcNow.AddDays(1), User = MakeUser() };
         var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
         repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(raw))).ReturnsAsync(token);
+        // CodeRabbit fix ordering: session (incl. auto-pick) resolves BEFORE rotation.
+        repo.Setup(r => r.GetActiveOrganizationMembershipsAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new System.Collections.Generic.List<OrganizationMember>());
         repo.Setup(r => r.RotateRefreshTokenAsync(token, It.IsAny<RefreshToken>())).ReturnsAsync((RefreshToken?)null);
         repo.Setup(r => r.RevokeFamilyAsync(token.UserId, token.FamilyId, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
         Assert.Null(await BuildService(repo).RefreshAsync(raw, requestedOrganizationId: null));
@@ -483,27 +489,117 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task SelectOrganization_MissingRefreshToken_ThrowsValidation()
+    {
+        var caller = MakeUser();
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        var error = await Assert.ThrowsAsync<DomainError>(() =>
+            BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(
+                caller.Id, new SelectOrganizationRequest { OrganizationId = Guid.NewGuid() }, refreshToken: null));
+        Assert.Equal(DomainErrorKind.Validation, error.Kind); // CodeRabbit CWE-613 fix
+    }
+
+    [Fact]
+    public async Task SelectOrganization_UnknownRefreshToken_ReturnsNull()
+    {
+        var caller = MakeUser();
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(It.IsAny<string>()))
+            .ReturnsAsync((RefreshToken?)null);
+        Assert.Null(await BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(
+            caller.Id, new SelectOrganizationRequest { OrganizationId = Guid.NewGuid() },
+            refreshToken: MakeRawToken()));
+    }
+
+    [Fact]
+    public async Task SelectOrganization_ForeignRefreshToken_ReturnsNull()
+    {
+        var caller = MakeUser();
+        var otherUser = Guid.NewGuid();
+        var presentedRaw = MakeRawToken();
+        var presented = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = otherUser, // belongs to ANOTHER caller → mismatch → 401
+            FamilyId = Guid.NewGuid(),
+            TokenHash = HashToken(presentedRaw),
+            ExpiresAt = DateTime.UtcNow.AddDays(29),
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(presentedRaw))).ReturnsAsync(presented);
+        Assert.Null(await BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(
+            caller.Id, new SelectOrganizationRequest { OrganizationId = Guid.NewGuid() }, presentedRaw));
+    }
+
+    [Fact]
+    public async Task SelectOrganization_RevokedRefreshToken_ReturnsNull()
+    {
+        var caller = MakeUser();
+        var presentedRaw = MakeRawToken();
+        var presented = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = caller.Id,
+            FamilyId = Guid.NewGuid(),
+            TokenHash = HashToken(presentedRaw),
+            ExpiresAt = DateTime.UtcNow.AddDays(29),
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            RevokedAt = DateTime.UtcNow.AddHours(-1) // already used/revoked
+        };
+        var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
+        repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(presentedRaw))).ReturnsAsync(presented);
+        Assert.Null(await BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(
+            caller.Id, new SelectOrganizationRequest { OrganizationId = Guid.NewGuid() }, presentedRaw));
+    }
+
+    [Fact]
     public async Task SelectOrganization_NonMember_ThrowsForbidden()
     {
         var caller = MakeUser();
         var orgId = Guid.NewGuid();
+        var presentedRaw = MakeRawToken();
+        var presented = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = caller.Id,
+            FamilyId = Guid.NewGuid(),
+            TokenHash = HashToken(presentedRaw),
+            ExpiresAt = DateTime.UtcNow.AddDays(29),
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
         var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
         repo.Setup(r => r.FindOrganizationByIdAsync(orgId))
             .ReturnsAsync(new Organization { Id = orgId, Name = "Acme", Slug = "acme", OwnerId = Guid.NewGuid() });
         repo.Setup(r => r.FindUserByIdAsync(caller.Id)).ReturnsAsync(caller);
+        repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(presentedRaw))).ReturnsAsync(presented);
         repo.Setup(r => r.FindActiveOrganizationMemberAsync(orgId, caller.Id)).ReturnsAsync((OrganizationMember?)null);
-        await Assert.ThrowsAsync<DomainError>(() =>
-            BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(caller.Id, new SelectOrganizationRequest { OrganizationId = orgId }, refreshToken: null));
+        var error = await Assert.ThrowsAsync<DomainError>(() =>
+            BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(
+                caller.Id, new SelectOrganizationRequest { OrganizationId = orgId, RefreshToken = presentedRaw }, presentedRaw));
+        Assert.Equal(DomainErrorKind.Forbidden, error.Kind);
     }
 
     [Fact]
     public async Task SelectOrganization_UnknownOrg_ThrowsNotFound()
     {
         var caller = MakeUser();
+        var presentedRaw = MakeRawToken();
+        var presented = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = caller.Id,
+            FamilyId = Guid.NewGuid(),
+            TokenHash = HashToken(presentedRaw),
+            ExpiresAt = DateTime.UtcNow.AddDays(29),
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
         var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
         repo.Setup(r => r.FindOrganizationByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Organization?)null);
+        repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(presentedRaw))).ReturnsAsync(presented);
         await Assert.ThrowsAsync<DomainError>(() =>
-            BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(caller.Id, new SelectOrganizationRequest { OrganizationId = Guid.NewGuid() }, refreshToken: null));
+            BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(
+                caller.Id, new SelectOrganizationRequest { OrganizationId = Guid.NewGuid(), RefreshToken = presentedRaw }, presentedRaw));
     }
 
     [Fact]
@@ -526,14 +622,16 @@ public class AuthServiceTests
         var repo = new Mock<IAuthRepository>(MockBehavior.Strict);
         repo.Setup(r => r.FindOrganizationByIdAsync(orgId)).ReturnsAsync(member.Organization);
         repo.Setup(r => r.FindUserByIdAsync(caller.Id)).ReturnsAsync(caller);
-        repo.Setup(r => r.FindActiveOrganizationMemberAsync(orgId, caller.Id)).ReturnsAsync(member);
-        repo.Setup(r => r.InsertRefreshTokenAsync(It.IsAny<RefreshToken>())).ReturnsAsync((RefreshToken t) => t);
         repo.Setup(r => r.FindRefreshTokenByTokenHashAsync(HashToken(presentedRaw))).ReturnsAsync(presented);
-        repo.Setup(r => r.RevokeFamilyAsync(caller.Id, presented.FamilyId, It.IsAny<DateTime>())).Returns(Task.CompletedTask);
+        repo.Setup(r => r.FindActiveOrganizationMemberAsync(orgId, caller.Id)).ReturnsAsync(member);
+        // Atomic swap (CodeRabbit fix): revoke family + insert replacement in ONE op.
+        repo.Setup(r => r.SwapRefreshFamilyAsync(It.IsAny<RefreshToken>(), presented.FamilyId, It.IsAny<DateTime>()))
+            .ReturnsAsync((RefreshToken t, Guid _, DateTime _) => t);
         var response = await BuildService(repo, applySpec30Defaults: false).SelectOrganizationAsync(
             caller.Id, new SelectOrganizationRequest { OrganizationId = orgId, RefreshToken = presentedRaw }, presentedRaw);
         Assert.NotNull(response);
-        repo.Verify(r => r.RevokeFamilyAsync(caller.Id, presented.FamilyId, It.IsAny<DateTime>()), Times.Once);
+        repo.Verify(r => r.SwapRefreshFamilyAsync(It.IsAny<RefreshToken>(), presented.FamilyId, It.IsAny<DateTime>()), Times.Once);
+        repo.Verify(r => r.InsertRefreshTokenAsync(It.IsAny<RefreshToken>()), Times.Never);
     }
 
     [Fact]

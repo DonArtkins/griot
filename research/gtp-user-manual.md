@@ -156,7 +156,7 @@ docker exec -it infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S loc
 | `-C` | Trust the server's certificate (needed since it's self-signed, dev-only) |
 | `-Q "..."` | Run this one SQL statement and exit |
 
-**Your password is `$SABABISHA_SA_PASSWORD`** — it's not secret in the sense of hidden from you; it was set by you (or the default) in `docker-compose.yml` under `MSSQL_SA_PASSWORD`. It's only meant to stay out of git.
+**Your password is `$SABABISHA_SA_PASSWORD`** — set it in your environment or `.env` file (it is consumed by `docker-compose.yml` under `MSSQL_SA_PASSWORD`); no default fallback exists. It's only meant to stay out of git.
 
 ### 6.2 Opening an interactive session (instead of one-off `-Q` commands)
 
@@ -205,7 +205,7 @@ dbeaver &
    | Database | `Griot` (or leave blank to connect at the server level and see every database) |
    | Authentication | SQL Server Authentication |
    | Username | `sa` |
-   | Password | `$SABABISHA_SA_PASSWORD` |
+   | Password | your **actual** `SABABISHA_SA_PASSWORD` value (set in your environment or `.env`; DBeaver fields don't expand shell variables) |
 
 4. Click the **Driver properties** or **SSL** tab and enable **Trust server certificate** (it's self-signed, dev-only — without this the connection will fail with a certificate error).
 5. Click **Test Connection**. First time only, DBeaver will say the SQL Server driver isn't downloaded yet and offer to download it — click **Download**. Takes a few seconds.

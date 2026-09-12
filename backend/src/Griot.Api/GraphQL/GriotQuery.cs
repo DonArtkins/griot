@@ -532,4 +532,37 @@ public class GriotQuery
 
         RequireWorkspaceAccessSync(dbContext, workspaceId, claimsPrincipal);
     }
+
+    // ── Spec 31 (RBAC v2): role read surface ──
+
+    /// <summary>
+    /// System + custom roles of the caller's ACTIVE organization (spec 31). The
+    /// org scope comes from the tenant middleware (JWT `org` claim), the field is
+    /// gated by the HotChocolate `perm:org.read` policy (same server-side
+    /// IPermissionService chain as REST), and <see cref="IRoleService.ListAsync"/>
+    /// re-checks membership + permission server-side before returning rows.
+    /// </summary>
+    [Authorize(Policy = "perm:" + Griot.Application.Authorization.PermissionCatalogue.OrgRead)]
+    public async Task<System.Collections.Generic.IReadOnlyList<RoleGraphQLType>> OrganizationRoles(
+        [Service] IRoleService roleService,
+        [Service] Griot.Application.Tenancy.ITenantContext tenantContext,
+        ClaimsPrincipal claimsPrincipal,
+        CancellationToken cancellationToken)
+    {
+        AiAccess.RequireScope(claimsPrincipal, null);
+        var organizationId = Griot.Application.Tenancy.TenantGuard.RequireOrganization(tenantContext);
+        var roles = await roleService
+            .ListAsync(AuthenticatedUserId(claimsPrincipal), organizationId)
+            .ConfigureAwait(false);
+
+        return roles.Select(r => new RoleGraphQLType
+        {
+            Id = r.Id,
+            OrganizationId = r.OrganizationId,
+            Name = r.Name,
+            IsSystem = r.IsSystem,
+            Permissions = r.Permissions,
+            CreatedAt = r.CreatedAt
+        }).ToList();
+    }
 }

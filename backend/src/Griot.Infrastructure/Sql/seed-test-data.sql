@@ -1,5 +1,8 @@
 -- Seed data for GraphQL testing (local dev only, multi-tenant schema — spec 29)
--- Run: docker exec -i infra-sababisha-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SABABISHA_SA_PASSWORD" -C -d Griot < backend/src/Griot.Infrastructure/Sql/seed-test-data.sql
+-- Run (password stays out of process arguments — piped in as SQLCMDPASSWORD):
+--   { printf '%s\n' "$SABABISHA_SA_PASSWORD"; cat backend/src/Griot.Infrastructure/Sql/seed-test-data.sql; } \
+--     | docker exec -i infra-sababisha-sqlserver-1 /bin/sh -c \
+--       'IFS= read -r SQLCMDPASSWORD; export SQLCMDPASSWORD; exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d Griot'
 
 SET NOCOUNT ON;
 SET QUOTED_IDENTIFIER ON;

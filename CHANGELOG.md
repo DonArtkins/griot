@@ -4,6 +4,11 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) + [Se
 
 ## [Unreleased]
 
+### Backend 30/31 review hardening (2026-09-12, `feature/backend/31-rbac-roles-custom-permissions`)
+
+- select-organization requires + validates the presented refresh token before minting (CWE-613); family revoke + replacement insert are atomic (`SwapRefreshFamilyAsync`); refresh resolves the session before rotation commits; SuperAdmin sessions always carry full catalogue perms; `EffectivePerms` filters unknown custom-role keys; `JWT__Key_Previous` policy-validated at startup; shared `org_suspended` write gate for inactive orgs (middleware-stamped status + `TenantGuard`); docs synced (auth-contract, README, Postman, research). Progress tracker restored to the canonical format (H1 first).
+
+
 ### Backend 30 — Auth & JWT v2 (2026-09-12, `feature/backend/30-auth-jwt-v2`)
 
 - Access tokens carry `name`/`org`/`role`/`perms` (HS256 15-min unchanged; issued only by `TokenService`); `GET /api/auth/organizations` + `POST /api/auth/select-organization` (404/403 fail-closed; presented family revoked after mint); stateless refresh org pin (`RefreshRequest.OrganizationId`); startup key-policy fail-fast (32-byte dev / 64-byte prod) + `JWT__Key_Previous` rotation window; idempotent SuperAdmin bootstrap (audit-logged). Refresh tokens stay opaque 64-hex. Fixes (sync rule): literal-vs-mapped `role`-claim reads; dead `RevokeAllFamiliesAsync` removed; contract wording aligned to stateless sessions. — 2026-09-11 (Backend spec 20: observability & logging pipeline)

@@ -66,10 +66,12 @@ public static class RoleSelection
 
         if (member.Role == OrganizationRole.Custom)
         {
-            // Trust the persisted Role.Permissions column (spec 31 validates writes).
-            // Normalize commas → spaces and normalise whitespace deterministically.
+            // Trust the persisted Role.Permissions column (spec 31 validates writes),
+            // but the JWT claim contract is catalogue keys only — unknown persisted
+            // values never reach a token (reserved keys like log.read_tier are known).
             var keys = (member.CustomRole?.Permissions ?? string.Empty)
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(PermissionCatalogue.IsKnown);
             return PermissionCatalogue.Join(keys);
         }
 

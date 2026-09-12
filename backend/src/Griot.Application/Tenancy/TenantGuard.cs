@@ -13,11 +13,21 @@ namespace Griot.Application.Tenancy;
 /// </summary>
 public static class TenantGuard
 {
-    /// <summary>Active org or throws (tenant-scoped writes require a scope).</summary>
+    /// <summary>
+    /// Active org or throws (tenant-scoped writes require a scope).
+    /// Spec 32/39 suspend gate (CodeRabbit fix): when the scoped organization is
+    /// suspended/offboarding/archived, ALL writes fail closed with the spec-32
+    /// `org_suspended` response — reads/auth are unaffected (no org scope → the
+    /// original fail-closed "Organization scope is required." applies).
+    /// </summary>
     public static Guid RequireOrganization(ITenantContext tenant)
     {
         if (tenant.OrganizationId is Guid orgId)
+        {
+            if (!tenant.IsOrganizationActive)
+                throw new DomainError(DomainErrorKind.Forbidden, "org_suspended");
             return orgId;
+        }
         throw new DomainError(DomainErrorKind.Forbidden, "Organization scope is required.");
     }
 
