@@ -6,8 +6,11 @@ This is the single source of truth for how Griot talks to users and operators.
 Outbound messaging is **Email only** (SMS/WhatsApp/Contacts/automations were removed from
 code in the same branch — user decision: only transactional Email is needed). All email
 runs through **Brevo** (`POST /v3/smtp/email`, one account/API key — 300 emails/day free
-cap). Delivery is **best-effort for registration only**: register sends fire-and-forget
-with structured logging and never fail the 201 response. `/api/auth/otp/request` is the
+cap). Delivery is **best-effort for registration AND organization onboarding (spec 32)**:
+register and org-onboarding owner-invite sends are fire-and-forget with structured logging
+and never fail their 201 responses — in onboarding the owner invite is sent AFTER the durable
+commit, so a Brevo delivery failure must NOT roll back or invalidate the committed onboarding.
+`/api/auth/otp/request` is the
 one caller that surfaces delivery failure (HTTP 502 on Brevo reject/outage). Login sends
 no email.
 

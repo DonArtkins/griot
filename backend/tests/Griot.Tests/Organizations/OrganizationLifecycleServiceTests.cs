@@ -65,12 +65,13 @@ public sealed class OrganizationLifecycleServiceTests
     }
 
     private static OrganizationLifecycleService Service(
-        Mock<IOrganizationLifecycleRepository> repo, Mock<ITenantContext> tenant, Mock<IEmailService>? email = null)
-        => new(repo.Object, new Mock<IAuditService>().Object, (email ?? Email()).Object,
+        Mock<IOrganizationLifecycleRepository> repo, Mock<ITenantContext> tenant, Mock<IEmailService>? email = null,
+        Mock<IAuditService>? audit = null)
+        => new(repo.Object, (audit ?? new Mock<IAuditService>()).Object, (email ?? Email()).Object,
             Configuration(), NullLogger<OrganizationLifecycleService>.Instance, tenant.Object);
 
     private static CreateOrganizationRequest Request(string slug = "acme", string ownerEmail = "owner@example.com") =>
-        new("ACME Inc", slug, ownerEmail, "ACME Owner", OrganizationPlan.Pro);
+        new("ACME Inc", slug, ownerEmail, OrganizationPlan.Pro);
 
     // ── Onboarding ──
 
@@ -345,6 +346,66 @@ public sealed class OrganizationLifecycleServiceTests
         repo.Verify(x => x.AddLifecycleEventAsync(It.Is<OrganizationLifecycleEvent>(e => e.Kind == "PlanChanged")), Times.Once);
     }
 
+    [Fact]
+    public async Task UpdatePlan_UndefinedPlanValue_Validation_NoChange()
+    {
+        var org = new Organization { Id = Guid.NewGuid(), Slug = "acme", OwnerId = Guid.NewGuid(), PlanName = OrganizationPlan.Free };
+        var repo = Repo(r => r.Setup(x => x.FindOrganizationByIdAsync(org.Id)).ReturnsAsync(org));
+        var service = Service(repo, Tenant());
+
+        var error = await Assert.ThrowsAsync<DomainError>(
+            () => service.UpdatePlanAsync(SuperAdminId, org.Id, new UpdatePlanRequest((OrganizationPlan)999)));
+
+        Assert.Equal(DomainErrorKind.Validation, error.Kind);
+        Assert.Equal(OrganizationPlan.Free, org.PlanName);
+        repo.Verify(x => x.UpdateOrganizationAsync(It.IsAny<Organization>()), Times.Never);
+        repo.Verify(x => x.AddLifecycleEventAsync(It.IsAny<OrganizationLifecycleEvent>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_UndefinedPlanValue_Validation_NothingSeeded()
+    {
+        var owner = new User { Id = Guid.NewGuid(), Email = "owner@example.com" };
+        var repo = Repo(r => r.Setup(x => x.FindUserByEmailAsync("owner@example.com")).ReturnsAsync(owner));
+        var service = Service(repo, Tenant());
+
+        var error = await Assert.ThrowsAsync<DomainError>(() => service.CreateAsync(
+            SuperAdminId, new CreateOrganizationRequest("ACME Inc", "acme", "owner@example.com", (OrganizationPlan)999)));
+
+        Assert.Equal(DomainErrorKind.Validation, error.Kind);
+        repo.Verify(x => x.AddOrganizationAsync(It.IsAny<Organization>()), Times.Never);
+        repo.Verify(x => x.AddMemberAsync(It.IsAny<OrganizationMember>()), Times.Never);
+        repo.Verify(x => x.AddInviteAsync(It.IsAny<OrganizationInvite>()), Times.Never);
+    }
+
+    // ── Transition audit (status + reason in After) ──
+
+    [Fact]
+    public async Task Suspend_And_Reactivate_QueueAuditWithStatusAndReason()
+    {
+        var org = new Organization { Id = Guid.NewGuid(), Slug = "acme", OwnerId = Guid.NewGuid(), Status = OrganizationStatus.Active };
+        var repo = Repo(r =>
+        {
+            r.Setup(x => x.FindOrganizationByIdAsync(org.Id)).ReturnsAsync(org);
+            r.Setup(x => x.UpdateOrganizationAsync(It.IsAny<Organization>())).Returns(Task.CompletedTask);
+            r.Setup(x => x.AddLifecycleEventAsync(It.IsAny<OrganizationLifecycleEvent>())).Returns(Task.CompletedTask);
+            r.Setup(x => x.SaveAsync()).Returns(Task.CompletedTask);
+        });
+        var audit = new Mock<IAuditService>();
+        var service = Service(repo, Tenant(), audit: audit);
+
+        await service.SuspendAsync(SuperAdminId, org.Id, new SuspendRequest("chargeback"));
+        await service.ReactivateAsync(SuperAdminId, org.Id, null);
+
+        audit.Verify(x => x.QueueAudit(It.Is<AuditEntry>(e =>
+            e.Action == "Organization.Suspended"
+            && e.After!.Contains("Suspended")
+            && e.After!.Contains("chargeback"))), Times.Once);
+        audit.Verify(x => x.QueueAudit(It.Is<AuditEntry>(e =>
+            e.Action == "Organization.Reactivated"
+            && e.After!.Contains("Active"))), Times.Once);
+    }
+
     // ── Invite accept ──
 
     [Fact]
@@ -428,11 +489,18 @@ public sealed class OrganizationLifecycleServiceTests
     public async Task GetById_MemberOfOtherCompany_Forbidden()
     {
         var org = new Organization { Id = Guid.NewGuid(), Slug = "acme", OwnerId = Guid.NewGuid() };
-        var memberOfOther = new OrganizationMember { OrganizationId = org.Id, UserId = Guid.NewGuid(), Role = OrganizationRole.Member, Status = OrganizationMemberStatus.Active };
+        // An Active Owner of a DIFFERENT company: not a member of org at all, so
+        // FindMemberAsync(org.Id, user) returns null and the view is Forbidden.
+        var otherOrganizationId = Guid.NewGuid();
+        var memberOfOther = new OrganizationMember
+        {
+            OrganizationId = otherOrganizationId, UserId = Guid.NewGuid(),
+            Role = OrganizationRole.Owner, Status = OrganizationMemberStatus.Active
+        };
         var repo = Repo(r =>
         {
             r.Setup(x => x.FindOrganizationByIdAsync(org.Id)).ReturnsAsync(org);
-            r.Setup(x => x.FindMemberAsync(org.Id, memberOfOther.UserId)).ReturnsAsync(memberOfOther);
+            r.Setup(x => x.FindMemberAsync(org.Id, memberOfOther.UserId)).ReturnsAsync((OrganizationMember?)null);
         });
         var service = Service(repo, Tenant(isSuperAdmin: false));
 

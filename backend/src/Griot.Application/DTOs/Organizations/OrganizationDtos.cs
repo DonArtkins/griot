@@ -7,12 +7,14 @@ namespace Griot.Application.DTOs.Organizations;
 /// Spec 32 — request body for <c>POST /api/organizations</c> (SuperAdmin onboarding).
 /// The owner must already be a registered Griot account (<c>Organization.OwnerId</c>
 /// is a non-nullable FK); the company-owner membership activates on invite accept.
+/// The invite email renders the registered owner's own <c>DisplayName</c> — no
+/// ownerDisplayName is accepted here. <c>Plan</c> must be a defined
+/// <see cref="OrganizationPlan"/> value (undefined numeric values are rejected).
 /// </summary>
 public sealed record CreateOrganizationRequest(
     string Name,
     string Slug,
     string OwnerEmail,
-    string? OwnerDisplayName = null,
     OrganizationPlan Plan = OrganizationPlan.Free);
 
 /// <summary>Spec 32 — company representation returned by the platform surface.</summary>
