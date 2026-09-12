@@ -48,6 +48,8 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+// Spec 30: JWT v2 claim builder/key policy — singleton, stateless.
+builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddHttpClient<IEmailService, BrevoEmailService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
@@ -194,11 +196,14 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-// Auth: JWT bearer validation wiring (token issuance flows are spec 07; key from config, never hardcoded).
+// Auth: JWT bearer validation wiring (spec 07; v2 claims per spec 30 — issuance is
+// ITokenService, validation is symmetrical: iss/aud/exp + org/role/perms read by
+// TenantResolutionMiddleware). Key policy: 32-byte dev floor, 64-byte production
+// floor enforced by TokenService.ValidateKeyPolicy at startup; key from config, never hardcoded.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // Resolve the finalized configuration used by AuthService, including host overrides.
+        // Resolve the finalized configuration used by TokenService, including host overrides.
         var jwtKey = builder.Configuration["JWT:Key"];
         if (string.IsNullOrWhiteSpace(jwtKey))
             throw new InvalidOperationException("JWT:Key is not configured (set JWT__Key).");
@@ -207,6 +212,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             throw new InvalidOperationException($"JWT:Key must be at least 32 UTF-8 bytes (HS256 minimum); configured key is {jwtKeyBytes.Length} bytes. Set a longer JWT__Key.");
         var jwtIssuer = builder.Configuration["JWT:Issuer"] ?? "Griot";
         var jwtAudience = builder.Configuration["JWT:Audience"] ?? "GriotClients";
+
+        // Spec 30 key-rotation overlap: JWT__Key_Previous (optional) is accepted during
+        // a rotation window so access tokens signed with the old key stay valid until
+        // their normal 15-minute expiry; every re-issue (login/refresh/org switch)
+        // signs with the new key, which retires the old one. Runbook:
+        // docs/api/auth-contract.md (JWT v2 section).
+        var validationKeys = new List<SecurityKey> { new SymmetricSecurityKey(jwtKeyBytes) };
+        var previousKey = builder.Configuration["JWT:Key_Previous"];
+        if (!string.IsNullOrWhiteSpace(previousKey))
+        {
+            var previousBytes = Encoding.UTF8.GetBytes(previousKey);
+            if (previousBytes.Length >= 32)
+                validationKeys.Add(new SymmetricSecurityKey(previousBytes));
+        }
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -215,7 +235,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(jwtKeyBytes)
+            IssuerSigningKeys = validationKeys
         };
     })
     // Spec 09: AI service token scheme — GRIOT_SERVICE_TOKEN bearer → restricted ai-on-behalf-of
@@ -279,6 +299,33 @@ if (app.Environment.IsDevelopment())
 // dashboard have representative ApiLogs/AuditLogs data before real traffic. Production
 // seeds nothing (environment-gated inside the seeder; skipped once any row exists).
 await DevObservabilitySeeder.SeedAsync(app.Services);
+
+// Spec 30 key policy: the production signing-key floor (≥ 64 UTF-8 bytes = 512 bits,
+// CSPRNG-generated, secret-store only) is enforced fail-fast at startup; development
+// keeps the 32-byte HS256 floor already validated during bearer wiring above.
+// A violation aborts startup — never silently run with a weak key in production.
+app.Services.GetRequiredService<ITokenService>()
+    .ValidateKeyPolicy(app.Environment.IsProduction());
+
+// Spec 30 (Auth & JWT v2): idempotent SuperAdmin bootstrap. When SUPERADMIN__Email
+// is configured, the matching user is created (password from SUPERADMIN__Password,
+// Argon2id) or upgraded to PlatformRole=SuperAdmin — audit-logged, never thrown out
+// of startup. No-op (and silent) when the variables are unset (dev machines).
+var bootstrapLogger = app.Services.GetRequiredService<ILogger<Program>>();
+using (var bootstrapScope = app.Services.CreateScope())
+try
+{
+    var authService = bootstrapScope.ServiceProvider.GetRequiredService<IAuthService>();
+    var bootstrap = await authService.EnsureSuperAdminAsync().ConfigureAwait(false);
+    if (bootstrap.Created || bootstrap.Upgraded)
+        bootstrapLogger.LogInformation(
+            "Spec 30 SuperAdmin bootstrap applied (created={Created}, upgraded={Upgraded}).",
+            bootstrap.Created, bootstrap.Upgraded);
+}
+catch (Exception ex)
+{
+    bootstrapLogger.LogWarning(ex, "Spec 30 SuperAdmin bootstrap failed at startup; the API continues.");
+}
 
 // Spec 20 (pipeline §2): global exception handler — every unhandled 5xx is persisted to
 // ErrorLogs (same RequestId as the X-Request-Id response header) and responded with an

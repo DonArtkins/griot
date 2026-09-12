@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
+using Griot.Application.DTOs.Auth;
 using Griot.Domain.Entities;
+using Griot.Domain.Enums;
 
 namespace Griot.Application.Interfaces.Repositories;
 
@@ -63,4 +67,33 @@ public interface IAuthRepository
 
     /// <summary>Mark the user's email address as verified (OTP purpose `email_verify`).</summary>
     Task MarkEmailVerifiedAsync(Guid userId);
+
+    // ── Spec 30 (Auth & JWT v2): organization session + SuperAdmin bootstrap ──
+
+    /// <summary>Find one organization by id, or null (select-organization existence check → 404).</summary>
+    Task<Organization?> FindOrganizationByIdAsync(Guid organizationId);
+
+    /// <summary>
+    /// The caller's active memberships (user joined, organization Active) with the
+    /// organization name eager-loaded, newest first. Custom-role members include
+    /// their <see cref="Role"/> row (for the `perms` claim).
+    /// </summary>
+    Task<IReadOnlyList<OrganizationMember>> GetActiveOrganizationMembershipsAsync(Guid userId);
+
+    /// <summary>
+    /// One active membership in the given organization, or null (select-organization
+    /// membership check → 403). Custom-role members include their <see cref="Role"/> row.
+    /// </summary>
+    Task<OrganizationMember?> FindActiveOrganizationMemberAsync(Guid organizationId, Guid userId);
+
+
+    /// <summary>Persist a user inside the SAME transaction scope as related writes
+    /// (SuperAdmin bootstrap) — commit happens on <see cref="SaveChangesAsync"/>.</summary>
+    Task AddUserAsync(User user);
+
+    /// <summary>Look up a user by id, or null (select-organization session re-resolution, spec 30).</summary>
+    Task<User?> FindUserByIdAsync(Guid userId);
+
+    /// <summary>Upgrade a user's platform role in place (SuperAdmin bootstrap, spec 30).</summary>
+    Task SetPlatformRoleAsync(Guid userId, PlatformRole role);
 }

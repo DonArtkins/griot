@@ -2,19 +2,13 @@
 
 ## Current State
 
-**2026-09-11 preflight checkpoint:** current branch is backend 29, with incomplete
-uncommitted tenancy implementation and pending ERD approval. Spec 20's logging
-writers are recorded as delivered in the backend tracker; durable dispatch remains
-planned. Roadmap §P0.5 governs: complete 29, then 30–35 before hardening. This
-checkpoint supersedes older next-feature statements below. Build passed; 152 tests
-passed, 8 SQL tests skipped; semantic acceptance remains outstanding. No commit,
-push or database migration was performed. [Full report and plan](../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md).
+**2026-09-12 implementation checkpoint:** backend 29 is ✅ COMPLETE (all gates closed 2026-09-11; review-fix follow-up `52cb862` pushed 2026-09-12) and backend 30 is ✅ IMPLEMENTED on `feature/backend/30-auth-jwt-v2` (JWT v2 claims + org session + SuperAdmin bootstrap; build 0W/0E; 164 passed / 8 skipped / 0 failed; committed + pushed, awaiting user approval before 31). Roadmap §P0.5 governs: 29 ✅ → 30 ✅ → 31 → 32 → 33 → 34 → 35, then hardening. This checkpoint supersedes older next-feature statements below. [Preflight report](../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md).
 
 Bootcamp **implementation phase** — Week 2 backend nearly closed; canonical cross-system build order lives in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** (P0 → P6). Every system's `AGENTS.md` carries a "Build-Order Slot" pointer and every system now has its own progress tracker.
 
 | System | Kit | Status | Roadmap phase |
 |---|---|---|---|
-| backend | backend/project-kit | Specs 01–09, 12 (Email-only), 13–17 ✅; 20 logging writers delivered (durable dispatch planned); **29 in progress, approval/acceptance outstanding**; 30–35 + revisions 36–51 PLANNED; then hardening per roadmap §P0.5 | P0 → P0.5 |
+| backend | backend/project-kit | Specs 01–09, 12 (Email-only), 13–17, 20, 29 ✅ COMPLETE + **30 ✅ IMPLEMENTED 2026-09-12** (`feature/backend/30-auth-jwt-v2`, committed + pushed, awaiting approval); 31–35 + revisions 36–51 PLANNED; then hardening per roadmap §P0.5 | P0 → P0.5 |
 | web | web/project-kit | 16 specs (01–12 pending + **13–16 multi-tenant** written PLANNED); deps = backend ✅ | P1 |
 | ai | ai/project-kit | 15 specs (01–12 pending + **13–15 multi-tenant** written PLANNED); backend 09 ✅ | P2 |
 | mobile | mobile/project-kit | 9 specs (01–07 pending + **08–09 multi-tenant** written PLANNED) | P3 |
@@ -26,11 +20,9 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 
 ## Next Steps
 
-**Current action:** complete backend 29's approval and verification gates on its
-existing feature branch. Do not advance to backend 30 until the completed feature
-is pushed and the user explicitly approves the transition.
+**Current action:** backend 30 is ✅ IMPLEMENTED on `feature/backend/30-auth-jwt-v2` (committed + pushed 2026-09-12; awaiting user approval). Do not advance to backend 31 until the user explicitly approves the transition.
 
-1. **P0 (now):** backend **09** is delivered on `feature/backend/09-ai-service-token-and-webhooks`; await user review before starting **20**. Remaining order is the **2026-09-10 hardening wave 20 → 18 → 19 → 22 → 21** (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **23** (critical-action OTP/step-up — login 2FA, forgot/reset, delete account, guarded ops), then **11** (blob storage — unblocks attachment UI), then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary), then **25** (role-tiered log access + AI capability gateway), **26** (AI memory & conversations), **27** (incident alerting + confirmed broadcasts), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
+1. **P0 (now):** backend **29 ✅ + 30 ✅** (30 on `feature/backend/30-auth-jwt-v2`, pushed 2026-09-12, awaiting approval); next is **31** per roadmap §P0.5. Remaining order after the 29–35 wave is the hardening wave 18 → 19 → 22 → 21 (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **23** (critical-action OTP/step-up — login 2FA, forgot/reset, delete account, guarded ops), then **11** (blob storage — unblocks attachment UI), then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary), then **25** (role-tiered log access + AI capability gateway), **26** (AI memory & conversations), **27** (incident alerting + confirmed broadcasts), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
 2. **P1–P6:** follow `docs/planning/IMPLEMENTATION-ROADMAP.md` — Web 01–09 → ai 01–02 → web 10 → ai 03–12 (web 11/12 at their dependency points) → mobile 01–07 → infra 01–07 → mcp 01–06 → qa 01–13. Each phase's entry condition and rationale are in the roadmap; do not reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
 
 ## Session Notes
