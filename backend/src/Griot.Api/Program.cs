@@ -92,6 +92,7 @@ builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.Notification
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ActivityLog>, GenericRepository<Griot.Domain.Entities.ActivityLog>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ErrorLog>, GenericRepository<Griot.Domain.Entities.ErrorLog>>();
 builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.AuditLog>, GenericRepository<Griot.Domain.Entities.AuditLog>>();
+builder.Services.AddScoped<IGenericRepository<Griot.Domain.Entities.ApiLog>, GenericRepository<Griot.Domain.Entities.ApiLog>>();
 
 // Spec 20 audit pipeline: request correlation + audit-trail writer. IAuditService queues
 // AuditLogs/ActivityLogs rows into the same scoped change tracker as the domain mutation

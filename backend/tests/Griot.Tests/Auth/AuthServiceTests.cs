@@ -683,7 +683,7 @@ public class AuthServiceTests
         var customId = Guid.NewGuid();
         var custom = MakeMember(Guid.NewGuid(), Guid.NewGuid(), Griot.Domain.Enums.OrganizationRole.Custom);
         custom.CustomRoleId = customId;
-        custom.CustomRole = new Role { Id = customId, Name = "Auditor", Permissions = "org.read, report.generate" };
+        custom.CustomRole = new Role { Id = customId, OrganizationId = custom.OrganizationId, Name = "Auditor", Permissions = "org.read, report.generate" };
         Assert.Equal("super_admin", RoleSelection.EffectiveRole(true, custom));
         Assert.Equal($"custom:{customId}", RoleSelection.EffectiveRole(false, custom));
         Assert.Equal("org.read report.generate", RoleSelection.EffectivePerms(custom));

@@ -74,10 +74,19 @@ public class ObservabilityPruneSqlTests : IClassFixture<SqlAuthFixture>
         var auditOldRequestId = Guid.NewGuid();
         var auditFreshRequestId = Guid.NewGuid();
 
-        // Seed (FK-complete: user + workspace first, then the log rows).
+        // Seed (FK-complete: organization + user + workspace first, then the log rows).
         await using (var ctx = _fixture.CreateContext())
         {
             ctx.Users.Add(user);
+            // Spec 29: Workspaces.OrganizationId is a real FK to Organizations — the
+            // tenant row must exist before the workspace can be persisted.
+            ctx.Organizations.Add(new Organization
+            {
+                Id = pruneOrg,
+                Name = "Prune SQL Org",
+                Slug = $"{Marker}-{Guid.NewGuid():N}",
+                OwnerId = user.Id
+            });
             ctx.Workspaces.Add(workspace);
             await ctx.SaveChangesAsync();
 

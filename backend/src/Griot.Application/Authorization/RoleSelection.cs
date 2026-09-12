@@ -66,6 +66,10 @@ public static class RoleSelection
 
         if (member.Role == OrganizationRole.Custom)
         {
+            if (member.CustomRole is null || member.CustomRole.IsSystem
+                || member.CustomRole.Id != member.CustomRoleId
+                || member.CustomRole.OrganizationId != member.OrganizationId)
+                return string.Empty;
             // Trust the persisted Role.Permissions column (spec 31 validates writes),
             // but the JWT claim contract is catalogue keys only — unknown persisted
             // values never reach a token (reserved keys like log.read_tier are known).

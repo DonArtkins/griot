@@ -190,6 +190,11 @@ curl http://localhost:19999/api/v1/info
 # Check claim status
 curl http://localhost:19999/api/v1/info | grep "cloud_base_url"
 ```
+
+**Local sidecar security and mounts (continued from the Compose service above):**
+
+```yaml
+    cap_add:
       - SYS_ADMIN
     security_opt:
       - apparmor:unconfined

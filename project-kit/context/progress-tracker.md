@@ -1,31 +1,32 @@
-# Progress Tracker (root)
+# Progress Tracker — Root
 
 ## Current State
 
-**2026-09-12 implementation checkpoint:** backend 29 is ✅ COMPLETE (all gates closed 2026-09-11; review-fix follow-up `52cb862` pushed 2026-09-12) and backend 30 is ✅ IMPLEMENTED on `feature/backend/30-auth-jwt-v2` (JWT v2 claims + org session + SuperAdmin bootstrap; build 0W/0E; 164 passed / 8 skipped / 0 failed; committed + pushed, awaiting user approval before 31). Roadmap §P0.5 governs: 29 ✅ → 30 ✅ → 31 → 32 → 33 → 34 → 35, then hardening. This checkpoint supersedes older next-feature statements below. [Preflight report](../../docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md).
+As of **2026-09-12**, Griot is in **Week 2, backend P0/P0.5**. Backend specs **01–09, 12 (Email-only), 13–17, 20 (logging pipeline), and 29–31 are implemented**. Spec 31 (RBAC v2) is **COMPLETE** on `feature/backend/31-rbac-roles-custom-permissions` (all acceptance criteria checked with test evidence); **spec 32 — Company onboarding & platform management — is next**, after approval to advance. Final completion verification (2026-09-12): build **0 warnings / 0 errors**; full suite with `GRIOT_RUN_SQL_TESTS=1` — **212 passed / 0 skipped / 0 failed**; `/health` 200 `Healthy`; contract-sync exit 0.
 
-Bootcamp **implementation phase** — Week 2 backend nearly closed; canonical cross-system build order lives in **`docs/planning/IMPLEMENTATION-ROADMAP.md`** (P0 → P6). Every system's `AGENTS.md` carries a "Build-Order Slot" pointer and every system now has its own progress tracker.
+Backend 29's ERD/export/migration gates are closed. Spec 20's durable outbox, webhook inbox, and idempotency store remain PLANNED. Other systems have written feature kits; their implementation remains pending.
 
 | System | Kit | Status | Roadmap phase |
 |---|---|---|---|
-| backend | backend/project-kit | Specs 01–09, 12 (Email-only), 13–17, 20, 29 ✅ COMPLETE + **30 ✅ IMPLEMENTED 2026-09-12** (`feature/backend/30-auth-jwt-v2`, committed + pushed, awaiting approval); 31–35 + revisions 36–51 PLANNED; then hardening per roadmap §P0.5 | P0 → P0.5 |
-| web | web/project-kit | 16 specs (01–12 pending + **13–16 multi-tenant** written PLANNED); deps = backend ✅ | P1 |
-| ai | ai/project-kit | 15 specs (01–12 pending + **13–15 multi-tenant** written PLANNED); backend 09 ✅ | P2 |
-| mobile | mobile/project-kit | 9 specs (01–07 pending + **08–09 multi-tenant** written PLANNED) | P3 |
-| infra | infra/project-kit | 7 specs pending (07-Netdata is a Phase-1 launch gate) | P4 |
-| mcp | mcp/project-kit | 7 specs pending (01–06 + **07 tenant-scoped tools v3** written PLANNED) | P5 |
-| qa | qa/project-kit | 14 specs (01–13 pending + **14 multi-tenant isolation suite** written PLANNED) | P6 |
-
-Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/planning/*` (NFR, capacity, risk, runbook, change-management, **IMPLEMENTATION-ROADMAP.md**), `docs/seo/`, `docs/deployment/`, `docs/observability/`, `docs/api/` + ADRs + LICENSE/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG + `inspo/`. 12 diagram specs written in `PROMPTS/week-02/`.
+| backend | backend/project-kit | 51 specs; 01–09, 12 (Email-only), 13–17, 20 logging, 29–31 implemented; 32 next; remaining specs/revisions PLANNED | P0 / P0.5 |
+| web | web/project-kit | 16 specs; all pending, including tenant extensions 13–16 | P1 + P2 integration |
+| ai | ai/project-kit | 15 specs; all pending, including tenant extensions 13–15 | P2 |
+| mobile | mobile/project-kit | 9 specs; all pending, including tenant extensions 08–09 | P3 |
+| infra | infra/project-kit | 7 specs pending; 07 Netdata is a launch gate | P4 |
+| mcp | mcp/project-kit | 7 specs; all pending, including tenant-scoped tools 07 | P5 |
+| qa | qa/project-kit | 14 specs; all pending, including tenant isolation 14 | P6 |
 
 ## Next Steps
 
-**Current action:** backend 30 is ✅ IMPLEMENTED on `feature/backend/30-auth-jwt-v2` (committed + pushed 2026-09-12; awaiting user approval). Do not advance to backend 31 until the user explicitly approves the transition.
-
-1. **P0 (now):** backend **29 ✅ + 30 ✅** (30 on `feature/backend/30-auth-jwt-v2`, pushed 2026-09-12, awaiting approval); next is **31** per roadmap §P0.5. Remaining order after the 29–35 wave is the hardening wave 18 → 19 → 22 → 21 (observability pipeline → query contract → cache/rate-limits → notification fan-out → DB triggers/backups; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004), then **23** (critical-action OTP/step-up — login 2FA, forgot/reset, delete account, guarded ops), then **11** (blob storage — unblocks attachment UI), then **24** (AI reports & export surface — Report rows, PDF/CSV artifacts, audit-summary), then **25** (role-tiered log access + AI capability gateway), **26** (AI memory & conversations), **27** (incident alerting + confirmed broadcasts), then **10** (API docs — freezes the hardened surface before Web consumes it). Canonical order: `docs/DEPENDENCY-AUDIT.md`.
-2. **P1–P6:** follow `docs/planning/IMPLEMENTATION-ROADMAP.md` — Web 01–09 → ai 01–02 → web 10 → ai 03–12 (web 11/12 at their dependency points) → mobile 01–07 → infra 01–07 → mcp 01–06 → qa 01–13. Each phase's entry condition and rationale are in the roadmap; do not reorder without updating the roadmap + `docs/DEPENDENCY-AUDIT.md` in the same branch.
+1. Finish the backend multi-tenant wave: **32 → 33 → 34 → 35**. Advance from spec 31 only after user approval; each feature gets its own branch and PR.
+2. Continue backend hardening: **18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27**. Revision specs **36–51** follow the work touching their base features under the roadmap's branch rules; **10 (API documentation)** closes P0.
+3. **P1:** Web **01–09**. **P2:** ai **01 → 02 → web 10 → ai 03 → 04 → 05 → 06 → 07 → web 11 → ai 08 → 09 → web 12 → ai 10 → 11 → 12**.
+4. Then **P3 mobile → P4 infra → P5 MCP → P6 QA**. Tenant extensions (web 13–16, ai 13–15, mobile 08–09, mcp 07, qa 14) remain PLANNED and must follow their owning specs' dependencies.
+5. Use the [canonical roadmap](../../docs/planning/IMPLEMENTATION-ROADMAP.md), [dependency audit](../../docs/DEPENDENCY-AUDIT.md), and [backend tracker](../../backend/project-kit/context/progress-tracker.md) for ordering and evidence. Update trackers and pass applicable gates before pushing a feature.
 
 ## Session Notes
+
+- **2026-09-12 (progress-tracker repair)** — Synchronized the root and seven system trackers with backend 29–31 implemented and backend 32 next. Restored readable tables, current spec counts, and phase prerequisites; preserved historical notes. Latest recorded backend review verification: build 0W/0E; 192 passed / 8 SQL-skipped / 0 failed. No new runtime verification in this documentation-only repair.
 
 - **2026-09-11 (2) (backend single Brevo verified sender)** — User-directed removal of the `Brevo:Senders:<Key>` multi-sender system on `feature/backend/20-observability-logging-pipeline` (bundled with in-flight spec-20 work per user decision): every email now sends from the one Brevo dashboard-verified sender `Brevo:FromEmail` (local: `info.donartkins.ke@gmail.com`) + `Brevo:FromName`, optional per-call `ReplyTo`; `appsettings.Local.json` updated; `AuthService` OTP/admin sends carry no sender keys. Contract sync: spec 12 (owner) + 22/23, COMMUNICATION-GUIDE, AUTHENTICATION-GUIDE, auth-contract, ADR-003 D12, api-surface, integration-contracts, stack-contract, AGENTS (root+backend), README, CHANGELOG, both trackers. Gates: `dotnet build` 0 errors; `dotnet test` 137 passed (2 failures are pre-existing in-flight spec-20 WIP tests, untouched); contract-sync run. Historical 2026-09-09/09-11 notes below preserve what shipped then. *(Supersedes the "six fixed sender identities" best-format guidance in the 2026-09-11 planning-wave note — domain verification is now optional and only changes `Brevo:FromEmail`.)*
 
@@ -58,11 +59,11 @@ Root docs: `docs/ARCHITECTURE.md`, `docs/database/DATABASE-DESIGN.md`, `docs/pla
 
 - **2026-09-10** — CodeRabbit review fixes + storage contract swap: backend attachment validation (25 MB inclusive / MIME allowlist) implemented and pinned by 12 unit tests; blob storage contract changed **Vercel Blob → Cloudinary (`CloudinaryDotNet`, `CLOUDINARY_URL`)** across backend spec 11 + all synced docs (`BLOB_READ_WRITE_TOKEN` removed repo-wide); Trigger-ownership model (backend-only triggering, scheduled agents as the sole cron exception, web read-only Copilot stream) synced; Brevo best-effort scoped to registration with OTP 502 path documented; `TRIGGER_WEBHOOK_SECRET` renamed `WEBHOOK_SECRET` everywhere.
 
-## Audit synchronization — 2026-09-11
+### Audit synchronization — 2026-09-11 (historical)
 
 Current implementation remains backend 09 review hardening; next is backend 20 after review. Future planning is not completed implementation. P0: backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
-## CodeRabbit follow-up — 2026-09-11
+### CodeRabbit follow-up — 2026-09-11 (historical)
 
 Review corrections are documented in `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`: backend 24/28 schema proposals, backend 27 incident/delivery boundaries, notification availability and final documentation dependencies are synchronized. AI 01 pins the existing Trigger.dev v4 decision to 4.5.16. Future features remain PLANNED. The user authorized this one-time review-batch grouping and commit/push on 2026-09-11 ("COMMIT AND PUSH TO GITHUB" in response to the exception request). Build, 108 SQL-enabled tests, API health, clean npm install/imports and contract-sync passed; details are recorded in the ledger. Future features remain on separate branches/PRs; backend 20 starts only after backend 09 review approval.
 

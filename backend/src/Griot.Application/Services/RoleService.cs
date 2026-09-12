@@ -6,7 +6,7 @@ using Griot.Application.Authorization;
 using Griot.Application.DTOs.Roles;
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
-using Griot.Application.Services;
+using Griot.Application.Tenancy;
 using Griot.Domain.Entities;
 using Griot.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -52,6 +52,7 @@ public sealed class RoleService : IRoleService
         _ => string.Empty
     };
 
+    private readonly ITenantContext _tenant;
     private readonly IRoleRepository _roles;
     private readonly IAuthRepository _auth;
     private readonly IPermissionService _permissions;
@@ -63,8 +64,10 @@ public sealed class RoleService : IRoleService
         IAuthRepository auth,
         IPermissionService permissions,
         IAuditService audit,
-        ILogger<RoleService> logger)
+        ILogger<RoleService> logger,
+        ITenantContext tenant)
     {
+        _tenant = tenant;
         _roles = roles;
         _auth = auth;
         _permissions = permissions;
@@ -87,7 +90,10 @@ public sealed class RoleService : IRoleService
     }
 
     /// <inheritdoc />
-    public async Task<int> EnsureSystemRolesAsync(Guid organizationId)
+    public Task<int> EnsureSystemRolesAsync(Guid organizationId) =>
+        InTransactionAsync(organizationId, () => EnsureSystemRolesCoreAsync(organizationId));
+
+    private async Task<int> EnsureSystemRolesCoreAsync(Guid organizationId)
     {
         var existing = await _roles.CountSystemRolesAsync(organizationId).ConfigureAwait(false);
         if (existing >= SystemRoleNames.Count)
@@ -98,8 +104,12 @@ public sealed class RoleService : IRoleService
         var created = 0;
         foreach (var name in SystemRoleNames)
         {
-            if (await _roles.FindByNameAsync(organizationId, name).ConfigureAwait(false) is not null)
+            if (await _roles.FindSeedRoleByNameAsync(organizationId, name).ConfigureAwait(false) is Role existingRole)
+            {
+                if (!existingRole.IsSystem)
+                    throw new DomainError(DomainErrorKind.Conflict, "A custom role uses a reserved system-role name.");
                 continue;
+            }
 
             await _roles.AddAsync(new Role
             {
@@ -126,7 +136,7 @@ public sealed class RoleService : IRoleService
     /// <inheritdoc />
     public async Task<IReadOnlyList<RoleDto>> ListAsync(Guid callerId, Guid organizationId)
     {
-        await RequireOrgAsync(callerId, organizationId, PermissionCatalogue.OrgRead).ConfigureAwait(false);
+        await RequireOrgAsync(callerId, organizationId, PermissionCatalogue.OrgRead, write: false).ConfigureAwait(false);
 
         var roles = await _roles.ListForOrganizationAsync(organizationId).ConfigureAwait(false);
         return roles.Select(ToDto).ToList();
@@ -137,7 +147,10 @@ public sealed class RoleService : IRoleService
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public async Task<RoleDto> CreateAsync(Guid callerId, Guid organizationId, CreateRoleRequest request)
+    public Task<RoleDto> CreateAsync(Guid callerId, Guid organizationId, CreateRoleRequest request) =>
+        InTransactionAsync(organizationId, () => CreateCoreAsync(callerId, organizationId, request));
+
+    private async Task<RoleDto> CreateCoreAsync(Guid callerId, Guid organizationId, CreateRoleRequest request)
     {
         var callerPerms = await RequireOrgAsync(callerId, organizationId, PermissionCatalogue.OrgRolesManage).ConfigureAwait(false);
 
@@ -147,6 +160,7 @@ public sealed class RoleService : IRoleService
 
         // Fixed catalogue + no-escalation: every requested key must be in the
         // catalogue AND within the creator's own effective permission set.
+        RejectSystemName(name);
         var requested = ValidatePermissions(request.Permissions);
         var escalated = requested.Where(p => !callerPerms.Contains(p)).ToArray();
         if (escalated.Length > 0)
@@ -173,7 +187,10 @@ public sealed class RoleService : IRoleService
     }
 
     /// <inheritdoc />
-    public async Task<RoleDto> UpdateAsync(Guid callerId, Guid organizationId, Guid roleId, UpdateRoleRequest request)
+    public Task<RoleDto> UpdateAsync(Guid callerId, Guid organizationId, Guid roleId, UpdateRoleRequest request) =>
+        InTransactionAsync(organizationId, () => UpdateCoreAsync(callerId, organizationId, roleId, request));
+
+    private async Task<RoleDto> UpdateCoreAsync(Guid callerId, Guid organizationId, Guid roleId, UpdateRoleRequest request)
     {
         var callerPerms = await RequireOrgAsync(callerId, organizationId, PermissionCatalogue.OrgRolesManage).ConfigureAwait(false);
 
@@ -190,6 +207,7 @@ public sealed class RoleService : IRoleService
             if (!string.Equals(newName, role.Name, StringComparison.Ordinal)
                 && await _roles.FindByNameAsync(organizationId, newName).ConfigureAwait(false) is not null)
                 throw new DomainError(DomainErrorKind.Conflict, $"A role named '{newName}' already exists in this organization.");
+            RejectSystemName(newName);
             role.Name = newName;
         }
 
@@ -205,13 +223,16 @@ public sealed class RoleService : IRoleService
 
         await _roles.UpdateAsync(role).ConfigureAwait(false);
         await RecordAsync(callerId, "Role.Updated", role.Id,
-            new { role.Name, role.Permissions }, organizationId).ConfigureAwait(false);
+            new { role.Name, role.Permissions }, organizationId, before: before).ConfigureAwait(false);
 
         return ToDto(role);
     }
 
     /// <inheritdoc />
-    public async Task DeleteAsync(Guid callerId, Guid organizationId, Guid roleId)
+    public Task DeleteAsync(Guid callerId, Guid organizationId, Guid roleId) =>
+        _roles.ExecuteInTransactionAsync(organizationId, () => DeleteCoreAsync(callerId, organizationId, roleId));
+
+    private async Task DeleteCoreAsync(Guid callerId, Guid organizationId, Guid roleId)
     {
         await RequireOrgAsync(callerId, organizationId, PermissionCatalogue.OrgRolesManage).ConfigureAwait(false);
 
@@ -237,7 +258,10 @@ public sealed class RoleService : IRoleService
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <inheritdoc />
-    public async Task<ForceRevokeResult> ForceRevokeAsync(Guid callerId, Guid organizationId, Guid roleId)
+    public Task<ForceRevokeResult> ForceRevokeAsync(Guid callerId, Guid organizationId, Guid roleId) =>
+        InTransactionAsync(organizationId, () => ForceRevokeCoreAsync(callerId, organizationId, roleId));
+
+    private async Task<ForceRevokeResult> ForceRevokeCoreAsync(Guid callerId, Guid organizationId, Guid roleId)
     {
         await RequireOrgAsync(callerId, organizationId, PermissionCatalogue.OrgRolesManage).ConfigureAwait(false);
 
@@ -275,7 +299,10 @@ public sealed class RoleService : IRoleService
     }
 
     /// <inheritdoc />
-    public async Task<MemberRoleResult> SetMemberRoleAsync(Guid callerId, Guid organizationId, Guid memberId, SetMemberRoleRequest request)
+    public Task<MemberRoleResult> SetMemberRoleAsync(Guid callerId, Guid organizationId, Guid memberId, SetMemberRoleRequest request) =>
+        InTransactionAsync(organizationId, () => SetMemberRoleCoreAsync(callerId, organizationId, memberId, request));
+
+    private async Task<MemberRoleResult> SetMemberRoleCoreAsync(Guid callerId, Guid organizationId, Guid memberId, SetMemberRoleRequest request)
     {
         var caller = await RequireOrgAsync(callerId, organizationId, PermissionCatalogue.OrgMembersManage).ConfigureAwait(false);
 
@@ -284,6 +311,13 @@ public sealed class RoleService : IRoleService
 
         if (member.UserId == callerId)
             throw new DomainError(DomainErrorKind.Forbidden, "You cannot change your own organization role.");
+
+        if (member.OrganizationId != organizationId)
+            throw new DomainError(DomainErrorKind.Forbidden, "cross-tenant");
+        var before = new { member.UserId, member.Role, member.CustomRoleId };
+        var callerRole = await _permissions.GetEffectiveRoleAsync(callerId, organizationId).ConfigureAwait(false);
+        if (member.Role == OrganizationRole.Owner && !IsOwnerOrAbove(callerRole))
+            throw new DomainError(DomainErrorKind.Forbidden, "Only an Owner can change an Owner's role.");
 
         var raw = (request.Role ?? string.Empty).Trim();
 
@@ -298,6 +332,11 @@ public sealed class RoleService : IRoleService
             if (customRole.OrganizationId != organizationId)
                 throw new DomainError(DomainErrorKind.Forbidden, "cross-tenant");
 
+            if (customRole.IsSystem)
+                throw new DomainError(DomainErrorKind.Validation, "Use the system role name, not a custom reference.");
+            if (ReadPerms(customRole.Permissions).Any(p => !caller.Contains(p)))
+                throw new DomainError(DomainErrorKind.Forbidden, "Cannot assign permissions the caller does not hold.");
+
             member.Role = OrganizationRole.Custom;
             member.CustomRoleId = customRole.Id;
             member.CustomRole = customRole;
@@ -310,11 +349,11 @@ public sealed class RoleService : IRoleService
                 || role == OrganizationRole.Custom)
                 throw new DomainError(DomainErrorKind.Validation, $"Unknown organization role '{raw}'.");
 
-            // Guard: only an Owner (or the platform SuperAdmin) may demote an Owner.
-            if (member.Role == OrganizationRole.Owner
-                && !IsOwnerOrAbove(await _permissions
-                    .GetEffectiveRoleAsync(callerId, organizationId).ConfigureAwait(false)))
-                throw new DomainError(DomainErrorKind.Forbidden, "Only an Owner can change an Owner's role.");
+            if (role == OrganizationRole.Owner && !IsOwnerOrAbove(callerRole))
+                throw new DomainError(DomainErrorKind.Forbidden, "Only an Owner can assign the Owner role.");
+            if (PermissionCatalogue.PermsForSystemRole(role)
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(p => !caller.Contains(p)))
+                throw new DomainError(DomainErrorKind.Forbidden, "Cannot assign permissions the caller does not hold.");
 
             member.Role = role;
             member.CustomRoleId = null;
@@ -324,7 +363,8 @@ public sealed class RoleService : IRoleService
         await _roles.UpdateMemberRoleAsync(member).ConfigureAwait(false);
 
         await RecordAsync(callerId, "Member.RoleChanged", member.Id,
-            new { member.UserId, member.Role, member.CustomRoleId }, organizationId).ConfigureAwait(false);
+            new { member.UserId, member.Role, member.CustomRoleId }, organizationId,
+            before: before, entityType: "OrganizationMember").ConfigureAwait(false);
 
         return new MemberRoleResult(member.Id, organizationId,
             member.CustomRoleId is Guid cid
@@ -343,8 +383,12 @@ public sealed class RoleService : IRoleService
     /// catalogue. Returns the caller's effective permission set (used for the
     /// no-escalation check on role CRUD).
     /// </summary>
-    private async Task<IReadOnlySet<string>> RequireOrgAsync(Guid callerId, Guid organizationId, string permission)
+    private async Task<IReadOnlySet<string>> RequireOrgAsync(Guid callerId, Guid organizationId, string permission, bool write = true)
     {
+        if (_tenant.OrganizationId != organizationId)
+            throw new DomainError(DomainErrorKind.Forbidden, "cross-tenant");
+        if (write)
+            TenantGuard.AssertTenant(_tenant, organizationId);
         if (organizationId == Guid.Empty)
             throw new DomainError(DomainErrorKind.Forbidden, "Organization scope is required.");
         if (!await _permissions.HasPermissionAsync(callerId, organizationId, permission).ConfigureAwait(false))
@@ -365,6 +409,8 @@ public sealed class RoleService : IRoleService
     /// <summary>Permission keys: must all be in the fixed catalogue (unknown → 400).</summary>
     private static List<string> ValidatePermissions(IReadOnlyList<string>? permissions)
     {
+        if (permissions?.Any(p => p is null) == true)
+            throw new DomainError(DomainErrorKind.Validation, "Permission keys cannot be null.");
         var requested = (permissions ?? Array.Empty<string>())
             .Select(p => p.Trim())
             .Where(p => p.Length > 0)
@@ -395,49 +441,36 @@ public sealed class RoleService : IRoleService
         role.Id, role.OrganizationId, role.Name, role.IsSystem,
         ReadPerms(role.Permissions).ToArray(), role.CreatedAt);
 
-    /// <summary>
-    /// Revokes the refresh families of the given users so role changes take
-    /// effect immediately. Best-effort per the auth-audit contract: a failure is
-    /// logged, never thrown (the DB role change is already durable; the next
-    /// refresh re-resolves `perms` from the DB anyway).
-    /// </summary>
-    private async Task<int> RevokeFamiliesAsync(IEnumerable<Guid> userIds)
+    private static void RejectSystemName(string name)
     {
-        var users = 0;
-        foreach (var userId in userIds.Distinct())
-        {
-            try
-            {
-                await _auth.RevokeAllFamiliesAsync(userId, DateTime.UtcNow).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "Spec 31: refresh-family revoke failed for user {UserId}; the role change stays durable and the next refresh re-resolves permissions.",
-                    userId);
-                continue;
-            }
-            users++;
-        }
-        return users;
+        if (SystemRoleNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+            throw new DomainError(DomainErrorKind.Conflict, "System role names are reserved.");
     }
 
-    /// <summary>Durable, best-effort AuditLogs row (spec 20 pipeline §6 pattern).</summary>
-    private async Task RecordAsync(Guid actorId, string action, Guid entityId, object after, Guid organizationId)
+    private async Task<T> InTransactionAsync<T>(Guid organizationId, Func<Task<T>> action)
     {
-        try
-        {
-            await _audit.RecordAsync(new AuditEntry(
-                actorId, action, "Role", entityId,
-                Before: null,
-                After: AuditService.Snapshot(after),
-                OrganizationId: organizationId)).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex,
-                "Spec-31 role audit row could not be persisted (action={Action}, role={RoleId}); the outcome is unaffected.",
-                action, entityId);
-        }
+        T result = default!;
+        await _roles.ExecuteInTransactionAsync(organizationId, async () =>
+            result = await action().ConfigureAwait(false)).ConfigureAwait(false);
+        return result;
     }
+
+    private async Task<int> RevokeFamiliesAsync(IEnumerable<Guid> userIds)
+    {
+        var ids = userIds.Distinct().ToArray();
+        var families = await _roles.CountUnrevokedFamiliesAsync(ids).ConfigureAwait(false);
+        foreach (var userId in ids)
+            await _auth.RevokeAllFamiliesAsync(userId, DateTime.UtcNow).ConfigureAwait(false);
+        return families;
+    }
+
+    // RecordAsync shares the scoped DbContext and the surrounding role transaction.
+    // A failed audit or revoke rolls the entire operation back.
+    private Task RecordAsync(Guid actorId, string action, Guid entityId, object after,
+        Guid organizationId, object? before = null, string entityType = "Role") =>
+        _audit.RecordAsync(new AuditEntry(
+            actorId, action, entityType, entityId,
+            Before: AuditService.Snapshot(before),
+            After: AuditService.Snapshot(after),
+            OrganizationId: organizationId));
 }

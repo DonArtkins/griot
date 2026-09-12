@@ -1,31 +1,5 @@
 # AGENTS.md — Griot Monorepo Orchestrator (GTP 2026 Bootcamp)
 
-## Current working-tree checkpoint — 2026-09-11
-
-Backend 29 (multi-tenant foundation) is IMPLEMENTED on
-`feature/backend/29-multi-tenant-foundation-organizations` — commits `9447e15`, `9f7400e` (+ CodeRabbit review-fix follow-up `52cb862`, pushed 2026-09-12)
-(fail-closed `ITenantContext` scoping, `OrganizationId` on tenant tables + observability
-stamps, migration `20260911190926` with all Organization FKs ON DELETE NO ACTION, ERD
-Amendment v2; build 0W/0E, 152 tests passed / 8 SQL-skipped; the database was rebuilt
-from all migrations and is verified up to date on the user's machine, 2026-09-11).
-Pushed after explicit user approval (2026-09-11). **All gates are CLOSED (2026-09-11):
-the tenancy ERD was approved by the operator and exported as
-`diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png` + `griot-erd3-v2.0.0.png` (amendment: APPROVED +
-EXPORTED), the migration-apply gate closed earlier, and spec 29 is ✅ COMPLETE.**
-Backend 30 (Auth & JWT v2) is IMPLEMENTED 2026-09-12 on `feature/backend/30-auth-jwt-v2`
-(TokenService v2 claims `name`/`org`/`role`/`perms` + org session routes + stateless refresh
-pin + key policy/rotation + SuperAdmin bootstrap; build 0W/0E; full suite 164 passed /
-8 skipped / 0 failed). Backend 31 (RBAC v2) is IMPLEMENTED 2026-09-12 on
-`feature/backend/31-rbac-roles-custom-permissions` — five seeded system roles per company
-(idempotent startup backfill), custom-role CRUD limited to the fixed permission catalogue,
-member role assignment, force-revoke (+ all-families refresh revoke), custom-role delete
-cascade → Member, `[RequirePermission("perm:{key}")]` + GraphQL `perm:` policies enforced
-server-side via `PermissionService` (DB truth); build 0W/0E; full suite 187 passed / 8
-skipped / 0 failed. Next: backend 32 (Company onboarding & platform management) on its own
-feature branch. Roadmap §P0.5 governs: 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35,
-then the hardening sequence. This checkpoint supersedes older
-next-feature statements below. Read the [preflight and completion plan](docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
-and the backend tracker before proceeding.
 
 ## Read This First
 
@@ -61,7 +35,11 @@ The bootcamp defines the systems; Griot runs exactly on them. **`research/GTP 20
 
 ## Where We Are — Implementation Order (canonical: `docs/planning/IMPLEMENTATION-ROADMAP.md`)
 
-The cross-system build order is **P0 backend 09 → 20 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10 → P1 web 01–09 → P2 ai 01–02, web 10, ai 03–12 → P3 mobile 01–07 → P4 infra 01–07 → P5 mcp 01–06 → P6 qa 01–13**. Right now: backend specs 01–09, 12 (Email-only), 13–17, 20 (observability pipeline), 29 (multi-tenant foundation, 2026-09-11 — all gates closed), 30 (Auth & JWT v2, 2026-09-12) and 31 (RBAC v2, 2026-09-12) are ✅ — **the next spec is backend 32 (Company onboarding & platform management, SuperAdmin)** per roadmap §P0.5, which supersedes the older post-20 hardening order below (**20** logging pipeline → **18** search/filter/pagination → **19** cache/rate-limits → **22** notification fan-out → **21** DB triggers/backups → **23** critical-action OTP/step-up → **11** blob storage → **28** project lifecycle report evidence → **24** AI reports & export surface (`CreateReport` scope) → **25** role-tiered log access + AI capability gateway → **26** AI memory & conversations → **27** incident alerting + confirmed SuperAdmin broadcasts; rationale: `docs/observability/LOGGING-AUDIT-REPORT.md` + ADR-004). Every system's `AGENTS.md` carries a "Where This System Sits in the Build Order" section, and every system has a `project-kit/context/progress-tracker.md`. Do not pick a "next feature" from anywhere else — the roadmap + the owning system's tracker are the single source of truth, and any reorder must update the roadmap + `docs/DEPENDENCY-AUDIT.md` + affected specs in the same branch.
+Backend is in **P0/P0.5**: specs 01–09, 12 (Email-only), 13–17, 20 (logging), and 29–30 are delivered. **Spec 31 (RBAC v2) is the current feature**, undergoing completion and verification on `feature/backend/31-rbac-roles-custom-permissions`. **Spec 32 is next after 31 passes its gates and the user approves the transition.**
+
+Remaining backend order: **32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10**, with revisions 36–51 governed by roadmap §P0.5. Then P1 Web, P2 AI/Copilot, P3 Mobile, P4 Infra, P5 MCP, and P6 QA.
+
+Use the [backend tracker](backend/project-kit/context/progress-tracker.md) for current verification and the [roadmap](docs/planning/IMPLEMENTATION-ROADMAP.md) for build order. Session history belongs in trackers; update current sections in place. Never prepend delivery narratives or append notes after a document's final rule. Reorders must synchronize the roadmap, dependency audit, and affected specs.
 
 ## Required Skills
 
@@ -170,13 +148,45 @@ User-directed planning wave (research: `research/LYNCXS-MULTI-TENANT-SYSTEMS-ENG
 
 **Spec-numbering rule of this wave:** implemented backend specs are **frozen** — their multi-tenant behavior ships via NEW revision specs **36–51** (36→01 … 51→20); unimplemented backend specs are bumped in place; NEW multi-tenant specs are **29–35**. Other layers: all existing specs bumped + **web 13–16, mobile 08–09, ai 13–15, mcp 07, qa 14** added. Order after backend 20: **29 → 30 → 31 → 32 → 33 → 34 → 35**, then the existing hardening order, revisions landing with the branches that touch their base features, **10** last. JWT skills installed for agents: `.agents/skills/jwt-{decode,encode,validate}/` (`npx skills add jsonwebtoken/jwt-skills`). Roadmap: `docs/planning/IMPLEMENTATION-ROADMAP.md` §P0.5; dependency edges: `docs/DEPENDENCY-AUDIT.md`.
 
-## Audit synchronization — 2026-09-11
-
-Implemented through backend 31 (RBAC v2, 2026-09-12 on `feature/backend/31-rbac-roles-custom-permissions` — seeded system roles + custom-role CRUD + force-revoke + server-side permission enforcement via `PermissionService`); backend 30 (Auth & JWT v2, 2026-09-12) and backend 29 (multi-tenant foundation, 2026-09-11, all gates closed) implemented — roadmap §P0.5 next is backend 32 (29 ✅ + 30 ✅ + 31 ✅ complete). Future planning is not completed implementation. P0 (2026-09-12): backend 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ## Review-batch exception — 2026-09-11
 
 The user authorized committing and pushing the reviewed planning/contract and AI dependency corrections together on the backend 09 branch, in response to the one-time grouping exception request. Scope and validation: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`. Future production features retain one spec per branch/PR; merge and next-feature work remain subject to user approval.
+
+## Historical notes
+
+These dated snapshots preserve prior decisions. Current work and verification are recorded in the owning progress tracker.
+
+### Implementation checkpoint — 2026-09-12
+
+Backend 29 (multi-tenant foundation) is IMPLEMENTED on
+`feature/backend/29-multi-tenant-foundation-organizations` — commits `9447e15`, `9f7400e` (+ CodeRabbit review-fix follow-up `52cb862`, pushed 2026-09-12)
+(fail-closed `ITenantContext` scoping, `OrganizationId` on tenant tables + observability
+stamps, migration `20260911190926` with all Organization FKs ON DELETE NO ACTION, ERD
+Amendment v2; build 0W/0E, 152 tests passed / 8 SQL-skipped; the database was rebuilt
+from all migrations and is verified up to date on the user's machine, 2026-09-11).
+Pushed after explicit user approval (2026-09-11). **All gates are CLOSED (2026-09-11):
+the tenancy ERD was approved by the operator and exported as
+`diagrams/erd/griot-erd-v2.0.0.png` + `griot-erd2-v2.0.0.png` + `griot-erd3-v2.0.0.png` (amendment: APPROVED +
+EXPORTED), the migration-apply gate closed earlier, and spec 29 is ✅ COMPLETE.**
+Backend 30 (Auth & JWT v2) is IMPLEMENTED 2026-09-12 on `feature/backend/30-auth-jwt-v2`
+(TokenService v2 claims `name`/`org`/`role`/`perms` + org session routes + stateless refresh
+pin + key policy/rotation + SuperAdmin bootstrap; build 0W/0E; full suite 164 passed /
+8 skipped / 0 failed). Backend 31 (RBAC v2) is IMPLEMENTED 2026-09-12 on
+`feature/backend/31-rbac-roles-custom-permissions` — five seeded system roles per company
+(idempotent startup backfill), custom-role CRUD limited to the fixed permission catalogue,
+member role assignment, force-revoke (+ all-families refresh revoke), custom-role delete
+cascade → Member, `[RequirePermission("perm:{key}")]` + GraphQL `perm:` policies enforced
+server-side via `PermissionService` (DB truth); build 0W/0E; full suite 187 passed / 8
+skipped / 0 failed. Next: backend 32 (Company onboarding & platform management) on its own
+feature branch. Roadmap §P0.5 governs: 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35,
+then the hardening sequence. This checkpoint supersedes older
+next-feature statements below. Read the [preflight and completion plan](docs/planning/BACKEND-29-PREFLIGHT-2026-09-11.md)
+and the backend tracker before proceeding.
+
+### Audit synchronization — 2026-09-11
+
+Implemented through backend 31 (RBAC v2, 2026-09-12 on `feature/backend/31-rbac-roles-custom-permissions` — seeded system roles + custom-role CRUD + force-revoke + server-side permission enforcement via `PermissionService`); backend 30 (Auth & JWT v2, 2026-09-12) and backend 29 (multi-tenant foundation, 2026-09-11, all gates closed) implemented — roadmap §P0.5 next is backend 32 (29 ✅ + 30 ✅ + 31 ✅ complete). Future planning is not completed implementation. P0 (2026-09-12): backend 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 
 ---
 **HARD RULE:** One feature spec at a time, one feature branch = one PR. Never batch specs, never commit progress-tracker updates directly to main, never commit code to main directly. AND WAIT FOR MY APPROVAL AFTER COMMITTING TO GITHUB AND UPDATE PROGRESS TRACKER BEFORE PUSHING TO GITHUB AND WHEN STARTING THE NEXT SPEC SWITCH TO ITS FEATURE BRANCH SO EACH FEATURE WITH ITS OWN BRANCH, ANY UPDATE BEING DONE TO A FEATURE MUST BE PUSHED TO THAT FEATURE BRANCH AND CONTRACT SYNC RUN, PUSH ONLY WHEN ALL HARD GATES PASS.

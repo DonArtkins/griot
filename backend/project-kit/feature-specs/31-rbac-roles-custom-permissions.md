@@ -2,51 +2,114 @@
 
 ## Type
 
-NEW FEATURE · MULTI-TENANT MIGRATION WAVE (2026-09-11) · **✅ IMPLEMENTED (2026-09-12) on `feature/backend/31-rbac-roles-custom-permissions`**
+Backend feature · multi-tenant wave · current branch:
+`feature/backend/31-rbac-roles-custom-permissions`.
+Completion evidence is recorded in the [backend tracker](../context/progress-tracker.md).
 
 ## What This Delivers
 
-The permission engine: five system roles seeded per company (**Owner/Admin** = the company owner who can view ALL projects under that company only; **ProjectManager** = manages only their assigned projects; **Member**; **Client**) plus **custom roles Admin/PM create inside their own company** after logging in, composed from the fixed permission catalogue (`docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §3). The platform **SuperAdmin** is NOT a seeded org role — it is `Users.PlatformRole` (spec 29/30) and resolves first in every permission decision (tenancy-guide §3 precedence), then the organization role.
+Five immutable system roles per company (Owner, Admin, ProjectManager, Member,
+Client), custom roles composed from the fixed permission catalogue, member role
+assignment, and force revocation. SuperAdmin is a platform role, not a seeded
+company role. REST and GraphQL authorize against current database membership and
+permissions; JWT `perms` is display/session metadata.
 
 ## Dependencies
 
-- Spec 29 (`OrganizationMembers`, `Roles`) · spec 30 (`perms` claim).
+- Backend 29: approved Organizations, Roles, OrganizationMembers, and OrganizationInvites schema.
+- Backend 30: JWT v2 tenant sessions and refresh-family persistence.
+- Backend 20: mandatory mutation audit trail.
 
 ## Context To Read First
 
-- `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md` §3 · `diagrams/erd/multi-tenant-amendment.md`
-- Existing `WorkspaceRole` policy code (the model stays: same policy code shape per role)
+- [Tenancy guide](../../../docs/multi-tenancy/MULTI-TENANCY-GUIDE.md), section 3.
+- [Approved ERD amendment](../../../diagrams/erd/multi-tenant-amendment.md).
+- [API surface](../context/api-surface.md) and [RBAC contract](../../../docs/api/rbac-contract.md).
+
+## Skills
+
+Use the root contract-sync, documentation-standards, git-branch-flow, and Context7
+skills; use backend EF Core, JWT, and HotChocolate skills for their respective changes.
 
 ## Files Owned
 
-- `Griot.Application/Services/RoleService.cs`, `Authorization/PermissionCatalogue.cs`, `IPermissionService.cs`
-- `Griot.Api/Controllers/RoleController.cs` + GraphQL types
+- Application: `RoleService`, `PermissionService`, `PermissionCatalogue`, role DTOs and interfaces.
+- Infrastructure: `RoleRepository`; shared `AuthRepository.RevokeAllFamiliesAsync`.
+- API: `RoleController`, `RequirePermissionAttribute`, permission handler/policies,
+  `organizationRoles` GraphQL query, and role types.
+- Tests: `tests/Griot.Tests/Rbac/`; Postman role requests.
 
-## Implementation Notes
+## Setup / Initialization
 
-- System roles are seeded rows (`IsSystem = true`) per organization — implemented as an idempotent **startup backfill** (`IRoleService.BackfillSystemRolesAsync`, Program.cs) that also serves spec 32's onboarding via `EnsureSystemRolesAsync(orgId)`; they cannot be edited or deleted.
-- Custom roles: `POST /api/organizations/{orgId}/roles` (Admin with `org.roles.manage`, or PM with the same permission granted via an existing custom role) → `Roles` row with permission keys from the catalogue only; unknown/escalating keys → 400.
-- Enforcement: `[RequirePermission("perm:{key}")]` attribute (REST) + HotChocolate field-level `perm:{key}` policies (GraphQL) — every decision is evaluated server-side by `PermissionService` against the DB (re-resolved membership + persisted `Roles.Permissions`), never against the JWT `perms` claim (claims are an optimization, never the policy source of truth).
-- Role changes take effect on next refresh (spec 30); force-revoke endpoint for immediate effect (revokes ALL refresh families of the affected users via `IAuthRepository.RevokeAllFamiliesAsync`).
-- ProjectManager scoping: `project.manage` is granted at the role level (never `org.projects.view_all`); per-project assignment scoping remains enforced by the spec-14 project-membership checks in `ProjectService`.
-- **Approval (2026-09-12):** custom-role DELETE cascades affected members back to the system `Member` role (then revokes their refresh families) — user-approved design.
+Startup calls `BackfillSystemRolesAsync` for active companies with fewer than five
+system roles. `EnsureSystemRolesAsync(orgId)` fills partial seeds and is reusable by
+spec 32 onboarding. Explicit platform lookups work without an HTTP tenant.
+Concurrent seeds serialize on the target organization row. Reserved system-role
+names cannot be used by custom roles. Startup failures are logged; failed seeds
+roll back and can be retried.
 
-## Implemented Surface (2026-09-12)
+No new package, environment variable, or schema migration is needed.
 
-- `Griot.Application/Authorization/PermissionCatalogue.cs` — fixed keys, `IsKnown/Join/Parse/PermsForSystemRole/All`.
-- `Griot.Application/Services/RoleService.cs` (+ `IRoleService`) — seeding/backfill, custom-role CRUD (catalogue-only, no-escalation, duplicate-name 409), `SetMemberRoleAsync` (`Admin`/`custom:{roleId}`; self-change 403; Owner demotion needs an Owner), `ForceRevokeAsync`, delete cascade → Member.
-- `Griot.Application/Services/PermissionService.cs` (+ `IPermissionService`) — server-side `HasPermissionAsync`/`EffectivePermissionsAsync`/`GetEffectiveRoleAsync` (DB truth; SuperAdmin-first; fail-closed).
-- `Griot.Infrastructure/Repositories/RoleRepository.cs` (+ `IRoleRepository`) — tenant-filtered request path + `IgnoreQueryFilters` platform backfill; `IAuthRepository.RevokeAllFamiliesAsync` (all-families revoke).
-- `Griot.Api/Auth/RequirePermissionAttribute.cs` + `Griot.Api/Authorization/` (policy provider + handler) — one `perm:{key}` policy per catalogue key.
-- `Griot.Api/Controllers/RoleController.cs` — `GET/POST /api/organizations/{orgId}/roles`, `PUT/DELETE .../roles/{roleId}`, `POST .../roles/{roleId}/revoke`, `PUT .../members/{memberId}/role` (AI OBO calls forbidden on every write route).
-- `Griot.Api/GraphQL/Types/RoleType.cs` + `organizations`/`organizationRoles`/`organizationMembers` fields on `GriotQuery` — role reads gated by `perm:` policies.
-- Program.cs: `IPermissionService`/`IRoleService`/`IRoleRepository` DI, `AddPermissionPolicies`, startup backfill (logged, never aborts startup).
-- 23 new tests in `tests/Griot.Tests/Rbac/RoleServiceTests.cs` (seeding idempotency, catalogue validation/escalation, duplicate-name 409, custom delete cascade, force-revoke, member-role guards, permission fail-closed). Build 0W/0E; full suite **187 passed / 8 SQL-skipped / 0 failed**.
+## Separation of Concerns
+
+Controllers and GraphQL resolvers call application services. Permissions come from
+active database membership, with SuperAdmin resolved first. Request role operations
+must match the active tenant; inactive organizations reject writes, including
+SuperAdmin writes. Organization role powers do not replace project/workspace
+membership checks in existing domain operations. Project-wide Admin/PM/client
+behavior beyond these role endpoints belongs to the relevant revision/client specs.
+
+Role mutations run inside one repository transaction. An update lock on the existing
+organization row serializes name checks, seeding, assignment, deletion, and revocation.
+Audit or revocation failure rolls back the operation.
+
+## Implemented Surface
+
+See the [RBAC contract](../../../docs/api/rbac-contract.md) for exact routes and responses.
+
+- `GET/POST /api/organizations/{organizationId}/roles`.
+- `PUT/DELETE /api/organizations/{organizationId}/roles/{roleId}`.
+- `POST /api/organizations/{organizationId}/roles/{roleId}/revoke`.
+- `PUT /api/organizations/{organizationId}/members/{memberId}/role`.
+- GraphQL `organizationRoles` reads the active company; no role-management mutations.
+
+Custom creation/update requires `org.roles.manage`; assignment requires
+`org.members.manage`. Requested permissions must belong to the enabled catalogue
+and the caller's effective set. Unknown/reserved keys return 400; escalation returns
+403; duplicate/reserved names return 409. `log.read_tier` remains reserved for spec 25.
+
+Assignment accepts system names or `custom:{roleId}`. Self-changes return 403.
+Only Owner/SuperAdmin may assign Owner or change an existing Owner, including via
+a custom-role reference. A system role cannot be assigned as a custom-role reference.
+Custom roles must belong to the same company, and assignments cannot grant powers
+the caller lacks.
+
+**Approved deletion behavior:** deleting a custom role moves all holders (including
+inactive members) and referencing invitations to Member, revokes affected users'
+refresh families, and records an audit. Force-revoke revokes all refresh families
+of active holders. `FamiliesRevoked` counts distinct unrevoked user/family pairs.
+Permission changes affect protected routes immediately through database checks;
+refresh reissues updated claims. Revoking refresh families does not blacklist
+already-issued access JWTs.
+
+## Docker & Deploy
+
+Use the existing backend/SQL Server/Redis topology. Startup backfill runs on each
+application start; tenant row locking makes concurrent instances converge. No
+Compose, deployment, or production migration change is part of this feature.
+
+## Out of Scope
+
+Company onboarding/offboarding (32/33), ownership-transfer workflow (32), client
+portal/handoff (34/35), step-up OTP (23), log tiers (25), and project/workspace
+authorization revisions. AI OBO remains denied on role reads and writes.
 
 ## Acceptance Criteria
 
-- [x] Five system roles seeded per company; undeletable/uneditable — `BackfillSystemRolesAsync` idempotent (`IsSystem=true` rows; update/delete → 403)
-- [x] Admin/PM create a custom role limited to catalogue keys; cross-org role CRUD returns 403/404 — catalogue validation + `TenantGuard` fail-closed cross-tenant
-- [x] `[RequirePermission]` + GraphQL policy enforce; bypass attempts fail integration tests — server-side `PermissionService` re-check (DB truth)
-- [x] Role downgrade reflected after refresh; force-revoke works — refresh re-resolves `perms` from the DB; `RevokeAllFamiliesAsync` immediate effect
-- [x] `dotnet build` + `dotnet test` green — 0W/0E; 187 passed / 8 skipped / 0 failed (2026-09-12)
+- [x] Five immutable system roles per company; partial and concurrent startup seeds converge. — `RoleServiceTests.EnsureSystemRoles_SeedsFiveRoles_ThenIdempotent`, `BackfillSystemRoles_SkipsOrganizationsAlreadySeeded`; `RoleSqlTests.PartialStartupSeed_RepairsWithoutTenant_AndConcurrentSeedsStayUnique`, `ConcurrentCustomRoleCreation_OneSuccessOneConflict`.
+- [x] Catalogue-only custom CRUD; no escalation, cross-tenant writes, or reserved-name collisions. — `Create_UnknownPermissionKey_ThrowsValidation`, `Create_NullPermissionEntryReturnsValidation`, `Create_GrantingPermissionCallerDoesNotHold_ThrowsForbidden`, `Create_DuplicateName_ThrowsConflict`, `Update_SystemRole_ThrowsForbidden`, `Update_CrossTenantRole_ThrowsForbidden`, `Delete_SystemRole_ThrowsForbidden`, `Delete_CrossTenantRole_ThrowsForbidden`, `Create_OtherOrganizationDeniedEvenWhenPermissionServiceAllowsIt`.
+- [x] REST and GraphQL policies reject stale-claim and tenant bypass attempts in HTTP integration tests. — `RoleSqlTests.HttpAndGraphqlPolicies_UseDatabasePermissions_AndRejectCrossTenantWrites` (stale Owner JWT → 403/GraphQL errors until refresh; foreign-organization write → 403).
+- [x] Member assignment enforces Owner and custom-role boundaries. — `SetMemberRole_SelfChange_ThrowsForbidden`, `SetMemberRole_DemoteOwner_NonOwnerCaller_ThrowsForbidden`, `SetMemberRole_DemoteOwner_OwnerCaller_Succeeds`, `SetMemberRole_CustomRoleCannotDemoteOwner`, `SetMemberRole_DelegatedManagerCannotEscalate`, `SetMemberRole_SystemRoleCannotBeUsedAsCustomReference`, `SetMemberRole_ForeignCustomRole_ThrowsValidation`, `SetMemberRole_CustomLiteralName_ThrowsValidation`.
+- [x] Delete fallback handles inactive members and invitations; audit/revoke failures roll back all changes. — `RoleSqlTests.DeleteRole_HandlesInactiveMembersAndInvites_AndAuditFailureRollsEverythingBack` (audit failure rolls back demotion + deletes), `ForceRevoke_FailureIsNotReportedAsSuccess` (revoke failure → exception, no audit row).
+- [x] Refresh reflects current roles; force-revoke invalidates refresh families and reports actual family count. — `RoleSqlTests.HttpAndGraphqlPolicies_...` (refresh mints `role=member` without `org.roles.manage`), `ForceRevoke_CountsFamiliesAndRevokesEverySession` (2 families revoked + counted), `ForceRevoke_SystemRole_RevokesAllHolders`, `ForceRevoke_CustomRole_RevokesAllHolders`.
+- [x] Backend build/tests, SQL regression suite, local health, documentation structure, and contract sync pass. — Final completion wave (2026-09-12): build 0W/0E; full suite with `GRIOT_RUN_SQL_TESTS=1` 212 passed / 0 skipped / 0 failed (incl. 5 SQL RBAC regression tests); `/health` Healthy; contract-sync exit 0. Repairs this wave: RoleSelection cross-tenant fixture fixed (`CustomRole.OrganizationId`), Prune SQL test now seeds the real `Organizations` row (spec-29 FK).

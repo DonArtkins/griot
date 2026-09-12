@@ -7,6 +7,7 @@ using Griot.Application.DTOs.Roles;
 using Griot.Application.Interfaces.Repositories;
 using Griot.Application.Interfaces.Services;
 using Griot.Application.Services;
+using Griot.Application.Tenancy;
 using Griot.Domain.Entities;
 using Griot.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -50,10 +51,17 @@ public class RoleServiceTests
         Mock<IPermissionService>? perms = null)
     {
         var roles = new Mock<IRoleRepository>();
+        roles.Setup(r => r.ExecuteInTransactionAsync(It.IsAny<Guid>(), It.IsAny<Func<Task>>()))
+            .Returns<Guid, Func<Task>>((_, action) => action());
+        roles.Setup(r => r.CountUnrevokedFamiliesAsync(It.IsAny<IReadOnlyList<Guid>>()))
+            .ReturnsAsync((IReadOnlyList<Guid> ids) => ids.Distinct().Count());
+        var tenant = new Mock<ITenantContext>();
+        tenant.SetupGet(t => t.OrganizationId).Returns(Org);
+        tenant.SetupGet(t => t.IsOrganizationActive).Returns(true);
         var auth = new Mock<IAuthRepository>();
         var audit = new Mock<IAuditService>();
         audit.Setup(a => a.RecordAsync(It.IsAny<AuditEntry>())).Returns(Task.CompletedTask);
-        var svc = new RoleService(roles.Object, auth.Object, (perms ?? PermMock()).Object, audit.Object, NullLogger<RoleService>.Instance);
+        var svc = new RoleService(roles.Object, auth.Object, (perms ?? PermMock()).Object, audit.Object, NullLogger<RoleService>.Instance, tenant.Object);
         return (svc, roles, auth, audit);
     }
 
@@ -64,7 +72,7 @@ public class RoleServiceTests
     {
         var (svc, roles, _, _) = Build();
         roles.Setup(r => r.CountSystemRolesAsync(Org)).ReturnsAsync(0);
-        roles.Setup(r => r.FindByNameAsync(Org, It.IsAny<string>())).ReturnsAsync((Role?)null);
+        roles.Setup(r => r.FindSeedRoleByNameAsync(Org, It.IsAny<string>())).ReturnsAsync((Role?)null);
 
         var created = await svc.EnsureSystemRolesAsync(Org);
         Assert.Equal(5, created);
@@ -84,7 +92,7 @@ public class RoleServiceTests
             .ReturnsAsync(new List<Guid> { Org, seededOrg });
         roles.Setup(r => r.CountSystemRolesAsync(Org)).ReturnsAsync(5);
         roles.Setup(r => r.CountSystemRolesAsync(seededOrg)).ReturnsAsync(0);
-        roles.Setup(r => r.FindByNameAsync(seededOrg, It.IsAny<string>())).ReturnsAsync((Role?)null);
+        roles.Setup(r => r.FindSeedRoleByNameAsync(seededOrg, It.IsAny<string>())).ReturnsAsync((Role?)null);
 
         var created = await svc.BackfillSystemRolesAsync();
         Assert.Equal(5, created);
@@ -373,6 +381,80 @@ public class RoleServiceTests
     }
 
     // -- List --
+
+    [Fact]
+    public async Task SetMemberRole_CustomRoleCannotDemoteOwner()
+    {
+        var (svc, roles, _, _) = Build(PermMock(effectiveRole: RoleSelection.RoleAdmin));
+        var owner = Member(Guid.NewGuid(), OrganizationRole.Owner);
+        var role = CustomRole();
+        roles.Setup(r => r.FindMemberByIdAsync(Org, owner.Id)).ReturnsAsync(owner);
+        roles.Setup(r => r.FindByIdAsync(role.Id)).ReturnsAsync(role);
+        var error = await Assert.ThrowsAsync<DomainError>(() =>
+            svc.SetMemberRoleAsync(Caller, Org, owner.Id, new SetMemberRoleRequest($"custom:{role.Id}")));
+        Assert.Equal(DomainErrorKind.Forbidden, error.Kind);
+        roles.Verify(r => r.UpdateMemberRoleAsync(It.IsAny<OrganizationMember>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("Owner")]
+    public async Task SetMemberRole_DelegatedManagerCannotEscalate(string requested)
+    {
+        var (svc, roles, _, _) = Build(PermMock(new HashSet<string> { PermissionCatalogue.OrgMembersManage }, "custom:manager"));
+        var member = Member(Guid.NewGuid(), OrganizationRole.Member);
+        roles.Setup(r => r.FindMemberByIdAsync(Org, member.Id)).ReturnsAsync(member);
+        var error = await Assert.ThrowsAsync<DomainError>(() =>
+            svc.SetMemberRoleAsync(Caller, Org, member.Id, new SetMemberRoleRequest(requested)));
+        Assert.Equal(DomainErrorKind.Forbidden, error.Kind);
+    }
+
+    [Fact]
+    public async Task SetMemberRole_SystemRoleCannotBeUsedAsCustomReference()
+    {
+        var (svc, roles, _, _) = Build();
+        var member = Member(Guid.NewGuid(), OrganizationRole.Member);
+        var role = SystemRole("Admin");
+        roles.Setup(r => r.FindMemberByIdAsync(Org, member.Id)).ReturnsAsync(member);
+        roles.Setup(r => r.FindByIdAsync(role.Id)).ReturnsAsync(role);
+        var error = await Assert.ThrowsAsync<DomainError>(() =>
+            svc.SetMemberRoleAsync(Caller, Org, member.Id, new SetMemberRoleRequest($"custom:{role.Id}")));
+        Assert.Equal(DomainErrorKind.Validation, error.Kind);
+    }
+
+    [Fact]
+    public async Task ForceRevoke_FailureIsNotReportedAsSuccess()
+    {
+        var (svc, roles, auth, audit) = Build();
+        var role = CustomRole();
+        var user = Guid.NewGuid();
+        roles.Setup(r => r.FindByIdAsync(role.Id)).ReturnsAsync(role);
+        roles.Setup(r => r.ListActiveMembersForCustomRoleAsync(role.Id))
+            .ReturnsAsync(new[] { Member(user, OrganizationRole.Custom, role.Id) });
+        auth.Setup(a => a.RevokeAllFamiliesAsync(user, It.IsAny<DateTime>()))
+            .ThrowsAsync(new InvalidOperationException("storage unavailable"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ForceRevokeAsync(Caller, Org, role.Id));
+        audit.Verify(a => a.RecordAsync(It.IsAny<AuditEntry>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_NullPermissionEntryReturnsValidation()
+    {
+        var (svc, _, _, _) = Build();
+        var error = await Assert.ThrowsAsync<DomainError>(() =>
+            svc.CreateAsync(Caller, Org, new CreateRoleRequest("QA", new[] { (string)null! })));
+        Assert.Equal(DomainErrorKind.Validation, error.Kind);
+    }
+
+    [Fact]
+    public async Task Create_OtherOrganizationDeniedEvenWhenPermissionServiceAllowsIt()
+    {
+        var (svc, roles, _, _) = Build();
+        var error = await Assert.ThrowsAsync<DomainError>(() =>
+            svc.CreateAsync(Caller, Guid.NewGuid(), new CreateRoleRequest("QA", Array.Empty<string>())));
+        Assert.Equal(DomainErrorKind.Forbidden, error.Kind);
+        roles.Verify(r => r.AddAsync(It.IsAny<Role>()), Times.Never);
+    }
 
     [Fact]
     public async Task List_ReturnsSystemAndCustomRoles()

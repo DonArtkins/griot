@@ -33,6 +33,8 @@
 - Avoid concurrent writes to build outputs: with operator approval, pause or stop this repository's `dotnet watch` during clean pre-push rebuilds, then restore it. The spec 09 push hit `MSB4018`/`MSB3026` while a watcher rebuilt the same files; the unchanged hook passed once the watcher was paused. Never bypass hooks to work around a lock.
 - Historical-schema SQL fixtures must seed only columns present at their target migration with parameterized SQL, then apply later migrations. Do not use the current EF entity mapping to insert into an older schema (`SqlAuthFixture` regression: missing `EmailVerified`).
 - Postman collection updates committed together with any API change.
+- RBAC regression gates cover REST and GraphQL with the same stale JWT, cross-organization rejection, partial/concurrent role seeding, and transactional rollback when audit persistence fails. Run SQL checks with `GRIOT_RUN_SQL_TESTS=1`; the fixture owns a disposable database.
+- Role writes must use the shared transaction and tenant guard. Never swallow refresh-revocation or audit failures; never authorize from the JWT `perms` claim.
 
 ## Implemented authentication contract (Feature 07)
 

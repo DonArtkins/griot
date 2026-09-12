@@ -7,6 +7,7 @@ using Griot.Domain.Entities;
 using Griot.Domain.Enums;
 using Griot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Griot.Application.Services;
 
 namespace Griot.Infrastructure.Repositories;
 
@@ -22,6 +23,38 @@ public sealed class RoleRepository : IRoleRepository
     private readonly GriotDbContext _context;
 
     public RoleRepository(GriotDbContext context) => _context = context;
+
+    public async Task ExecuteInTransactionAsync(Guid organizationId, Func<Task> action)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync().ConfigureAwait(false);
+        try
+        {
+            // Lock the existing tenant row before checking names or role holders.
+            // Every role mutation and seed takes the same lock, avoiding duplicate
+            // names and partial seeds without changing the approved schema.
+            var exists = await _context.Organizations
+                .FromSqlInterpolated($"SELECT * FROM dbo.Organizations WITH (UPDLOCK, HOLDLOCK) WHERE Id = {organizationId}")
+                .IgnoreQueryFilters().AsNoTracking().AnyAsync().ConfigureAwait(false);
+            if (!exists)
+                throw new DomainError(DomainErrorKind.NotFound, "Organization not found.");
+            await action().ConfigureAwait(false);
+            await transaction.CommitAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            await transaction.RollbackAsync().ConfigureAwait(false);
+            _context.ChangeTracker.Clear();
+            throw;
+        }
+    }
+
+    public Task<Role?> FindSeedRoleByNameAsync(Guid organizationId, string name) =>
+        _context.Roles.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.OrganizationId == organizationId && r.Name == name);
+
+    public Task<int> CountUnrevokedFamiliesAsync(IReadOnlyList<Guid> userIds) =>
+        _context.RefreshTokens.Where(t => userIds.Contains(t.UserId) && t.RevokedAt == null)
+            .Select(t => new { t.UserId, t.FamilyId }).Distinct().CountAsync();
 
     // ── Tenant-scoped reads/writes ──
 
@@ -100,20 +133,26 @@ public sealed class RoleRepository : IRoleRepository
         var userIds = await _context.OrganizationMembers
             .Where(m => m.OrganizationId == organizationId
                         && m.CustomRoleId == roleId
-                        && m.Role == OrganizationRole.Custom
-                        && m.Status == OrganizationMemberStatus.Active)
+                        && m.Role == OrganizationRole.Custom)
             .Select(m => m.UserId)
             .ToListAsync()
             .ConfigureAwait(false);
 
         await _context.OrganizationMembers
             .Where(m => m.OrganizationId == organizationId
-                        && m.CustomRoleId == roleId
-                        && m.Status == OrganizationMemberStatus.Active)
+                        && m.CustomRoleId == roleId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(m => m.Role, OrganizationRole.Member)
                 .SetProperty(m => m.CustomRoleId, (Guid?)null))
             .ConfigureAwait(false);
+
+        // Pending and expired invitations also reference Roles through NO ACTION
+        // foreign keys. Preserve the invitation with the same Member fallback.
+        await _context.OrganizationInvites
+            .Where(i => i.OrganizationId == organizationId && i.CustomRoleId == roleId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(i => i.Role, OrganizationRole.Member)
+                .SetProperty(i => i.CustomRoleId, (Guid?)null)).ConfigureAwait(false);
 
         return userIds;
     }
@@ -134,9 +173,9 @@ public sealed class RoleRepository : IRoleRepository
             .AsNoTracking()
             .IgnoreQueryFilters()
             .Where(o => o.Status == OrganizationStatus.Active
-                        && !_context.Roles
+                        && _context.Roles
                             .IgnoreQueryFilters()
-                            .Any(r => r.OrganizationId == o.Id && r.IsSystem))
+                            .Count(r => r.OrganizationId == o.Id && r.IsSystem) < 5)
             .Select(o => o.Id)
             .ToListAsync()
             .ConfigureAwait(false);

@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Phase P3** in `docs/planning/IMPLEMENTATION-ROADMAP.md`. Kit written (7 specs). **Not started.** Every mobile dependency is already-satisfied backend work (04–08, 07 auth ✅) — the system waits only for its roadmap slot after **P1 (web) + P2 (AI hop) complete**, because one spec runs at a time and web is the Week-3 deliverable.
+**Phase P3** in `docs/planning/IMPLEMENTATION-ROADMAP.md`. Kit written (9 specs). **Not started.** Core backend API prerequisites (04–08, 07 auth) are implemented; tenant/client extensions still have pending dependencies. The system waits for its roadmap slot after **P1 (web) + P2 (AI hop) complete**, because one spec runs at a time and web is the Week-3 deliverable.
 
 | Spec | Title | Status | Blocked by |
 |---|---|---|---|
@@ -16,19 +16,21 @@
 | 08 | Organization switching & role navigation | 📋 Spec written (PLANNED) — multi-tenant wave | m 02–06, backend 29/30/32–33, web 13–16 |
 | 09 | Client portal & handoff (mobile parity) | 📋 Spec written (PLANNED) — multi-tenant wave | m 02–08, backend 34/35/22, web 15/16 |
 
-## Roadmap Order (canonical, from IMPLEMENTATION-ROADMAP.md P3)
+## Next Steps
+
+1. Do not start until P2 (ai 01–12 with web 10–12 at dependency points) is complete.
+2. Then branch `feature/mobile/01-flutter-app-setup` and implement spec 01 only.
+3. Verification gates: `flutter analyze` clean; `flutter test` green; verified on Android emulator + one physical device.
+
+### Roadmap order
 
 `mobile 01 → 02 → 03 → 04 → 05 → 06 → 07`
 
 **Why mobile after web/AI-hop:** bootcamp Week 4 follows Week 3; mobile is a companion surface (parity with web, not pixel-identical), so implementing it after the web patterns exist lets it copy proven data-layer/auth wiring instead of inventing it. **Known cross-phase item:** spec 07's "CI APK artifact" acceptance point is fulfilled by infra 05's Flutter job (P4) — emulator + physical-device verification happens in P3.
 
-## Next Steps
-
-1. Do not start until P2 (web 10 + ai 03–05) is complete.
-2. Then branch `feature/mobile/01-flutter-app-setup` and implement spec 01 only.
-3. Verification gates: `flutter analyze` clean; `flutter test` green; verified on Android emulator + one physical device.
-
 ## Session Notes
+
+- **2026-09-12 (tracker repair)** — Corrected current counts, table structure, and prerequisite status; kept historical checkpoints inside Session Notes. Backend 29–31 are implemented; backend 32 is next. This system's features remain pending; tenant extensions follow their owning specs' dependencies.
 
 - **2026-09-03** — Mobile kit created (AGENTS, skills, contexts, 7 specs).
 - **2026-09-07** — Theme scaffolded ahead of spec 01: `lib/core/theme/theme.dart` (ThemeData + `GriotColors`/`GriotRadii` extensions) from the inspo-synthesized master design system.
@@ -37,9 +39,9 @@
 
 - **2026-09-11** — **Multi-Tenant Migration Wave (PLANNED):** specs 01–07 each gained a "Multi-Tenant Update (2026-09-11 — PLANNED)" section (JWT v2 claims `name`/`org`/`role`/`perms`, org switch via `POST /api/auth/select-organization`, `403 org_suspended`, org-scoped notifications, client-portal layouts; refresh tokens stay opaque in `flutter_secure_storage` — NOT JWTs). New specs **08** (organization switching & role navigation) and **09** (client portal & handoff mobile parity) written as PLANNED — no production code, no status changes to existing specs. Contract: `docs/multi-tenancy/MULTI-TENANCY-GUIDE.md`; mobile multi-tenant contract mirrored in `mobile/project-kit/context/integration-contracts.md`.
 
-## Audit synchronization — 2026-09-11
+### Audit synchronization — 2026-09-11 (historical)
 
-Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 → 31 → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
+Implemented through backend 20 (observability pipeline); backend 29 (multi-tenant foundation) implemented 2026-09-11 on `feature/backend/29-multi-tenant-foundation-organizations` — roadmap §P0.5 next is backend 30 after 29 completes its outstanding gates. Future planning is not completed implementation. P0 (2026-09-11): backend 29 ✅ → 30 ✅ → 31 ✅ → 32 → 33 → 34 → 35 → 18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27 → 10. P2: ai 01 → ai 02 → web 10 → ai 03 → ai 04 → ai 05 → ai 06 → ai 07 → web 11 → ai 08 → ai 09 → web 12 → ai 10 → ai 11 → ai 12. Full requirement/review ledger: `docs/planning/AI-SYSTEM-AUDIT-2026-09-11.md`.
 Mobile stays at core PM parity; no dedicated AI workspace, report composer or assignment UI is added to its seven specs. Consume permitted notification/report links through .NET only.
 
 ---

@@ -31,16 +31,23 @@ public sealed class PermissionRequirement : IAuthorizationRequirement
 public sealed class PermissionAuthorizationHandler
     : AuthorizationHandler<PermissionRequirement>
 {
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public PermissionAuthorizationHandler(IHttpContextAccessor httpContextAccessor) =>
+        _httpContextAccessor = httpContextAccessor;
 
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        if (context.Resource is not DefaultHttpContext http)
-            return; // Only enforcement target: MVC endpoints (context = the request).
+        var http = context.Resource as HttpContext;
+        if (http is null && context.Resource is HotChocolate.Resolvers.IResolverContext)
+            http = _httpContextAccessor.HttpContext;
+        if (http is null || context.User.Identity?.IsAuthenticated != true)
+            return;
 
-        var userId = http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                     ?? http.User.FindFirst("sub")?.Value;
+        var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? context.User.FindFirst("sub")?.Value;
         if (!Guid.TryParse(userId, out var callerId))
             return; // Not authenticated → fail closed (the [Authorize] frame already 401'd).
 

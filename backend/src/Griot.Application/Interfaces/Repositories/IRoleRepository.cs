@@ -14,6 +14,14 @@ namespace Griot.Application.Interfaces.Repositories;
 /// </summary>
 public interface IRoleRepository
 {
+    /// <summary>Serialize role changes for one organization and commit all writes and audits together.</summary>
+    Task ExecuteInTransactionAsync(Guid organizationId, Func<Task> action);
+
+    /// <summary>Explicit platform lookup used only by system-role backfill/onboarding.</summary>
+    Task<Role?> FindSeedRoleByNameAsync(Guid organizationId, string name);
+
+    /// <summary>Count distinct unrevoked user/family pairs before force revocation.</summary>
+    Task<int> CountUnrevokedFamiliesAsync(IReadOnlyList<Guid> userIds);
     // ── Tenant-scoped reads/writes (normal request flow) ──
 
     /// <summary>All role rows of one organization (system + custom), name-ordered.</summary>
