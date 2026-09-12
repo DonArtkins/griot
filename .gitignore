@@ -17,8 +17,8 @@ dist/
 build/
 coverage/
 .mcp.json
+.bug
+.coderabbit
 
 # EFS (extracted PDF text temp)
 research/_bootcamp_*.txt
-
-.bug
