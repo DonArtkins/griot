@@ -13,13 +13,13 @@ This file is the **cross-system API contract**. Web, mobile, AI, MCP, and the Po
 | PUT/DELETE | `/api/organizations/{organizationId}/roles/{roleId}` | update/delete custom role — spec 31 | `org.roles.manage` |
 | POST | `/api/organizations/{organizationId}/roles/{roleId}/revoke` | revoke active holders' refresh families — spec 31 | `org.roles.manage` |
 | PUT | `/api/organizations/{organizationId}/members/{memberId}/role` | assign system/custom role — spec 31 | `org.members.manage` |
-| POST | `/api/organizations` (`{name, slug, ownerEmail, ownerDisplayName, plan}`) | onboard a company — transactional seed (org + owner Invited membership + 5 system roles + default workspace + Onboarded lifecycle + audit) + best-effort Brevo owner invite → 201 `{organization, ownerInvite}` — spec 32 | SuperAdmin |
+| POST | `/api/organizations` (`{name, slug, ownerEmail, plan}` — plan must be a defined `OrganizationPlan` value) | onboard a company — transactional seed (org + owner Invited membership + 5 system roles + default workspace + Onboarded lifecycle + audit) + best-effort Brevo owner invite → 201 `{organization, ownerInvite}` — spec 32 | SuperAdmin (AI OBO forbidden) |
 | GET | `/api/organizations` (`page` · `pageSize` · `search`) | paginated, name/slug-searchable company list — spec 32 | SuperAdmin |
 | GET | `/api/organizations/{id}` | one company (Active Owner/Admin members may view their own company) — spec 32 | SuperAdmin or company Admin |
 | POST | `/api/organizations/{id}/suspend` · `/reactivate` | lifecycle flips (optional reason on lifecycle/audit rows); suspended orgs keep reads + auth — tenant writes fail 403 `org_suspended` — spec 32 | SuperAdmin |
 | POST | `/api/organizations/{id}/transfer-ownership` | move ownership to a different Active member; previous owner demotes to Admin — spec 32 | SuperAdmin |
 | PUT | `/api/organizations/{id}/plan` | plan metadata update (no payments in this wave) — spec 32 | SuperAdmin |
-| POST | `/api/organizations/invites/{token}/accept` | accept a company-owner invite (invited, authenticated account; invite email must match; flips membership Invited → Active) — spec 32 | authenticated (invited user) |
+| POST | `/api/organizations/invites/{token}/accept` | accept a company-owner invite (invited, authenticated account; invite email must match; flips membership Invited → Active; AI OBO principals 403) — spec 32 | authenticated (invited user) |
 | POST | `/api/auth/forgot-password` · `/reset-password`; DELETE `/api/auth/account`; `otp/request` purposes `delete_account` / `step_up` — **spec 23 PLANNED** | critical-action OTP & step-up (login 2FA challenge, forgot/reset, delete account, guarded ops) | public / bearer + step-up |
 | GET/POST | `/api/workspaces` | list/create | authenticated |
 | GET/PUT/DELETE | `/api/workspaces/{id}` | read/update/delete | DELETE = Owner only |

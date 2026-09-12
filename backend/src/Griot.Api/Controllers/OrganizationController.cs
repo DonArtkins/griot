@@ -162,7 +162,8 @@ public sealed class OrganizationController : DomainControllerBase
     /// <summary>
     /// Accept an organization invite by token (the invited, authenticated user; the
     /// invite email must match the caller account). Activates the membership and
-    /// grants access to the company (including its default workspace).
+    /// grants access to the company (including its default workspace). AI OBO
+    /// principals are forbidden (403) — membership activation is a human-only action.
     /// </summary>
     [HttpPost("invites/{token}/accept")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -172,6 +173,7 @@ public sealed class OrganizationController : DomainControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AcceptInvite(string token)
     {
+        if (ForbidIfAiCall() is IActionResult forbid) return forbid;
         try
         {
             await _lifecycle.AcceptInviteAsync(token, CurrentUserId()).ConfigureAwait(false);

@@ -81,6 +81,11 @@ public sealed class OrganizationLifecycleService : IOrganizationLifecycleService
         if (!EmailRegex.IsMatch(ownerEmail))
             throw new DomainError(DomainErrorKind.Validation, "A valid ownerEmail is required.");
 
+        // JsonStringEnumConverter accepts integers by default, so an undefined numeric
+        // value (e.g. 999) would otherwise bind and persist — reject before any write.
+        if (!Enum.IsDefined(request.Plan))
+            throw new DomainError(DomainErrorKind.Validation, "A valid organization plan is required.");
+
         // Organization.OwnerId is a non-nullable FK (spec 29) — the owner must be a
         // registered Griot account before the company can be onboarded.
         var owner = await _organizations.FindUserByEmailAsync(ownerEmail).ConfigureAwait(false)
@@ -290,6 +295,10 @@ public sealed class OrganizationLifecycleService : IOrganizationLifecycleService
     private async Task<OrganizationDto> UpdatePlanCoreAsync(Guid callerId, Guid organizationId, UpdatePlanRequest request)
     {
         RequireSuperAdmin();
+        // Same undefined-enum guard as onboarding: JsonStringEnumConverter accepts
+        // integers, so reject undefined numeric values before persistence.
+        if (!Enum.IsDefined(request.Plan))
+            throw new DomainError(DomainErrorKind.Validation, "A valid organization plan is required.");
         var organization = await RequireOrganizationAsync(organizationId).ConfigureAwait(false);
         var before = organization.PlanName.ToString();
 
@@ -393,9 +402,14 @@ public sealed class OrganizationLifecycleService : IOrganizationLifecycleService
             ActorUserId = callerId,
             PayloadJson = JsonSerializer.Serialize(new { from = before, to = organization.Status.ToString(), reason })
         }).ConfigureAwait(false);
+        // Audit After carries the resulting status AND the suspension/reactivation
+        // reason (SuspendRequest contract: the reason lands on the lifecycle event
+        // payload and the AuditLogs row); the lifecycle event keeps its own payload.
         _audit.QueueAudit(new AuditEntry(
             callerId, $"Organization.{kind}", "Organization", organization.Id,
-            before, organization.Status.ToString(), OrganizationId: organization.Id));
+            before,
+            JsonSerializer.Serialize(new { status = organization.Status.ToString(), reason }),
+            OrganizationId: organization.Id));
         await _organizations.SaveAsync().ConfigureAwait(false);
     }
 

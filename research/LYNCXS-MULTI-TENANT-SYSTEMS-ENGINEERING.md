@@ -175,9 +175,12 @@ Onboarding has two very different sub-problems that are easy to conflate: **tena
 > row + an `OrganizationLifecycleEvents(Onboarded)` row + the AuditLogs row — serialized
 > on the unique Slug key; the branded Brevo owner invite (7-day token) is best-effort
 > AFTER the durable commit, and `POST /api/organizations/invites/{token}/accept` flips
-> the membership Invited → Active (the invited, authenticated account only). Suspend/
-> reactivate/transfer-ownership/plan ride the same transaction pattern (`OrganizationStatus`
-> maps 1:1 to the `TenantStatus` state machine below; offboarding stays backend 33).
+> the membership Invited → Active (the invited, authenticated account only; AI OBO
+> principals are 403-forbidden). Suspend/reactivate/transfer-ownership/plan ride the same
+> transaction pattern. Shipped as of backend 32: `OrganizationStatus` implements only the
+> `Active` ↔ `Suspended` transitions of the `TenantStatus` state machine below —
+> `Offboarding`/`Archived` (and the sample's `PROVISIONING`/`DELETED` states) are PLANNED,
+> so the mapping is NOT 1:1 yet; offboarding is deferred to backend 33.
 
 ```typescript
 // Synthesized from OWASP Multi-Tenant Security Cheat Sheet §7 and

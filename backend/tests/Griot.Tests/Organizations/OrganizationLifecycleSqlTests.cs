@@ -85,7 +85,7 @@ public sealed class OrganizationLifecycleSqlTests : IClassFixture<SqlAuthFixture
     }
 
     private static CreateOrganizationRequest Request(string slug, string ownerEmail) =>
-        new("ACME Inc", slug, ownerEmail, "ACME Owner", OrganizationPlan.Pro);
+        new("ACME Inc", slug, ownerEmail, OrganizationPlan.Pro);
 
     [SqlAuthFact]
     public async Task Onboard_SeedCommitsAllRowsTogether()
@@ -165,14 +165,35 @@ public sealed class OrganizationLifecycleSqlTests : IClassFixture<SqlAuthFixture
         var slug = $"dup-{Guid.NewGuid():N}"[..16];
         var owner = await SeedOwnerAsync($"owner-{Guid.NewGuid():N}@example.com");
 
+        // Start BOTH onboardings before awaiting either result so the second
+        // transaction must serialize against the first on the slug key — this
+        // exercises the UPDLOCK/HOLDLOCK probe, not just post-commit duplicate
+        // detection.
         await using var first = _fixture.CreateContext();
         await using var second = _fixture.CreateContext();
-        var firstResult = await Service(first, PlatformTenant()).CreateAsync(SuperAdminId, Request(slug, owner.Email));
-        var secondError = await Assert.ThrowsAsync<DomainError>(
-            () => Service(second, PlatformTenant()).CreateAsync(SuperAdminId, Request(slug, owner.Email)));
+        var request = Request(slug, owner.Email);
+        var successes = new List<CreateOrganizationResponse>();
+        var conflicts = new List<DomainError>();
 
-        Assert.Equal(DomainErrorKind.Conflict, secondError.Kind);
-        Assert.Equal(firstResult.Organization.Slug, slug);
+        async Task RunAsync(OrganizationLifecycleService service)
+        {
+            try
+            {
+                successes.Add(await service.CreateAsync(SuperAdminId, request).ConfigureAwait(false));
+            }
+            catch (DomainError e) when (e.Kind == DomainErrorKind.Conflict)
+            {
+                conflicts.Add(e);
+            }
+        }
+
+        await Task.WhenAll(RunAsync(Service(first, PlatformTenant())), RunAsync(Service(second, PlatformTenant()))).ConfigureAwait(false);
+
+        // Exactly one onboarding wins; the loser conflicts on the serialized slug.
+        Assert.Single(successes);
+        Assert.Single(conflicts);
+        Assert.Equal(DomainErrorKind.Conflict, conflicts[0].Kind);
+        Assert.Equal(successes[0].Organization.Slug, slug);
         await using var verify = _fixture.CreateContext();
         Assert.Equal(1, await verify.Organizations.IgnoreQueryFilters().CountAsync(o => o.Slug == slug));
     }

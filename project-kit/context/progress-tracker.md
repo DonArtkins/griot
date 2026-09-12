@@ -2,13 +2,13 @@
 
 ## Current State
 
-As of **2026-09-12**, Griot is in **Week 2, backend P0/P0.5**. Backend specs **01–09, 12 (Email-only), 13–17, 20 (logging pipeline), and 29–31 are implemented**. Spec 31 (RBAC v2) is **COMPLETE** on `feature/backend/31-rbac-roles-custom-permissions` (all acceptance criteria checked with test evidence); **spec 32 — Company onboarding & platform management — is next**, after approval to advance. Final completion verification (2026-09-12): build **0 warnings / 0 errors**; full suite with `GRIOT_RUN_SQL_TESTS=1` — **212 passed / 0 skipped / 0 failed**; `/health` 200 `Healthy`; contract-sync exit 0.
+As of **2026-09-12**, Griot is in **Week 2, backend P0/P0.5**. Backend specs **01–09, 12 (Email-only), 13–17, 20 (logging pipeline), and 29–32 are implemented**. Spec 32 (Company onboarding & platform management) is **COMPLETE** on `feature/backend/32-company-onboarding-lifecycle` (all acceptance criteria checked with test evidence; 2026-09-12 CodeRabbit review fixes applied on the same branch); **spec 33 — Company offboarding — is next**, after approval to advance. Final completion verification (2026-09-12): build **0 warnings / 0 errors**; full suite with `GRIOT_RUN_SQL_TESTS=1` — **244 passed / 0 skipped / 0 failed**; `/health` 200 `Healthy`; contract-sync exit 0.
 
 Backend 29's ERD/export/migration gates are closed. Spec 20's durable outbox, webhook inbox, and idempotency store remain PLANNED. Other systems have written feature kits; their implementation remains pending.
 
 | System | Kit | Status | Roadmap phase |
 |---|---|---|---|
-| backend | backend/project-kit | 51 specs; 01–09, 12 (Email-only), 13–17, 20 logging, 29–31 implemented; 32 next; remaining specs/revisions PLANNED | P0 / P0.5 |
+| backend | backend/project-kit | 51 specs; 01–09, 12 (Email-only), 13–17, 20 logging, 29–32 implemented; 33 next; remaining specs/revisions PLANNED | P0 / P0.5 |
 | web | web/project-kit | 16 specs; all pending, including tenant extensions 13–16 | P1 + P2 integration |
 | ai | ai/project-kit | 15 specs; all pending, including tenant extensions 13–15 | P2 |
 | mobile | mobile/project-kit | 9 specs; all pending, including tenant extensions 08–09 | P3 |
@@ -18,13 +18,15 @@ Backend 29's ERD/export/migration gates are closed. Spec 20's durable outbox, we
 
 ## Next Steps
 
-1. Finish the backend multi-tenant wave: **32 → 33 → 34 → 35**. Advance from spec 31 only after user approval; each feature gets its own branch and PR.
+1. Finish the backend multi-tenant wave: **33 → 34 → 35**. Advance from spec 32 only after user approval; each feature gets its own branch and PR.
 2. Continue backend hardening: **18 → 19 → 22 → 21 → 23 → 11 → 28 → 24 → 25 → 26 → 27**. Revision specs **36–51** follow the work touching their base features under the roadmap's branch rules; **10 (API documentation)** closes P0.
 3. **P1:** Web **01–09**. **P2:** ai **01 → 02 → web 10 → ai 03 → 04 → 05 → 06 → 07 → web 11 → ai 08 → 09 → web 12 → ai 10 → 11 → 12**.
 4. Then **P3 mobile → P4 infra → P5 MCP → P6 QA**. Tenant extensions (web 13–16, ai 13–15, mobile 08–09, mcp 07, qa 14) remain PLANNED and must follow their owning specs' dependencies.
 5. Use the [canonical roadmap](../../docs/planning/IMPLEMENTATION-ROADMAP.md), [dependency audit](../../docs/DEPENDENCY-AUDIT.md), and [backend tracker](../../backend/project-kit/context/progress-tracker.md) for ordering and evidence. Update trackers and pass applicable gates before pushing a feature.
 
 ## Session Notes
+
+- **2026-09-12 (2) (spec-32 CodeRabbit review fixes)** — Applied all 11 CodeRabbit review findings on `feature/backend/32-company-onboarding-lifecycle`: root tracker refreshed to spec-32-complete/33-next with the 244/0/0 baseline; `OwnerDisplayName` removed from `CreateOrganizationRequest` (invite email renders the registered owner's `DisplayName`) with api-surface + spec-32 contract sync; spec 32 "Admin" → "Owner" terminology; `ForbidIfAiCall()` guard added to `AcceptInvite`; `CreateAsync`/`UpdatePlanCoreAsync` now reject undefined `OrganizationPlan` values (pinned by 2 new unit tests); transition audit `After` records status + reason (pinned by a new unit test); duplicate-slug SQL test made genuinely concurrent (both onboardings start before either is awaited); other-company member test setup corrected; COMMUNICATION-GUIDE best-effort scope widened to onboarding sends; roadmap branch reference fixed to `feature/backend/31-rbac-roles-custom-permissions`; LYNCXS lifecycle mapping corrected (only `Active` ↔ `Suspended` shipped; `Offboarding`/`Archived` PLANNED for backend 33).
 
 - **2026-09-12 (spec-32 delivery)** — Synchronized root and system trackers with backend 29–32 implemented: backend 32 (Company onboarding & platform management, SuperAdmin) is ✅ IMPLEMENTED on `feature/backend/32-company-onboarding-lifecycle` (transactional onboarding seed + Brevo owner invite + invite-accept + suspend/reactivate + transfer-ownership + plan metadata; build 0W/0E; 244 tests passed / 0 skipped / 0 failed with `GRIOT_RUN_SQL_TESTS=1`). Next: backend 33 (Company offboarding) after user approval.
 

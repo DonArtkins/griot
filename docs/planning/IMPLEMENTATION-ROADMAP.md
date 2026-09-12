@@ -7,7 +7,7 @@
 `feature/backend/29-multi-tenant-foundation-organizations` (commit `9447e15`, pushed
 after explicit user approval; review-fix follow-up `52cb862` pushed 2026-09-12), backend 30
 is IMPLEMENTED on `feature/backend/30-auth-jwt-v2`, and backend 31 is IMPLEMENTED on
-`feature/backend/32-company-onboarding-lifecycle`. Its §P0.5 order governs: 29 ✅ → 30 ✅ → 31 ✅ →
+`feature/backend/31-rbac-roles-custom-permissions`. Its §P0.5 order governs: 29 ✅ → 30 ✅ → 31 ✅ →
 32 ✅ → 33 → 34 → 35, then hardening — never older shorthand that goes directly from 20 to 18.
 **Specs 29 (✅ COMPLETE, all gates closed 2026-09-11), 30 (✅ IMPLEMENTED 2026-09-12), and 31
 (✅ IMPLEMENTED + COMPLETE 2026-09-12) are done, and spec 32 is ✅ IMPLEMENTED (2026-09-12:
